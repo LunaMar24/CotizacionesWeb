@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CotizacionesWeb.Application/CotizacionesWeb.Application.csproj" />
+    <Project Path="src/CotizacionesWeb.Domain/CotizacionesWeb.Domain.csproj" />
+    <Project Path="src/CotizacionesWeb.Infrastructure/CotizacionesWeb.Infrastructure.csproj" />
+    <Project Path="src/CotizacionesWeb.UI/CotizacionesWeb.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CotizacionesWeb.Tests/CotizacionesWeb.Tests.csproj" />
+  </Folder>
+</Solution>
