@@ -53,3 +53,34 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# .NET Build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+_UpgradeReport_Files/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/packages/
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Logs
+logs/
+*.log
+
+# User secrets
+**/secrets.json
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
