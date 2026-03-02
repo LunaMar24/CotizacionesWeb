@@ -29,13 +29,13 @@ public class AuthService : IAuthService
 
         if (usuario is null)
         {
-            _logger.LogWarning("Login failed: user {Email} not found or inactive", request.Email);
+            _logger.LogWarning("Login fallido: usuario {Email} no fue encontrado o inactivo", request.Email);
             return new LoginResult { Success = false, ErrorMessage = "Credenciales inválidas." };
         }
 
         if (usuario.IntentosFallidos >= MaxIntentosFallidos)
         {
-            _logger.LogWarning("Login failed: user {Email} is locked out", request.Email);
+            _logger.LogWarning("Login fallido: usuario {Email} está bloqueado", request.Email);
             return new LoginResult { Success = false, ErrorMessage = "Cuenta bloqueada. Contacte al administrador." };
         }
 
@@ -43,7 +43,7 @@ public class AuthService : IAuthService
         {
             usuario.IntentosFallidos++;
             await _db.SaveChangesAsync();
-            _logger.LogWarning("Login failed: invalid password for {Email}", request.Email);
+            _logger.LogWarning("Login fallido: contraseña inválida para {Email}", request.Email);
             return new LoginResult { Success = false, ErrorMessage = "Credenciales inválidas." };
         }
 
@@ -53,7 +53,7 @@ public class AuthService : IAuthService
 
         var roles = usuario.UsuarioRoles.Select(ur => ur.Rol.Nombre).ToList();
 
-        _logger.LogInformation("User {Email} logged in successfully", request.Email);
+        _logger.LogInformation("Usuario {Email} logueado satisfactoriamente", request.Email);
         return new LoginResult
         {
             Success = true,

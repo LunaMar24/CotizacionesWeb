@@ -1,0 +1,218 @@
+/* ============================================
+   PALETA DE COLORES - CotizacionesWeb
+   ============================================ */
+
+:root {
+    /* Colores Primarios */
+    --color-primary: #203e78;           /* Azul Oscuro Principal */
+    --color-primary-rgb: 32, 62, 120;
+    
+    --color-secondary: #325caa;         /* Azul Medio */
+    --color-secondary-rgb: 50, 92, 170;
+    
+    /* Colores Neutrales */
+    --color-dark: #525252;              /* Gris Oscuro */
+    --color-dark-rgb: 82, 82, 82;
+    
+    --color-black: #000000;             /* Negro */
+    --color-black-rgb: 0, 0, 0;
+    
+    --color-light: #a7a9ac;             /* Gris Claro */
+    --color-light-rgb: 167, 169, 172;
+    
+    --color-white: #ffffff;             /* Blanco */
+    --color-white-rgb: 255, 255, 255;
+    
+    /* Variaciones de Opacidad */
+    --color-primary-light: rgba(32, 62, 120, 0.1);
+    --color-primary-hover: rgba(32, 62, 120, 0.9);
+    
+    --color-secondary-light: rgba(50, 92, 170, 0.1);
+    --color-secondary-hover: rgba(50, 92, 170, 0.9);
+    
+    /* Sombras */
+    --shadow-sm: 0 2px 4px rgba(32, 62, 120, 0.1);
+    --shadow-md: 0 4px 6px rgba(32, 62, 120, 0.15);
+    --shadow-lg: 0 10px 15px rgba(32, 62, 120, 0.2);
+    
+    /* Borders */
+    --border-color: var(--color-light);
+    --border-radius: 4px;
+}
+
+/* ============================================
+   APLICACIÓN DE COLORES A COMPONENTES
+   ============================================ */
+
+/* Botones Primarios */
+.btn-primary {
+    background-color: var(--color-primary) !important;
+    border-color: var(--color-primary) !important;
+    color: var(--color-white) !important;
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-hover) !important;
+    border-color: var(--color-primary-hover) !important;
+}
+
+/* Botones Secundarios */
+.btn-secondary {
+    background-color: var(--color-secondary) !important;
+    border-color: var(--color-secondary) !important;
+    color: var(--color-white) !important;
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-secondary-hover) !important;
+    border-color: var(--color-secondary-hover) !important;
+}
+
+/* Enlaces */
+a {
+    color: var(--color-secondary);
+}
+
+a:hover {
+    color: var(--color-primary);
+}
+
+/* Tarjetas */
+.card {
+    border-color: var(--border-color);
+    box-shadow: var(--shadow-sm);
+}
+
+.card-header {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border-bottom: 2px solid var(--color-secondary);
+}
+
+/* Tablas */
+.table thead th {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border-color: var(--color-secondary);
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--color-primary-light);
+}
+
+/* Navegación - AdminLTE Override */
+.main-header.navbar {
+    background-color: var(--color-white) !important;
+    border-bottom: 2px solid var(--color-primary);
+}
+
+.main-sidebar {
+    background-color: var(--color-primary) !important;
+}
+
+.sidebar-dark-primary .nav-sidebar > .nav-item > .nav-link.active {
+    background-color: var(--color-secondary) !important;
+    color: var(--color-white) !important;
+}
+
+.brand-link {
+    padding: 1rem 0.5rem !important;
+    background-color: var(--color-primary) !important;
+    border-bottom: 1px solid var(--color-secondary) !important;
+}
+
+/* Formularios */
+.form-control:focus {
+    border-color: var(--color-secondary);
+    box-shadow: 0 0 0 0.2rem var(--color-secondary-light);
+}
+
+/* Badges */
+.badge-primary {
+    background-color: var(--color-primary) !important;
+}
+
+.badge-secondary {
+    background-color: var(--color-secondary) !important;
+}
+
+/* Alerts */
+.alert-primary {
+    background-color: var(--color-primary-light);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+/* Footer */
+.main-footer {
+    background-color: var(--color-white);
+    border-top: 2px solid var(--color-primary);
+    color: var(--color-dark);
+}
+
+/* Utilidades */
+.text-primary-custom {
+    color: var(--color-primary) !important;
+}
+
+.text-secondary-custom {
+    color: var(--color-secondary) !important;
+}
+
+.bg-primary-custom {
+    background-color: var(--color-primary) !important;
+    color: var(--color-white) !important;
+}
+
+.bg-secondary-custom {
+    background-color: var(--color-secondary) !important;
+    color: var(--color-white) !important;
+}
+
+.border-primary-custom {
+    border-color: var(--color-primary) !important;
+}
+
+.border-secondary-custom {
+    border-color: var(--color-secondary) !important;
+}
+
+/* ============================================
+   BRAND LOGO STYLES
+   ============================================ */
+
+.brand-link {
+    padding: 1rem 0.5rem !important;
+    background-color: var(--color-primary) !important;
+    border-bottom: 1px solid var(--color-secondary) !important;
+}
+
+.brand-link .brand-image {
+    max-width: 50px;
+    margin: 0 auto;
+    display: block;
+    opacity: 0.9;
+    transition: opacity 0.3s ease;
+}
+
+.brand-link:hover .brand-image {
+    opacity: 1;
+}
+
+.brand-link .brand-text {
+    color: var(--color-white) !important;
+    font-size: 1.1rem;
+    font-weight: 400 !important;
+    margin-top: 0.5rem;
+    display: block;
+    text-align: center;
+}
+
+/* Sidebar colapsado - solo mostrar logo */
+.sidebar-collapse .brand-link .brand-text {
+    display: none;
+}
+
+.sidebar-collapse .brand-link .brand-image {
+    max-width: 35px;
+}
