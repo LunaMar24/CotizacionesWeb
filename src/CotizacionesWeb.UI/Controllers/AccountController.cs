@@ -57,7 +57,7 @@ public class AccountController : Controller
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
-        _logger.LogInformation("User {Email} signed in", model.Email);
+        _logger.LogInformation("Usuario {Email} Logueado", model.Email);
 
         if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
             return Redirect(returnUrl);

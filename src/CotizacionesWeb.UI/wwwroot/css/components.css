@@ -1,0 +1,427 @@
+/* ============================================
+   COMPONENTES PERSONALIZADOS - CotizacionesWeb
+   ============================================ */
+
+/* Estados de Cotizaciones */
+.badge-cotizacion-pendiente {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.badge-cotizacion-aprobada {
+    background-color: #28a745 !important;
+    color: #fff !important;
+}
+
+.badge-cotizacion-rechazada {
+    background-color: #dc3545 !important;
+    color: #fff !important;
+}
+
+.badge-cotizacion-borrador {
+    background-color: var(--color-light) !important;
+    color: var(--color-dark) !important;
+}
+
+/* Alertas Personalizadas */
+.alert-custom {
+    border-left: 4px solid;
+    border-radius: var(--border-radius);
+    padding: 1rem 1.25rem;
+}
+
+.alert-custom.alert-info {
+    background-color: var(--color-secondary-light);
+    border-color: var(--color-secondary);
+    color: var(--color-primary);
+}
+
+.alert-custom.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.alert-custom.alert-success {
+    background-color: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.alert-custom.alert-danger {
+    background-color: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+/* ============================================
+   CARDS Y TARJETAS
+   ============================================ */
+
+.card-custom {
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-custom:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+}
+
+.card-stats {
+    border-top: 3px solid var(--color-primary);
+}
+
+.card-stats .card-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-bottom: 1rem;
+}
+
+.card-stats .card-icon.primary {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.card-stats .card-icon.secondary {
+    background-color: var(--color-secondary-light);
+    color: var(--color-secondary);
+}
+
+/* ============================================
+   TABLAS MEJORADAS
+   ============================================ */
+
+.table-custom {
+    background-color: var(--color-white);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.table-custom thead th {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 1rem;
+    border: none;
+}
+
+.table-custom tbody tr {
+    transition: background-color 0.2s;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table-custom tbody tr:hover {
+    background-color: var(--color-primary-light);
+}
+
+.table-custom tbody td {
+    padding: 0.875rem 1rem;
+    vertical-align: middle;
+}
+
+.table-custom tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* Acciones de tabla */
+.table-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+}
+
+.btn-icon.btn-view {
+    background-color: var(--color-secondary);
+    color: var(--color-white);
+    border: none;
+}
+
+.btn-icon.btn-edit {
+    background-color: #17a2b8;
+    color: var(--color-white);
+    border: none;
+}
+
+.btn-icon.btn-delete {
+    background-color: #dc3545;
+    color: var(--color-white);
+    border: none;
+}
+
+.btn-icon:hover {
+    opacity: 0.85;
+    transform: scale(1.05);
+}
+
+/* ============================================
+   FORMULARIOS MEJORADOS
+   ============================================ */
+
+.form-group label {
+    font-weight: 600;
+    color: var(--color-dark);
+    margin-bottom: 0.5rem;
+}
+
+.form-control-custom {
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 0.625rem 0.875rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control-custom:focus {
+    border-color: var(--color-secondary);
+    box-shadow: 0 0 0 0.2rem var(--color-secondary-light);
+    outline: none;
+}
+
+.form-control-custom.is-invalid {
+    border-color: #dc3545;
+}
+
+.form-control-custom.is-valid {
+    border-color: #28a745;
+}
+
+.input-group-custom .input-group-text {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border: 2px solid var(--color-primary);
+}
+
+/* ============================================
+   BOTONES MEJORADOS
+   ============================================ */
+
+.btn-custom {
+    padding: 0.625rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    border: none;
+}
+
+.btn-custom.btn-primary-custom {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+}
+
+.btn-custom.btn-primary-custom:hover {
+    background-color: var(--color-primary-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-custom.btn-secondary-custom {
+    background-color: var(--color-secondary);
+    color: var(--color-white);
+}
+
+.btn-custom.btn-secondary-custom:hover {
+    background-color: var(--color-secondary-hover);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-custom.btn-outline-primary-custom {
+    background-color: transparent;
+    color: var(--color-primary);
+    border: 2px solid var(--color-primary);
+}
+
+.btn-custom.btn-outline-primary-custom:hover {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+}
+
+/* ============================================
+   BREADCRUMBS
+   ============================================ */
+
+.breadcrumb-custom {
+    background-color: transparent;
+    padding: 0.75rem 0;
+    margin-bottom: 1rem;
+}
+
+.breadcrumb-custom .breadcrumb-item a {
+    color: var(--color-secondary);
+    text-decoration: none;
+}
+
+.breadcrumb-custom .breadcrumb-item.active {
+    color: var(--color-dark);
+}
+
+/* ============================================
+   MODALES
+   ============================================ */
+
+.modal-header-custom {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border-bottom: 2px solid var(--color-secondary);
+}
+
+.modal-header-custom .close {
+    color: var(--color-white);
+    opacity: 0.8;
+}
+
+.modal-header-custom .close:hover {
+    opacity: 1;
+}
+
+.modal-footer-custom {
+    border-top: 1px solid var(--border-color);
+    background-color: #f8f9fa;
+}
+
+/* ============================================
+   LOADERS Y SPINNERS
+   ============================================ */
+
+.spinner-custom {
+    border: 3px solid var(--color-primary-light);
+    border-top: 3px solid var(--color-primary);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+/* ============================================
+   PAGINATION
+   ============================================ */
+
+.pagination-custom .page-link {
+    color: var(--color-primary);
+    border-color: var(--border-color);
+}
+
+.pagination-custom .page-item.active .page-link {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-white);
+}
+
+.pagination-custom .page-link:hover {
+    background-color: var(--color-secondary-light);
+    border-color: var(--color-secondary);
+    color: var(--color-primary);
+}
+
+/* ============================================
+   TOOLTIPS PERSONALIZADOS
+   ============================================ */
+
+.tooltip-custom .tooltip-inner {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    font-size: 0.875rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--border-radius);
+}
+
+/* ============================================
+   SIDEBAR ENHANCEMENTS
+   ============================================ */
+
+.nav-sidebar .nav-item .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.nav-sidebar .nav-treeview > .nav-item > .nav-link {
+    padding-left: 2.5rem;
+}
+
+/* ============================================
+   RESPONSIVE UTILITIES
+   ============================================ */
+
+@media (max-width: 768px) {
+    .table-responsive-custom {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .card-stats .card-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}

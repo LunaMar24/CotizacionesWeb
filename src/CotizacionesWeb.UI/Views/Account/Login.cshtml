@@ -10,40 +10,77 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - CotizacionesWeb</title>
+    
+    <!-- Google Font: Source Sans Pro -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap -->
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <!-- Custom Color Variables -->
+    <link rel="stylesheet" href="~/css/variables.css" asp-append-version="true">
+    <!-- Login Page Styles -->
+    <link rel="stylesheet" href="~/css/account/login.css" asp-append-version="true">
 </head>
-<body class="bg-light">
-    <div class="container">
-        <div class="row justify-content-center mt-5">
-            <div class="col-md-4">
-                <div class="card shadow-sm">
-                    <div class="card-header text-center">
-                        <h4>CotizacionesWeb</h4>
+<body>
+    <div class="login-container">
+        <div class="card login-card">
+            <div class="card-header login-header">
+                <div class="login-logo">
+                    <img src="~/img/aplix-logo.png" alt="APLIX Logo">
+                </div>
+                <h4 class="login-title">CotizacionesWeb</h4>
+                <p class="login-subtitle">Sistema de Gestión de Cotizaciones</p>
+            </div>
+            <div class="card-body login-body">
+                <form asp-action="Login" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+                    
+                    @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
+                    {
+                        <div class="alert alert-danger alert-custom mb-3" role="alert">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <div asp-validation-summary="ModelOnly" class="mb-0"></div>
+                        </div>
+                    }
+                    
+                    <div class="mb-3">
+                        <label asp-for="Email" class="form-label">
+                            <i class="fas fa-envelope me-1"></i> Correo Electrónico
+                        </label>
+                        <div class="input-group-icon">
+                            <i class="fas fa-user icon"></i>
+                            <input asp-for="Email" class="form-control" placeholder="usuario@ejemplo.com" autocomplete="username" />
+                        </div>
+                        <span asp-validation-for="Email" class="text-danger small"></span>
                     </div>
-                    <div class="card-body">
-                        <form asp-action="Login" method="post">
-                            @Html.AntiForgeryToken()
-                            <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
-                            <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
-                            <div class="mb-3">
-                                <label asp-for="Email" class="form-label"></label>
-                                <input asp-for="Email" class="form-control" autocomplete="username" />
-                                <span asp-validation-for="Email" class="text-danger small"></span>
-                            </div>
-                            <div class="mb-3">
-                                <label asp-for="Password" class="form-label"></label>
-                                <input asp-for="Password" class="form-control" autocomplete="current-password" />
-                                <span asp-validation-for="Password" class="text-danger small"></span>
-                            </div>
-                            <div class="d-grid">
-                                <button type="submit" class="btn btn-primary">Ingresar</button>
-                            </div>
-                        </form>
+                    
+                    <div class="mb-4">
+                        <label asp-for="Password" class="form-label">
+                            <i class="fas fa-lock me-1"></i> Contraseña
+                        </label>
+                        <div class="input-group-icon">
+                            <i class="fas fa-key icon"></i>
+                            <input asp-for="Password" class="form-control" placeholder="••••••••" autocomplete="current-password" />
+                        </div>
+                        <span asp-validation-for="Password" class="text-danger small"></span>
                     </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-login">
+                            <i class="fas fa-sign-in-alt me-2"></i> Ingresar
+                        </button>
+                    </div>
+                </form>
+                
+                <div class="login-footer">
+                    <p class="mb-0">&copy; 2026 CotizacionesWeb - Todos los derechos reservados</p>
                 </div>
             </div>
         </div>
     </div>
+    
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/jquery-validation/dist/jquery.validate.min.js"></script>
     <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.min.js"></script>
