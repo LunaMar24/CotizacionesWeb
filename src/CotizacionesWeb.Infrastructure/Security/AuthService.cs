@@ -57,7 +57,7 @@ public class AuthService : IAuthService
         return new LoginResult
         {
             Success = true,
-            NombreUsuario = usuario.NombreUsuario,
+            NombreUsuario = usuario.Nombre,
             Roles = roles
         };
     }
