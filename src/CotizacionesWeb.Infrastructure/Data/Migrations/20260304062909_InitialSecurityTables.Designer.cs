@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CotizacionesWeb.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(DbContextCotizaciones))]
-    [Migration("20260301174950_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260304062909_InitialSecurityTables")]
+    partial class InitialSecurityTables
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,18 +25,13 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("CotizacionesWeb.Domain.Entities.Cotizacion", b =>
+            modelBuilder.Entity("CotizacionesWeb.Domain.Entities.Permiso", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Cliente")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -46,14 +41,10 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("EstadoErp")
-                        .HasColumnType("int");
-
-                    b.Property<int>("EstadoHubSpot")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("Fecha")
-                        .HasColumnType("datetime2");
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("datetime2");
@@ -62,20 +53,49 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("Numero")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.HasKey("Id");
 
-                    b.Property<decimal>("Total")
-                        .HasColumnType("decimal(18,2)");
+                    b.HasIndex("Descripcion")
+                        .IsUnique();
+
+                    b.ToTable("Permisos");
+                });
+
+            modelBuilder.Entity("CotizacionesWeb.Domain.Entities.PermisoRol", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PermisoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RolId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Numero")
+                    b.HasIndex("RolId");
+
+                    b.HasIndex("PermisoId", "RolId")
                         .IsUnique();
 
-                    b.ToTable("Cotizaciones");
+                    b.ToTable("PermisosRoles");
                 });
 
             modelBuilder.Entity("CotizacionesWeb.Domain.Entities.Rol", b =>
@@ -86,6 +106,11 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -93,6 +118,11 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("datetime2");
@@ -123,7 +153,9 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Activo")
-                        .HasColumnType("bit");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -135,11 +167,13 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<int>("IntentosFallidos")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime?>("ModifiedAt")
                         .HasColumnType("datetime2");
@@ -148,7 +182,7 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("NombreUsuario")
+                    b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
@@ -205,6 +239,25 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                     b.ToTable("UsuarioRoles");
                 });
 
+            modelBuilder.Entity("CotizacionesWeb.Domain.Entities.PermisoRol", b =>
+                {
+                    b.HasOne("CotizacionesWeb.Domain.Entities.Permiso", "Permiso")
+                        .WithMany("PermisosRoles")
+                        .HasForeignKey("PermisoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CotizacionesWeb.Domain.Entities.Rol", "Rol")
+                        .WithMany("PermisosRoles")
+                        .HasForeignKey("RolId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Permiso");
+
+                    b.Navigation("Rol");
+                });
+
             modelBuilder.Entity("CotizacionesWeb.Domain.Entities.UsuarioRol", b =>
                 {
                     b.HasOne("CotizacionesWeb.Domain.Entities.Rol", "Rol")
@@ -224,8 +277,15 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                     b.Navigation("Usuario");
                 });
 
+            modelBuilder.Entity("CotizacionesWeb.Domain.Entities.Permiso", b =>
+                {
+                    b.Navigation("PermisosRoles");
+                });
+
             modelBuilder.Entity("CotizacionesWeb.Domain.Entities.Rol", b =>
                 {
+                    b.Navigation("PermisosRoles");
+
                     b.Navigation("UsuarioRoles");
                 });
 

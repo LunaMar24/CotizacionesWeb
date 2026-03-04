@@ -10,10 +10,15 @@ public class DbContextCotizaciones : DbContext
     {
     }
 
+    // Tablas de Seguridad
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<Rol> Roles => Set<Rol>();
     public DbSet<UsuarioRol> UsuarioRoles => Set<UsuarioRol>();
-    public DbSet<Cotizacion> Cotizaciones => Set<Cotizacion>();
+    public DbSet<Permiso> Permisos => Set<Permiso>();
+    public DbSet<PermisoRol> PermisosRoles => Set<PermisoRol>();
+    
+    // NOTA: Cotizaciones se agregará en una fase posterior
+    // public DbSet<Cotizacion> Cotizaciones => Set<Cotizacion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -1,0 +1,29 @@
+using CotizacionesWeb.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace CotizacionesWeb.Infrastructure.Data.Configurations;
+
+public class PermisoRolConfiguration : IEntityTypeConfiguration<PermisoRol>
+{
+    public void Configure(EntityTypeBuilder<PermisoRol> builder)
+    {
+        builder.HasKey(pr => pr.Id);
+        
+        // Relación: PermisoRol -> Permiso
+        builder.HasOne(pr => pr.Permiso)
+               .WithMany(p => p.PermisosRoles)
+               .HasForeignKey(pr => pr.PermisoId)
+               .OnDelete(DeleteBehavior.Cascade);
+        
+        // Relación: PermisoRol -> Rol
+        builder.HasOne(pr => pr.Rol)
+               .WithMany(r => r.PermisosRoles)
+               .HasForeignKey(pr => pr.RolId)
+               .OnDelete(DeleteBehavior.Cascade);
+        
+        // Índice compuesto único para evitar duplicados
+        builder.HasIndex(pr => new { pr.PermisoId, pr.RolId })
+               .IsUnique();
+    }
+}
