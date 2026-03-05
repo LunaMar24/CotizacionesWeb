@@ -23,18 +23,32 @@ public class PasswordHasher
 
     public bool Verify(string password, string storedHash)
     {
-        var combined = Convert.FromBase64String(storedHash);
-        if (combined.Length != SaltSize + HashSize)
+        // ⚠️ TEMPORAL: Permitir acceso si no hay hash (SOLO DESARROLLO)
+        if (string.IsNullOrWhiteSpace(storedHash))
+        {
+            return true; // Permite login sin verificar contraseña
+        }
+
+        try
+        {
+            var combined = Convert.FromBase64String(storedHash);
+            if (combined.Length != SaltSize + HashSize)
+                return false;
+
+            var salt = new byte[SaltSize];
+            Buffer.BlockCopy(combined, 0, salt, 0, SaltSize);
+
+            var hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, Algorithm, HashSize);
+
+            var storedHashBytes = new byte[HashSize];
+            Buffer.BlockCopy(combined, SaltSize, storedHashBytes, 0, HashSize);
+
+            return CryptographicOperations.FixedTimeEquals(hash, storedHashBytes);
+        }
+        catch (FormatException)
+        {
+            // Si el hash no es válido, rechazar
             return false;
-
-        var salt = new byte[SaltSize];
-        Buffer.BlockCopy(combined, 0, salt, 0, SaltSize);
-
-        var hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, Iterations, Algorithm, HashSize);
-
-        var storedHashBytes = new byte[HashSize];
-        Buffer.BlockCopy(combined, SaltSize, storedHashBytes, 0, HashSize);
-
-        return CryptographicOperations.FixedTimeEquals(hash, storedHashBytes);
+        }
     }
 }
