@@ -89,6 +89,40 @@
                                     <p>Inicio</p>
                                 </a>
                             </li>
+                            
+                            @if (User.IsInRole("Admin") || User.IsInRole("Administrador"))
+                            {
+                                <li class="nav-item">
+                                    <a href="#" class="nav-link">
+                                        <i class="nav-icon fas fa-users-cog"></i>
+                                        <p>
+                                            Administración
+                                            <i class="right fas fa-angle-left"></i>
+                                        </p>
+                                    </a>
+                                    <ul class="nav nav-treeview">
+                                        <li class="nav-item">
+                                            <a asp-controller="Usuarios" asp-action="Index" class="nav-link">
+                                                <i class="far fa-circle nav-icon"></i>
+                                                <p>Usuarios</p>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a href="#" class="nav-link">
+                                                <i class="far fa-circle nav-icon"></i>
+                                                <p>Roles</p>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a href="#" class="nav-link">
+                                                <i class="far fa-circle nav-icon"></i>
+                                                <p>Permisos</p>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </li>
+                            }
+                            
                             <li class="nav-item">
                                 <a href="#" class="nav-link">
                                     <i class="nav-icon fas fa-file-invoice"></i>
@@ -112,15 +146,6 @@
                                     </li>
                                 </ul>
                             </li>
-                            @if (User.IsInRole("Admin") || User.IsInRole("Administrador"))
-                            {
-                                <li class="nav-item">
-                                    <a href="#" class="nav-link">
-                                        <i class="nav-icon fas fa-users-cog"></i>
-                                        <p>Administración</p>
-                                    </a>
-                                </li>
-                            }
                         }
                     </ul>
                 </nav>
@@ -131,20 +156,11 @@
 
         <!-- Content Wrapper. Contains page content -->
         <div class="content-wrapper">
-            <!-- Content Header (Page header) -->
-            <section class="content-header">
-                <div class="container-fluid">
-                    <div class="row mb-2">
-                        <div class="col-sm-6">
-                            <h1>@ViewData["Title"]</h1>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             <!-- Main content -->
             <section class="content">
-                @RenderBody()
+                <div class="container-fluid">
+                    @RenderBody()
+                </div>
             </section>
             <!-- /.content -->
         </div>

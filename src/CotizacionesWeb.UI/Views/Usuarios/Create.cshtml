@@ -1,0 +1,110 @@
+@model CotizacionesWeb.UI.Models.UsuarioCreateViewModel
+@{
+    ViewData["Title"] = "Crear Usuario";
+}
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card card-custom">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-user-plus"></i> Crear Nuevo Usuario
+                </h3>
+            </div>
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div class="card-body">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger alert-custom"></div>
+                    
+                    <div class="form-group">
+                        <label asp-for="Nombre" class="form-label">
+                            <i class="fas fa-user"></i> Nombre Completo
+                        </label>
+                        <input asp-for="Nombre" class="form-control form-control-custom" placeholder="Ej: Juan Pérez" />
+                        <span asp-validation-for="Nombre" class="text-danger small"></span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label asp-for="Email" class="form-label">
+                            <i class="fas fa-envelope"></i> Correo Electrónico
+                        </label>
+                        <input asp-for="Email" class="form-control form-control-custom" placeholder="usuario@ejemplo.com" />
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label asp-for="Password" class="form-label">
+                                    <i class="fas fa-lock"></i> Contraseña
+                                </label>
+                                <input asp-for="Password" class="form-control form-control-custom" placeholder="Mínimo 6 caracteres" />
+                                <span asp-validation-for="Password" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label asp-for="ConfirmPassword" class="form-label">
+                                    <i class="fas fa-lock"></i> Confirmar Contraseña
+                                </label>
+                                <input asp-for="ConfirmPassword" class="form-control form-control-custom" placeholder="Repita la contraseña" />
+                                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <i class="fas fa-user-tag"></i> Roles
+                        </label>
+                        <div class="roles-container">
+                            @foreach (var rol in ViewBag.Roles as List<CotizacionesWeb.UI.Models.RolItemViewModel>)
+                            {
+                                <div class="role-item">
+                                    <input type="checkbox" 
+                                           class="role-checkbox" 
+                                           name="RolesIds" 
+                                           value="@rol.Id" 
+                                           id="rol_@rol.Id">
+                                    <label class="role-label" for="rol_@rol.Id">
+                                        <div class="role-name">@rol.Nombre</div>
+                                        @if (!string.IsNullOrEmpty(rol.Descripcion))
+                                        {
+                                            <div class="role-description">@rol.Descripcion</div>
+                                        }
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="custom-switch-container">
+                            <label class="switch">
+                                <input type="checkbox" asp-for="Activo" checked>
+                                <span class="slider"></span>
+                            </label>
+                            <label class="switch-label">
+                                <i class="fas fa-toggle-on"></i> Usuario Activo
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-footer text-right">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-custom">
+                        <i class="fas fa-save"></i> Guardar Usuario
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <link rel="stylesheet" href="~/css/usuarios/create.css" asp-append-version="true">
+}

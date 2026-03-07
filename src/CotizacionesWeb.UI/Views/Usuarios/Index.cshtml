@@ -1,0 +1,267 @@
+@model List<CotizacionesWeb.Application.Users.UsuarioDto>
+@{
+    ViewData["Title"] = "Mantenimiento de Usuarios";
+}
+
+<!-- Page Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-users fa-2x text-primary-custom mr-3"></i>
+                <div>
+                    <h2 class="mb-1">Mantenimiento de Usuarios</h2>
+                    <p class="text-muted mb-0">Gestiona los usuarios del sistema, sus roles y permisos.</p>
+                </div>
+            </div>
+            <div>
+                <a asp-action="Create" class="btn btn-primary btn-custom btn-lg">
+                    <i class="fas fa-plus"></i> CREAR USUARIO
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-3">
+    <div class="col-md-4">
+        <div class="input-group">
+            <div class="input-group-prepend">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+            </div>
+            <input type="text" id="filterName" class="form-control" placeholder="Filtrar por nombre...">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="input-group">
+            <div class="input-group-prepend">
+                <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+            </div>
+            <input type="text" id="filterEmail" class="form-control" placeholder="Filtrar por email...">
+        </div>
+    </div>
+    <div class="col-md-4">
+        <select id="filterStatus" class="form-control">
+            <option value="">Todos los estados</option>
+            <option value="true">Activos</option>
+            <option value="false">Inactivos</option>
+        </select>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card card-custom">
+            <div class="card-body p-0">
+                <table class="table table-hover table-custom mb-0" id="usuariosTable">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Roles</th>
+                            <th>Estado</th>
+                            <th>Fecha Registro</th>
+                            <th>Último Acceso</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var usuario in Model)
+                        {
+                            <tr data-nombre="@usuario.Nombre.ToLower()" 
+                                data-email="@usuario.Email.ToLower()" 
+                                data-activo="@usuario.Activo.ToString().ToLower()">
+                                <td>
+                                    <div>
+                                        <strong>@usuario.Nombre</strong>
+                                        <br />
+                                        <small class="text-muted">
+                                            <i class="fas fa-envelope"></i> @usuario.Email
+                                        </small>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if (usuario.Roles.Any())
+                                    {
+                                        <button type="button" class="btn btn-sm btn-info btn-view-roles" 
+                                                data-usuario-id="@usuario.Id"
+                                                data-usuario-nombre="@usuario.Nombre">
+                                            <i class="fas fa-eye"></i> Ver (@usuario.Roles.Count)
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-secondary">Sin roles</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (usuario.Activo)
+                                    {
+                                        <span class="badge badge-success">
+                                            <i class="fas fa-check-circle"></i> Activo
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-danger">
+                                            <i class="fas fa-times-circle"></i> Inactivo
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <small>
+                                        <i class="far fa-calendar"></i> 
+                                        @usuario.CreatedAt.ToString("dd/MM/yyyy")
+                                    </small>
+                                </td>
+                                <td>
+                                    @if (usuario.UltimoAcceso.HasValue)
+                                    {
+                                        <small>
+                                            <i class="far fa-clock"></i> 
+                                            @usuario.UltimoAcceso.Value.ToString("dd/MM/yyyy HH:mm")
+                                        </small>
+                                    }
+                                    else
+                                    {
+                                        <small class="text-muted">Nunca</small>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group" role="group">
+                                        <a asp-action="Edit" asp-route-id="@usuario.Id" 
+                                           class="btn btn-sm btn-warning" 
+                                           title="Modificar">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-info btn-manage-roles" 
+                                                data-usuario-id="@usuario.Id"
+                                                data-usuario-nombre="@usuario.Nombre"
+                                                title="Gestionar Roles">
+                                            <i class="fas fa-user-tag"></i>
+                                        </button>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-secondary btn-reset-password" 
+                                                data-usuario-id="@usuario.Id"
+                                                data-usuario-nombre="@usuario.Nombre"
+                                                title="Resetear Contraseña">
+                                            <i class="fas fa-key"></i>
+                                        </button>
+                                        <button type="button" 
+                                                class="btn btn-sm btn-danger btn-delete-usuario" 
+                                                data-usuario-id="@usuario.Id"
+                                                data-usuario-nombre="@usuario.Nombre"
+                                                title="Eliminar">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver roles -->
+<div class="modal fade" id="rolesViewModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-tag"></i> Roles Asignados
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="rolesViewContent">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para gestionar roles -->
+<div class="modal fade" id="rolesManageModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" id="rolesManageContent">
+            <!-- Contenido cargado dinámicamente -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal para resetear contraseña -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title">
+                    <i class="fas fa-key"></i> Resetear Contraseña
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="resetPasswordForm">
+                <div class="modal-body">
+                    <input type="hidden" id="resetPasswordUsuarioId" />
+                    <p>¿Está seguro que desea resetear la contraseña para <strong id="resetPasswordUsuarioNombre"></strong>?</p>
+                    
+                    <div class="form-group">
+                        <label for="newPassword">Nueva Contraseña</label>
+                        <input type="password" class="form-control" id="newPassword" required minlength="6">
+                        <small class="form-text text-muted">Mínimo 6 caracteres</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirmNewPassword">Confirmar Contraseña</label>
+                        <input type="password" class="form-control" id="confirmNewPassword" required>
+                    </div>
+                </div>
+                <div class="modal-footer modal-footer-custom">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Resetear Contraseña</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para eliminar -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="deleteUsuarioId" />
+                <p>¿Está seguro que desea eliminar el usuario <strong id="deleteUsuarioNombre"></strong>?</p>
+                <p class="text-danger"><i class="fas fa-exclamation-circle"></i> Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer modal-footer-custom">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Eliminar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="~/css/usuarios/index.css" asp-append-version="true">
+    <script src="~/js/usuarios/index.js" asp-append-version="true"></script>
+}

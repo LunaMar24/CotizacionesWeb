@@ -1,6 +1,8 @@
 using CotizacionesWeb.Application.Authentication;
 using CotizacionesWeb.Application.Cotizaciones;
 using CotizacionesWeb.Application.Integrations;
+using CotizacionesWeb.Application.Users;
+using CotizacionesWeb.Application.Roles;
 using CotizacionesWeb.Infrastructure.Data;
 using CotizacionesWeb.Infrastructure.Integrations.Erp;
 using CotizacionesWeb.Infrastructure.Integrations.HubSpot;
@@ -35,7 +37,11 @@ try
     builder.Services.AddScoped<PasswordHasher>();
     builder.Services.AddScoped<IAuthService, AuthService>();
 
-    // Application services
+    // Application services - Users & Roles
+    builder.Services.AddScoped<IUsuarioService, CotizacionesWeb.Infrastructure.Services.UsuarioService>();
+    builder.Services.AddScoped<IRolService, CotizacionesWeb.Infrastructure.Services.RolService>();
+
+    // Application services - Cotizaciones
     builder.Services.AddScoped<ICrearCotizacionService, CrearCotizacionService>();
 
     // Integrations

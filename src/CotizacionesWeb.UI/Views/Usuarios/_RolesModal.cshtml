@@ -1,0 +1,60 @@
+@model CotizacionesWeb.UI.Models.UsuarioRolesViewModel
+
+<div class="modal-header modal-header-custom">
+    <h5 class="modal-title">
+        <i class="fas fa-user-tag"></i> Gestionar Roles - @Model.UsuarioNombre
+    </h5>
+    <button type="button" class="close" data-dismiss="modal">
+        <span>&times;</span>
+    </button>
+</div>
+<form id="updateRolesForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="usuarioId" value="@Model.UsuarioId" />
+    
+    <div class="modal-body">
+        <p class="text-muted mb-3">
+            <i class="fas fa-info-circle"></i> Seleccione los roles que desea asignar al usuario
+        </p>
+        
+        @if (Model.RolesDisponibles.Any())
+        {
+            <div class="list-group">
+                @foreach (var rol in Model.RolesDisponibles)
+                {
+                    <label class="list-group-item">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" 
+                                   class="custom-control-input" 
+                                   name="rolesIds" 
+                                   value="@rol.Id" 
+                                   id="rolManage_@rol.Id"
+                                   @(Model.RolesAsignados.Contains(rol.Id) ? "checked" : "")>
+                            <label class="custom-control-label" for="rolManage_@rol.Id">
+                                <strong>@rol.Nombre</strong>
+                                @if (!string.IsNullOrEmpty(rol.Descripcion))
+                                {
+                                    <br />
+                                    <small class="text-muted">@rol.Descripcion</small>
+                                }
+                            </label>
+                        </div>
+                    </label>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> No hay roles disponibles.
+            </div>
+        }
+    </div>
+    
+    <div class="modal-footer modal-footer-custom">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save"></i> Guardar Roles
+        </button>
+    </div>
+</form>
