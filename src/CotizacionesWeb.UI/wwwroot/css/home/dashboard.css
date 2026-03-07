@@ -1,0 +1,247 @@
+/* ============================================
+   DASHBOARD - Estilos específicos
+   ============================================ */
+
+/* Animación de entrada */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.small-box, .info-box, .card {
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* Small Boxes - Estadísticas principales */
+.small-box {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.small-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.small-box .inner {
+    padding: 15px 10px 10px 15px;
+}
+
+.small-box .inner h3 {
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+.small-box .icon {
+    font-size: 70px;
+}
+
+.small-box-footer {
+    padding: 8px;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+}
+
+.small-box-footer:hover {
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+/* Info Boxes - Estadísticas secundarias */
+.info-box {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    min-height: 90px;
+}
+
+.info-box:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.info-box-icon {
+    border-radius: 8px 0 0 8px;
+}
+
+.info-box-number {
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+
+/* Timeline - Actividad reciente */
+.timeline {
+    position: relative;
+    margin: 0 0 30px 0;
+    padding: 0;
+    list-style: none;
+}
+
+.timeline:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #dee2e6;
+    left: 31px;
+    margin: 0;
+    border-radius: 2px;
+}
+
+.timeline > li {
+    position: relative;
+    margin-right: 10px;
+    margin-bottom: 15px;
+}
+
+.timeline > li > .timeline-item {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    margin-top: 0;
+    background: #fff;
+    color: #495057;
+    margin-left: 60px;
+    margin-right: 15px;
+    padding: 10px;
+    position: relative;
+}
+
+.timeline > li > .timeline-item > .time {
+    color: #999;
+    float: right;
+    font-size: 12px;
+    padding: 10px;
+}
+
+.timeline > li > .timeline-item > .timeline-header {
+    margin: 0;
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    padding: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.timeline > li > .timeline-item > .timeline-body {
+    padding: 10px;
+}
+
+.timeline > li > .fa,
+.timeline > li > .fas,
+.timeline > li > .far,
+.timeline > li > .fab,
+.timeline > li > .fal,
+.timeline > li > .fad,
+.timeline > li > .svg-inline--fa {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+    line-height: 30px;
+    position: absolute;
+    color: #fff;
+    background: #adb5bd;
+    border-radius: 50%;
+    text-align: center;
+    left: 18px;
+    top: 0;
+}
+
+.timeline > .time-label > span {
+    font-weight: 600;
+    padding: 5px 10px;
+    display: inline-block;
+    background-color: #fff;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Accesos Rápidos */
+.d-grid {
+    display: grid;
+}
+
+.gap-3 {
+    gap: 1rem;
+}
+
+.btn-block {
+    display: block;
+    width: 100%;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.25rem;
+    font-size: 1.1rem;
+}
+
+.btn-block.btn-lg {
+    text-align: left;
+    position: relative;
+}
+
+.btn-block.btn-lg i {
+    margin-right: 10px;
+    font-size: 1.2rem;
+}
+
+/* Card personalizada */
+.card-custom {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.card-custom:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Información del sistema */
+dl.row dt {
+    font-weight: 600;
+    color: #6c757d;
+}
+
+dl.row dd {
+    font-weight: 400;
+    color: #212529;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .small-box .inner h3 {
+        font-size: 2rem;
+    }
+    
+    .small-box .icon {
+        font-size: 50px;
+    }
+    
+    .info-box-number {
+        font-size: 1.5rem;
+    }
+}
+
+/* Animaciones específicas para cada card */
+.col-lg-3:nth-child(1) .small-box {
+    animation-delay: 0.1s;
+}
+
+.col-lg-3:nth-child(2) .small-box {
+    animation-delay: 0.2s;
+}
+
+.col-lg-3:nth-child(3) .small-box {
+    animation-delay: 0.3s;
+}
+
+.col-lg-3:nth-child(4) .small-box {
+    animation-delay: 0.4s;
+}

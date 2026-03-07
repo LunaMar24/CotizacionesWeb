@@ -1,0 +1,176 @@
+/* ============================================
+   MODALS - Estilos globales para todos los modales
+   ============================================ */
+
+/* Centrar modales verticalmente sin romper Bootstrap */
+.modal-dialog {
+    margin-top: 10vh;
+    margin-bottom: 10vh;
+}
+
+/* Para pantallas más grandes, centrar mejor */
+@media (min-width: 768px) {
+    .modal-dialog {
+        margin-top: 15vh;
+        margin-bottom: 15vh;
+    }
+}
+
+/* Animación suave al abrir */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translateY(-50px);
+}
+
+.modal.show .modal-dialog {
+    transform: translateY(0);
+}
+
+/* Contenido del modal */
+.modal-content {
+    border-radius: 8px;
+    border: none;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    width: 100%;
+}
+
+/* Headers personalizados */
+.modal-header-custom {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border-radius: 8px 8px 0 0;
+    border-bottom: 2px solid var(--color-secondary);
+}
+
+.modal-header-custom .modal-title {
+    font-weight: 600;
+}
+
+.modal-header-custom .close {
+    color: var(--color-white);
+    opacity: 0.9;
+    text-shadow: none;
+    font-size: 1.5rem;
+}
+
+.modal-header-custom .close:hover {
+    opacity: 1;
+    color: var(--color-white);
+}
+
+/* Headers con colores específicos */
+.modal-header.bg-danger,
+.modal-header.bg-success,
+.modal-header.bg-warning,
+.modal-header.bg-info {
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-header.bg-danger .close,
+.modal-header.bg-success .close,
+.modal-header.bg-warning .close,
+.modal-header.bg-info .close {
+    color: var(--color-white);
+    opacity: 0.9;
+}
+
+.modal-header.bg-danger .close:hover,
+.modal-header.bg-success .close:hover,
+.modal-header.bg-warning .close:hover,
+.modal-header.bg-info .close:hover {
+    opacity: 1;
+}
+
+/* Footer personalizado */
+.modal-footer-custom {
+    background-color: #f8f9fa;
+    border-top: 1px solid var(--border-color);
+    border-radius: 0 0 8px 8px;
+    padding: 1rem 1.25rem;
+}
+
+/* Body del modal con padding consistente */
+.modal-body {
+    padding: 1.5rem;
+}
+
+/* Spinners de carga en modales */
+.modal-body .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* Lista de items en modales */
+.modal-body .list-group-item {
+    border-color: var(--border-color);
+    transition: background-color 0.2s;
+}
+
+.modal-body .list-group-item:hover {
+    background-color: var(--color-primary-light);
+}
+
+/* Formularios en modales */
+.modal-body .form-group {
+    margin-bottom: 1.25rem;
+}
+
+.modal-body .form-control {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.modal-body .form-control:focus {
+    border-color: var(--color-secondary);
+    box-shadow: 0 0 0 0.2rem var(--color-secondary-light);
+}
+
+/* Backdrop más oscuro */
+.modal-backdrop.show {
+    opacity: 0.7;
+}
+
+/* Animación de fade-in para contenido dinámico */
+.fade-in-modal {
+    animation: fadeInModal 0.3s ease-in;
+}
+
+@keyframes fadeInModal {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Responsive - En móviles el modal se adapta mejor */
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 0.5rem;
+        min-height: calc(100vh - 1rem);
+        max-width: calc(100% - 1rem);
+    }
+    
+    .modal-content {
+        border-radius: 8px;
+    }
+}
+
+@media (min-width: 576px) {
+    .modal-dialog {
+        max-width: 500px;
+    }
+    
+    .modal-dialog.modal-lg {
+        max-width: 800px;
+    }
+    
+    .modal-dialog.modal-xl {
+        max-width: 1140px;
+    }
+}
+

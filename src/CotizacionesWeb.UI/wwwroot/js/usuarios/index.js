@@ -15,9 +15,9 @@ $(document).ready(function() {
         
         $('#usuariosTable tbody tr').each(function() {
             const row = $(this);
-            const nombre = row.data('nombre');
-            const email = row.data('email');
-            const activo = row.data('activo').toString();
+            const nombre = row.attr('data-nombre') || '';
+            const email = row.attr('data-email') || '';
+            const activo = row.attr('data-activo') || '';
             
             const matchName = nombre.includes(nameFilter);
             const matchEmail = email.includes(emailFilter);
@@ -211,14 +211,11 @@ $(document).ready(function() {
         // Auto-cerrar después de 5 segundos
         setTimeout(function() {
             $('.alert').fadeOut('slow', function() {
-                $(this).remove();
-            });
+            $(this).remove();
+        });
         }, 5000);
     }
     
-    // Mostrar mensaje de TempData si existe
-    @if (TempData["Success"] != null)
-    {
-        showNotification('success', '@TempData["Success"]');
-    }
+    // Exponer función para uso externo
+    window.showNotification = showNotification;
 });
