@@ -1,0 +1,71 @@
+@model CotizacionesWeb.UI.Models.UsuarioEditViewModel
+@{
+    ViewData["Title"] = "Modificar Usuario";
+}
+
+<div class="row">
+    <div class="col-md-8 offset-md-2">
+        <div class="card card-custom">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <i class="fas fa-user-edit"></i> Modificar Usuario
+                </h3>
+            </div>
+            <form asp-action="Edit" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+                
+                <div class="card-body">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger alert-custom"></div>
+                    
+                    <div class="form-group">
+                        <label asp-for="Nombre" class="form-label">
+                            <i class="fas fa-user"></i> Nombre Completo
+                        </label>
+                        <input asp-for="Nombre" class="form-control form-control-custom" />
+                        <span asp-validation-for="Nombre" class="text-danger small"></span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label asp-for="Email" class="form-label">
+                            <i class="fas fa-envelope"></i> Correo Electrónico
+                        </label>
+                        <input asp-for="Email" class="form-control form-control-custom" />
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <div class="custom-switch-container">
+                            <label class="switch">
+                                <input type="checkbox" asp-for="Activo">
+                                <span class="slider"></span>
+                            </label>
+                            <label class="switch-label">
+                                <i class="fas fa-toggle-on"></i> Usuario Activo
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info alert-custom">
+                        <i class="fas fa-info-circle"></i> 
+                        <strong>Nota:</strong> Para cambiar la contraseña, use el botón "Resetear Contraseña" en el listado de usuarios.
+                    </div>
+                </div>
+                
+                <div class="card-footer text-right">
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-custom">
+                        <i class="fas fa-save"></i> Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <link rel="stylesheet" href="~/css/usuarios/create.css" asp-append-version="true">
+}
