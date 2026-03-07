@@ -57,36 +57,7 @@
     background-color: var(--color-secondary-hover);
 }
 
-/* Modal customizado */
-.modal-header-custom {
-    background-color: var(--color-primary);
-    color: var(--color-white);
-}
-
-.modal-header-custom .close {
-    color: var(--color-white);
-    opacity: 0.8;
-}
-
-.modal-header-custom .close:hover {
-    opacity: 1;
-}
-
-.modal-footer-custom {
-    background-color: #f8f9fa;
-    border-top: 1px solid var(--border-color);
-}
-
-/* Lista de roles */
-.list-group-item {
-    border-color: var(--border-color);
-    transition: background-color 0.2s;
-}
-
-.list-group-item:hover {
-    background-color: var(--color-primary-light);
-}
-
+/* Lista de roles en modales */
 .list-group-item .custom-control-label {
     cursor: pointer;
     width: 100%;
@@ -96,3 +67,4 @@
 .alert-dismissible {
     border-radius: var(--border-radius);
 }
+

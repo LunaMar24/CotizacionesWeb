@@ -276,30 +276,6 @@
 }
 
 /* ============================================
-   MODALES
-   ============================================ */
-
-.modal-header-custom {
-    background-color: var(--color-primary);
-    color: var(--color-white);
-    border-bottom: 2px solid var(--color-secondary);
-}
-
-.modal-header-custom .close {
-    color: var(--color-white);
-    opacity: 0.8;
-}
-
-.modal-header-custom .close:hover {
-    opacity: 1;
-}
-
-.modal-footer-custom {
-    border-top: 1px solid var(--border-color);
-    background-color: #f8f9fa;
-}
-
-/* ============================================
    LOADERS Y SPINNERS
    ============================================ */
 
