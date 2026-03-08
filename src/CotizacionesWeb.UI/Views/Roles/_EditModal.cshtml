@@ -1,0 +1,53 @@
+@model CotizacionesWeb.UI.Models.RolEditViewModel
+
+<div class="modal-header modal-header-custom">
+    <h5 class="modal-title">
+        <i class="fas fa-edit"></i> Modificar Rol
+    </h5>
+    <button type="button" class="close" data-dismiss="modal">
+        <span>&times;</span>
+    </button>
+</div>
+<form id="updateRolForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    
+    <div class="modal-body">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger alert-custom"></div>
+        
+        <div class="form-group">
+            <label asp-for="Nombre" class="form-label">
+                <i class="fas fa-tag"></i> Nombre del Rol
+            </label>
+            <input asp-for="Nombre" class="form-control form-control-custom" />
+            <span asp-validation-for="Nombre" class="text-danger small"></span>
+        </div>
+        
+        <div class="form-group">
+            <label asp-for="Descripcion" class="form-label">
+                <i class="fas fa-align-left"></i> Descripción
+            </label>
+            <textarea asp-for="Descripcion" class="form-control form-control-custom" rows="3"></textarea>
+            <span asp-validation-for="Descripcion" class="text-danger small"></span>
+        </div>
+        
+        <div class="form-group mb-0">
+            <div class="custom-switch-container">
+                <label class="switch">
+                    <input type="checkbox" asp-for="Activo">
+                    <span class="slider"></span>
+                </label>
+                <label class="switch-label">
+                    <i class="fas fa-toggle-on"></i> Rol Activo
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal-footer modal-footer-custom">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-custom">
+            <i class="fas fa-save"></i> Guardar Cambios
+        </button>
+    </div>
+</form>

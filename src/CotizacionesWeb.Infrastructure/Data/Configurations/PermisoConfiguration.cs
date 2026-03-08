@@ -10,12 +10,22 @@ public class PermisoConfiguration : IEntityTypeConfiguration<Permiso>
     {
         builder.HasKey(p => p.Id);
         
+        builder.Property(p => p.Codigo)
+               .HasMaxLength(30)
+               .IsRequired();
+        
+        builder.HasIndex(p => p.Codigo)
+               .IsUnique();
+        
+        builder.HasIndex(p => p.Codigo);
+        
+        builder.Property(p => p.Categoria)
+               .HasMaxLength(50)
+               .IsRequired();
+        
         builder.Property(p => p.Descripcion)
                .HasMaxLength(200)
                .IsRequired();
-        
-        builder.HasIndex(p => p.Descripcion)
-               .IsUnique();
         
         builder.Property(p => p.CreatedBy)
                .HasMaxLength(100);
@@ -24,3 +34,4 @@ public class PermisoConfiguration : IEntityTypeConfiguration<Permiso>
                .HasMaxLength(100);
     }
 }
+

@@ -191,31 +191,6 @@ $(document).ready(function() {
     // NOTIFICACIONES
     // ============================================
     
-    function showNotification(type, message) {
-        const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
-        const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-        
-        const alertHtml = `
-            <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-                <i class="fas ${icon} mr-2"></i>
-                ${message}
-                <button type="button" class="close" data-dismiss="alert">
-                    <span>&times;</span>
-                </button>
-            </div>
-        `;
-        
-        // Insertar al inicio del content
-        $('.content').prepend(alertHtml);
-        
-        // Auto-cerrar después de 5 segundos
-        setTimeout(function() {
-            $('.alert').fadeOut('slow', function() {
-            $(this).remove();
-        });
-        }, 5000);
-    }
-    
-    // Exponer función para uso externo
-    window.showNotification = showNotification;
+    // Usar la función global de notificaciones definida en site.js
 });
+

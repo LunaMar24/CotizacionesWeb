@@ -1,0 +1,78 @@
+@model CotizacionesWeb.UI.Models.RolPermisosViewModel
+
+<div class="modal-header modal-header-custom">
+    <h5 class="modal-title">
+        <i class="fas fa-lock"></i> Gestionar Permisos - @Model.RolNombre
+    </h5>
+    <button type="button" class="close" data-dismiss="modal">
+        <span>&times;</span>
+    </button>
+</div>
+<form id="updatePermisosForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="rolId" value="@Model.RolId" />
+    
+    <div class="modal-body">
+        <p class="text-muted mb-3">
+            <i class="fas fa-info-circle"></i> Seleccione los permisos que desea asignar al rol. Los permisos están agrupados por categoría.
+        </p>
+        
+        @if (Model.PermisosDisponibles.Any())
+        {
+            <div class="permisos-container">
+                @{
+                    var permisosPorCategoria = Model.PermisosDisponibles
+                        .GroupBy(p => p.Categoria)
+                        .OrderBy(g => g.Key);
+                }
+                
+                @foreach (var grupo in permisosPorCategoria)
+                {
+                    <div class="categoria-group">
+                        <div class="categoria-header" title="Haz click para seleccionar/deseleccionar todos los permisos de esta categoría">
+                            <i class="fas fa-folder"></i>
+                            <strong>@grupo.Key</strong>
+                            <span class="badge badge-secondary ml-2">@grupo.Count() permisos</span>
+                        </div>
+                        
+                        @foreach (var permiso in grupo.OrderBy(p => p.Codigo))
+                        {
+                            <div class="permiso-item">
+                                <input type="checkbox" 
+                                       class="permiso-checkbox" 
+                                       name="permisosIds" 
+                                       value="@permiso.Id" 
+                                       id="permiso_@permiso.Id"
+                                       @(Model.PermisosAsignados.Contains(permiso.Id) ? "checked" : "")>
+                                <label class="permiso-label" for="permiso_@permiso.Id">
+                                    <div class="permiso-content">
+                                        <div class="permiso-codigo">
+                                            <i class="fas fa-lock"></i>
+                                            <strong>@permiso.Codigo</strong>
+                                        </div>
+                                        <div class="permiso-descripcion">
+                                            @permiso.Descripcion
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i> No hay permisos disponibles en el sistema.
+            </div>
+        }
+    </div>
+    
+    <div class="modal-footer modal-footer-custom">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary btn-custom">
+            <i class="fas fa-save"></i> Guardar Permisos
+        </button>
+    </div>
+</form>
