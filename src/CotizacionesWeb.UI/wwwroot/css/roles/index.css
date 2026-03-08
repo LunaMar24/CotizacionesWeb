@@ -1,0 +1,67 @@
+/* ============================================
+   ROLES INDEX - Estilos específicos
+   ============================================ */
+
+/* Filtros */
+.input-group-prepend .input-group-text {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    border-color: var(--color-primary);
+}
+
+/* Tabla de roles */
+#rolesTable tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+#rolesTable tbody tr:hover {
+    background-color: var(--color-primary-light) !important;
+}
+
+/* Badges de estado */
+.badge-success {
+    background-color: #28a745 !important;
+}
+
+.badge-danger {
+    background-color: #dc3545 !important;
+}
+
+.badge-info {
+    background-color: var(--color-secondary) !important;
+}
+
+.badge-secondary {
+    background-color: #6c757d !important;
+}
+
+/* Botones de acción */
+.btn-group .btn {
+    margin: 0 2px;
+}
+
+.btn-warning {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+.btn-warning:hover {
+    background-color: #e0a800;
+    border-color: #d39e00;
+}
+
+.btn-info {
+    background-color: var(--color-secondary);
+    border-color: var(--color-secondary);
+    color: var(--color-white);
+}
+
+.btn-info:hover {
+    background-color: var(--color-secondary-hover);
+}
+
+/* Alertas de éxito/error */
+.alert-dismissible {
+    border-radius: var(--border-radius);
+}
