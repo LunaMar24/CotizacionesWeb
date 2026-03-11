@@ -108,27 +108,69 @@ $(document).ready(function() {
     // SELECCIONAR TODOS LOS PERMISOS POR CATEGORÍA
     // ============================================
     
-    $(document).on('click', '.categoria-header', function(e) {
-        // Solo si no se hizo click en el badge
-        if (!$(e.target).hasClass('badge')) {
-            const categoriaGroup = $(this).closest('.categoria-group');
-            const checkboxes = categoriaGroup.find('.permiso-checkbox');
-            const allChecked = checkboxes.filter(':checked').length === checkboxes.length;
-            
-            // Toggle: si todos están marcados, desmarcar todos; sino, marcar todos
-            checkboxes.prop('checked', !allChecked);
-            
-            // Feedback visual
-            $(this).css('opacity', '0.8');
-            setTimeout(() => {
-                $(this).css('opacity', '1');
-            }, 200);
+    // Manejar cambio en el checkbox de categoría
+    $(document).on('change', '.categoria-checkbox', function() {
+        const categoria = $(this).closest('.categoria-header').data('categoria');
+        const isChecked = $(this).is(':checked');
+        
+        // Marcar/desmarcar todos los permisos de esta categoría
+        $(`.permiso-checkbox[data-categoria="${categoria}"]`).prop('checked', isChecked);
+        
+        // Feedback visual
+        const header = $(this).closest('.categoria-header');
+        header.css('opacity', '0.8');
+        setTimeout(() => {
+            header.css('opacity', '1');
+        }, 200);
+    });
+    
+    // Actualizar checkbox de categoría cuando cambian los permisos individuales
+    $(document).on('change', '.permiso-checkbox', function() {
+        const categoria = $(this).data('categoria');
+        const categoriaGroup = $(`.categoria-header[data-categoria="${categoria}"]`);
+        const checkboxes = $(`.permiso-checkbox[data-categoria="${categoria}"]`);
+        const checkedCount = checkboxes.filter(':checked').length;
+        const totalCount = checkboxes.length;
+        
+        const categoriaCheckbox = categoriaGroup.find('.categoria-checkbox');
+        
+        if (checkedCount === 0) {
+            // Ninguno marcado
+            categoriaCheckbox.prop('checked', false);
+            categoriaCheckbox.prop('indeterminate', false);
+        } else if (checkedCount === totalCount) {
+            // Todos marcados
+            categoriaCheckbox.prop('checked', true);
+            categoriaCheckbox.prop('indeterminate', false);
+        } else {
+            // Algunos marcados (estado indeterminado)
+            categoriaCheckbox.prop('checked', false);
+            categoriaCheckbox.prop('indeterminate', true);
         }
     });
     
-    // Agregar cursor pointer al header
-    $(document).on('mouseenter', '.categoria-header', function() {
-        $(this).css('cursor', 'pointer');
+    // Inicializar estado de checkboxes de categoría al cargar el modal
+    $(document).on('shown.bs.modal', '#permisosManageModal', function() {
+        $('.categoria-group').each(function() {
+            const categoriaGroup = $(this);
+            const categoria = categoriaGroup.find('.categoria-header').data('categoria');
+            const checkboxes = categoriaGroup.find('.permiso-checkbox');
+            const checkedCount = checkboxes.filter(':checked').length;
+            const totalCount = checkboxes.length;
+            
+            const categoriaCheckbox = categoriaGroup.find('.categoria-checkbox');
+            
+            if (checkedCount === 0) {
+                categoriaCheckbox.prop('checked', false);
+                categoriaCheckbox.prop('indeterminate', false);
+            } else if (checkedCount === totalCount) {
+                categoriaCheckbox.prop('checked', true);
+                categoriaCheckbox.prop('indeterminate', false);
+            } else {
+                categoriaCheckbox.prop('checked', false);
+                categoriaCheckbox.prop('indeterminate', true);
+            }
+        });
     });
     
     // ============================================

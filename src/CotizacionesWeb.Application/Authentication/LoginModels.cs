@@ -10,6 +10,8 @@ public class LoginResult
 {
     public bool Success { get; set; }
     public string? ErrorMessage { get; set; }
+    public int UsuarioId { get; set; }
     public string? NombreUsuario { get; set; }
     public IList<string> Roles { get; set; } = new List<string>();
 }
+

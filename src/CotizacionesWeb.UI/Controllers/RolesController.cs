@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using CotizacionesWeb.Application.Roles;
 using CotizacionesWeb.UI.Models;
+using CotizacionesWeb.UI.Filters;
 
 namespace CotizacionesWeb.UI.Controllers;
 
@@ -23,6 +24,7 @@ public class RolesController : Controller
         return View(roles);
     }
 
+    [RequierePermiso("ROL_CREATE")]
     public IActionResult Create()
     {
         return View(new RolCreateViewModel());
@@ -30,6 +32,7 @@ public class RolesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequierePermiso("ROL_CREATE")]
     public async Task<IActionResult> Create(RolCreateViewModel model)
     {
         if (!ModelState.IsValid)
@@ -58,6 +61,7 @@ public class RolesController : Controller
     }
 
     [HttpGet]
+    [RequierePermiso("ROL_EDIT")]
     public async Task<IActionResult> Edit(int id)
     {
         var rol = await _rolService.GetByIdAsync(id);
@@ -80,6 +84,7 @@ public class RolesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequierePermiso("ROL_EDIT")]
     public async Task<IActionResult> Edit(RolEditViewModel model)
     {
         if (!ModelState.IsValid)
@@ -107,6 +112,7 @@ public class RolesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequierePermiso("ROL_DELETE")]
     public async Task<IActionResult> Delete(int id)
     {
         try
@@ -122,6 +128,7 @@ public class RolesController : Controller
     }
 
     [HttpGet]
+    [RequierePermiso("ROL_PERMISOS")]
     public async Task<IActionResult> GetPermisos(int id)
     {
         var rol = await _rolService.GetByIdAsync(id);
@@ -152,6 +159,7 @@ public class RolesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequierePermiso("ROL_PERMISOS")]
     public async Task<IActionResult> UpdatePermisos(int rolId, List<int> permisosIds)
     {
         try

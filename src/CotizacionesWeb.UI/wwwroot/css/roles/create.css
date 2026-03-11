@@ -44,7 +44,6 @@
     display: flex;
     align-items: center;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
 }
@@ -58,16 +57,82 @@
     transform: translateY(0);
 }
 
-.categoria-header i {
+/* Checkbox de categoría */
+.categoria-checkbox {
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    margin-right: 0.75rem;
+    cursor: pointer;
+    accent-color: white;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid white;
+    border-radius: 4px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.categoria-checkbox:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.categoria-checkbox:checked {
+    background-color: white;
+}
+
+.categoria-checkbox:checked::before {
+    content: "\f00c";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--color-primary);
+    font-size: 14px;
+}
+
+/* Estado indeterminado (algunos marcados) */
+.categoria-checkbox:indeterminate {
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+.categoria-checkbox:indeterminate::before {
+    content: "\f068";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--color-primary);
+    font-size: 14px;
+}
+
+/* Label de categoría */
+.categoria-label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    margin: 0;
+}
+
+.categoria-label i {
     margin-right: 0.5rem;
     font-size: 1.1rem;
 }
 
-.categoria-header .badge {
+.categoria-label .badge {
     margin-left: auto;
     background-color: rgba(255, 255, 255, 0.3) !important;
     color: white;
     font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.5);
 }
 
 /* Items de permisos */

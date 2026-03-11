@@ -1,4 +1,7 @@
-﻿<!DOCTYPE html>
+﻿@using CotizacionesWeb.UI.Services
+@inject IPermisoChecker PermisoChecker
+
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
@@ -73,8 +76,8 @@
         <!-- Main Sidebar Container -->
         <aside class="main-sidebar sidebar-dark-primary elevation-4">
             <!-- Brand Logo -->
-            <a asp-controller="Home" asp-action="Index" class="brand-link" style="text-align: center; display: block; padding: 0.5rem 1.5rem;">
-                <img src="~/img/aplix-logo.png" alt="APLIX Logo" class="brand-image" style="opacity: .9; max-width: 90px; width: 60px; height: auto; margin: 0 auto; display: block;">
+            <a asp-controller="Home" asp-action="Index" class="brand-link" style="text-align: center; display: block; padding: 1rem 1.5rem;">
+                <img src="~/img/aplix-logo.png" alt="APLIX Logo" class="brand-image" style="opacity: .9; width: 100px; height: 100px; object-fit: contain; margin: 0 auto; display: block;">
                 <span class="brand-text font-weight-light d-block" style="margin-top: 12px; font-size: 1.1rem;">CotizacionesWeb</span>
             </a>
 
@@ -82,8 +85,20 @@
             <div class="sidebar">
                 <!-- Sidebar Menu -->
                 <nav class="mt-2">
+                    @{
+                        var isAuthenticated = User.Identity?.IsAuthenticated == true;
+                        var tieneUsuariosView = isAuthenticated && await PermisoChecker.TienePermisoAsync("USR_VIEW");
+                        var tieneRolesView = isAuthenticated && await PermisoChecker.TienePermisoAsync("ROL_VIEW");
+                        var esAdmin = User.IsInRole("Admin") || User.IsInRole("Administrador");
+                        var tieneAdminMenu = tieneUsuariosView || tieneRolesView || esAdmin;
+                        
+                        var tieneCotView = isAuthenticated && await PermisoChecker.TienePermisoAsync("COT_VIEW");
+                        var tieneCotCreate = isAuthenticated && await PermisoChecker.TienePermisoAsync("COT_CREATE");
+                        var tieneCotizacionesMenu = tieneCotView || tieneCotCreate;
+                    }
+                    
                     <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
-                        @if (User.Identity?.IsAuthenticated == true)
+                        @if (isAuthenticated)
                         {
                             <li class="nav-item">
                                 <a asp-controller="Home" asp-action="Index" class="nav-link">
@@ -92,7 +107,7 @@
                                 </a>
                             </li>
                             
-                            @if (User.IsInRole("Admin") || User.IsInRole("Administrador"))
+                            @if (tieneAdminMenu)
                             {
                                 <li class="nav-item">
                                     <a href="#" class="nav-link">
@@ -103,51 +118,60 @@
                                         </p>
                                     </a>
                                     <ul class="nav nav-treeview">
-                                        <li class="nav-item">
-                                            <a asp-controller="Usuarios" asp-action="Index" class="nav-link">
-                                                <i class="far fa-circle nav-icon"></i>
-                                                <p>Usuarios</p>
-                                            </a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a asp-controller="Roles" asp-action="Index" class="nav-link">
-                                                <i class="far fa-circle nav-icon"></i>
-                                                <p>Roles</p>
-                                            </a>
-                                        </li>
-                                        <li class="nav-item">
-                                            <a href="#" class="nav-link">
-                                                <i class="far fa-circle nav-icon"></i>
-                                                <p>Permisos</p>
-                                            </a>
-                                        </li>
+                                        @if (tieneUsuariosView || esAdmin)
+                                        {
+                                            <li class="nav-item">
+                                                <a asp-controller="Usuarios" asp-action="Index" class="nav-link">
+                                                    <i class="far fa-circle nav-icon"></i>
+                                                    <p>Usuarios</p>
+                                                </a>
+                                            </li>
+                                        }
+                                        @if (tieneRolesView || esAdmin)
+                                        {
+                                            <li class="nav-item">
+                                                <a asp-controller="Roles" asp-action="Index" class="nav-link">
+                                                    <i class="far fa-circle nav-icon"></i>
+                                                    <p>Roles</p>
+                                                </a>
+                                            </li>
+                                        }
                                     </ul>
                                 </li>
                             }
                             
-                            <li class="nav-item">
-                                <a href="#" class="nav-link">
-                                    <i class="nav-icon fas fa-file-invoice"></i>
-                                    <p>
-                                        Cotizaciones
-                                        <i class="right fas fa-angle-left"></i>
-                                    </p>
-                                </a>
-                                <ul class="nav nav-treeview">
-                                    <li class="nav-item">
-                                        <a href="#" class="nav-link">
-                                            <i class="far fa-circle nav-icon"></i>
-                                            <p>Nueva Cotización</p>
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a href="#" class="nav-link">
-                                            <i class="far fa-circle nav-icon"></i>
-                                            <p>Listar Cotizaciones</p>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li>
+                            @if (tieneCotizacionesMenu)
+                            {
+                                <li class="nav-item">
+                                    <a href="#" class="nav-link">
+                                        <i class="nav-icon fas fa-file-invoice"></i>
+                                        <p>
+                                            Cotizaciones
+                                            <i class="right fas fa-angle-left"></i>
+                                        </p>
+                                    </a>
+                                    <ul class="nav nav-treeview">
+                                        @if (tieneCotCreate)
+                                        {
+                                            <li class="nav-item">
+                                                <a href="#" class="nav-link">
+                                                    <i class="far fa-circle nav-icon"></i>
+                                                    <p>Nueva Cotización</p>
+                                                </a>
+                                            </li>
+                                        }
+                                        @if (tieneCotView)
+                                        {
+                                            <li class="nav-item">
+                                                <a href="#" class="nav-link">
+                                                    <i class="far fa-circle nav-icon"></i>
+                                                    <p>Listar Cotizaciones</p>
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                </li>
+                            }
                         }
                     </ul>
                 </nav>

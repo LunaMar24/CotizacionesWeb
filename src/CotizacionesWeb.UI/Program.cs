@@ -4,12 +4,14 @@ using CotizacionesWeb.Application.Integrations;
 using CotizacionesWeb.Application.Users;
 using CotizacionesWeb.Application.Roles;
 using CotizacionesWeb.Infrastructure.Data;
+using CotizacionesWeb.Infrastructure.Data.Interceptors;
 using CotizacionesWeb.Infrastructure.Integrations.Erp;
 using CotizacionesWeb.Infrastructure.Integrations.HubSpot;
 using CotizacionesWeb.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using System.Security.Claims;
 
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(new ConfigurationBuilder()
@@ -26,9 +28,27 @@ try
 
     builder.Host.UseSerilog();
 
-    // Database
-    builder.Services.AddDbContext<DbContextCotizaciones>(options =>
-        options.UseSqlServer(builder.Configuration.GetConnectionString("CotizacionesDb")));
+    // HTTP Context Accessor (necesario para auditoría y permisos)
+    builder.Services.AddHttpContextAccessor();
+
+    // Database con interceptor de auditoría
+    builder.Services.AddDbContext<DbContextCotizaciones>((serviceProvider, options) =>
+    {
+        var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
+        
+        var auditInterceptor = new AuditInterceptor(() =>
+        {
+            var user = httpContextAccessor.HttpContext?.User;
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                return user.FindFirst(ClaimTypes.Email)?.Value ?? "system";
+            }
+            return "system";
+        });
+        
+        options.UseSqlServer(builder.Configuration.GetConnectionString("CotizacionesDb"))
+               .AddInterceptors(auditInterceptor);
+    });
 
     builder.Services.AddDbContext<DbContextErp>(options =>
         options.UseSqlServer(builder.Configuration.GetConnectionString("ErpDb")));
@@ -40,6 +60,10 @@ try
     // Application services - Users & Roles
     builder.Services.AddScoped<IUsuarioService, CotizacionesWeb.Infrastructure.Services.UsuarioService>();
     builder.Services.AddScoped<IRolService, CotizacionesWeb.Infrastructure.Services.RolService>();
+    builder.Services.AddScoped<CotizacionesWeb.Application.Permisos.IPermisoService, CotizacionesWeb.Infrastructure.Services.PermisoService>();
+    
+    // UI Services
+    builder.Services.AddScoped<CotizacionesWeb.UI.Services.IPermisoChecker, CotizacionesWeb.UI.Services.PermisoChecker>();
 
     // Application services - Cotizaciones
     builder.Services.AddScoped<ICrearCotizacionService, CrearCotizacionService>();

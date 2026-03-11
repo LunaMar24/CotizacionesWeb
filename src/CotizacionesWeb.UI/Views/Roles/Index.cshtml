@@ -13,7 +13,9 @@
             <p class="text-muted mt-2">Gestiona los roles del sistema y sus permisos.</p>
         </div>
         <div class="col-sm-6 text-right">
-            <a asp-action="Create" class="btn btn-primary btn-custom">
+            <a asp-action="Create" 
+               class="btn btn-primary btn-custom"
+               requiere-permiso="ROL_CREATE">
                 <i class="fas fa-plus"></i> CREAR ROL
             </a>
         </div>
@@ -115,6 +117,7 @@
                                                 class="btn btn-sm btn-warning btn-edit-rol"
                                                 data-rol-id="@rol.Id"
                                                 data-rol-nombre="@rol.Nombre"
+                                                requiere-permiso="ROL_EDIT"
                                                 title="Modificar">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -122,6 +125,7 @@
                                                 class="btn btn-sm btn-info btn-manage-permisos"
                                                 data-rol-id="@rol.Id"
                                                 data-rol-nombre="@rol.Nombre"
+                                                requiere-permiso="ROL_PERMISOS"
                                                 title="Gestionar Permisos">
                                             <i class="fas fa-lock"></i>
                                         </button>
@@ -130,6 +134,7 @@
                                                 data-rol-id="@rol.Id"
                                                 data-rol-nombre="@rol.Nombre"
                                                 data-cant-usuarios="@rol.CantidadUsuarios"
+                                                requiere-permiso="ROL_DELETE"
                                                 title="Eliminar">
                                             <i class="fas fa-trash"></i>
                                         </button>

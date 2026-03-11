@@ -29,10 +29,16 @@
                 @foreach (var grupo in permisosPorCategoria)
                 {
                     <div class="categoria-group">
-                        <div class="categoria-header" title="Haz click para seleccionar/deseleccionar todos los permisos de esta categoría">
-                            <i class="fas fa-folder"></i>
-                            <strong>@grupo.Key</strong>
-                            <span class="badge badge-secondary ml-2">@grupo.Count() permisos</span>
+                        <div class="categoria-header" data-categoria="@grupo.Key">
+                            <input type="checkbox" 
+                                   class="categoria-checkbox" 
+                                   id="cat_@grupo.Key.Replace(" ", "_")"
+                                   title="Seleccionar/Deseleccionar todos">
+                            <label for="cat_@grupo.Key.Replace(" ", "_")" class="categoria-label">
+                                <i class="fas fa-folder"></i>
+                                <strong>@grupo.Key</strong>
+                                <span class="badge badge-light ml-2">@grupo.Count() permisos</span>
+                            </label>
                         </div>
                         
                         @foreach (var permiso in grupo.OrderBy(p => p.Codigo))
@@ -43,6 +49,7 @@
                                        name="permisosIds" 
                                        value="@permiso.Id" 
                                        id="permiso_@permiso.Id"
+                                       data-categoria="@grupo.Key"
                                        @(Model.PermisosAsignados.Contains(permiso.Id) ? "checked" : "")>
                                 <label class="permiso-label" for="permiso_@permiso.Id">
                                     <div class="permiso-content">

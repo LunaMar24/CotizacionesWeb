@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using CotizacionesWeb.Application.Authentication;
+using CotizacionesWeb.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CotizacionesWeb.UI.Controllers;
@@ -9,12 +11,20 @@ namespace CotizacionesWeb.UI.Controllers;
 public class AccountController : Controller
 {
     private readonly IAuthService _authService;
+    private readonly PasswordHasher _passwordHasher;
     private readonly ILogger<AccountController> _logger;
+    private readonly IWebHostEnvironment _environment;
 
-    public AccountController(IAuthService authService, ILogger<AccountController> logger)
+    public AccountController(
+        IAuthService authService, 
+        PasswordHasher passwordHasher,
+        ILogger<AccountController> logger,
+        IWebHostEnvironment environment)
     {
         _authService = authService;
+        _passwordHasher = passwordHasher;
         _logger = logger;
+        _environment = environment;
     }
 
     [HttpGet]
@@ -45,6 +55,7 @@ public class AccountController : Controller
 
         var claims = new List<Claim>
         {
+            new Claim(ClaimTypes.NameIdentifier, result.UsuarioId.ToString()),
             new Claim(ClaimTypes.Name, result.NombreUsuario ?? string.Empty),
             new Claim(ClaimTypes.Email, model.Email)
         };
@@ -78,4 +89,33 @@ public class AccountController : Controller
     {
         return View();
     }
+
+    // ============================================
+    // ENDPOINT TEMPORAL PARA GENERAR HASHES
+    // ⚠️ SOLO DISPONIBLE EN DESARROLLO
+    // ============================================
+    [HttpGet]
+    [AllowAnonymous]
+    public IActionResult GenerarHash(string? password)
+    {
+        // Verificar que estamos en entorno de desarrollo
+        if (!_environment.IsDevelopment())
+        {
+            _logger.LogWarning("Intento de acceso a GenerarHash en entorno {Environment} desde IP: {IP}", 
+                _environment.EnvironmentName,
+                HttpContext.Connection.RemoteIpAddress);
+            return NotFound();
+        }
+
+        if (!string.IsNullOrEmpty(password))
+        {
+            var hash = _passwordHasher.Hash(password);
+            _logger.LogInformation("Hash generado en entorno de desarrollo");
+            return Content($"Password: {password}\nHash: {hash}", "text/plain");
+        }
+        
+        return Content("Uso: /Account/GenerarHash?password=TuContraseña\n\n⚠️ Este endpoint solo está disponible en desarrollo.", "text/plain");
+    }
 }
+
+
