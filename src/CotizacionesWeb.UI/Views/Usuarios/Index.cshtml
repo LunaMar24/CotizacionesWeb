@@ -13,7 +13,9 @@
       <p class="text-muted mt-2">Gestiona los usuarios del sistema, sus roles y permisos.</p>
     </div>
     <div class="col-sm-6 text-right">
-      <a asp-action="Create" class="btn btn-primary btn-custom">
+      <a asp-action="Create" 
+         class="btn btn-primary btn-custom"
+         requiere-permiso="USR_CREATE">
         <i class="fas fa-plus"></i> CREAR USUARIO
       </a>
     </div>
@@ -129,6 +131,7 @@
                   <div class="btn-group" role="group">
                     <a asp-action="Edit" asp-route-id="@usuario.Id"
                        class="btn btn-sm btn-warning"
+                       requiere-permiso="USR_EDIT"
                        title="Modificar">
                       <i class="fas fa-edit"></i>
                     </a>
@@ -136,6 +139,7 @@
                             class="btn btn-sm btn-info btn-manage-roles"
                             data-usuario-id="@usuario.Id"
                             data-usuario-nombre="@usuario.Nombre"
+                            requiere-permiso="USR_ROLES"
                             title="Gestionar Roles">
                       <i class="fas fa-user-tag"></i>
                     </button>
@@ -143,6 +147,7 @@
                             class="btn btn-sm btn-secondary btn-reset-password"
                             data-usuario-id="@usuario.Id"
                             data-usuario-nombre="@usuario.Nombre"
+                            requiere-permiso="USR_RESET_PWD"
                             title="Resetear Contraseña">
                       <i class="fas fa-key"></i>
                     </button>
@@ -150,6 +155,7 @@
                             class="btn btn-sm btn-danger btn-delete-usuario"
                             data-usuario-id="@usuario.Id"
                             data-usuario-nombre="@usuario.Nombre"
+                            requiere-permiso="USR_DELETE"
                             title="Eliminar">
                       <i class="fas fa-trash"></i>
                     </button>

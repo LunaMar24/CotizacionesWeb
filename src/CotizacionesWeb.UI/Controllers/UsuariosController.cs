@@ -1,6 +1,7 @@
 using CotizacionesWeb.Application.Roles;
 using CotizacionesWeb.Application.Users;
 using CotizacionesWeb.UI.Models;
+using CotizacionesWeb.UI.Filters;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -31,6 +32,7 @@ public class UsuariosController : Controller
     }
 
     // GET: Usuarios/Create
+    [RequierePermiso("USR_CREATE")]
     public async Task<IActionResult> Create()
     {
         var roles = await _rolService.GetAllActiveAsync();
@@ -47,6 +49,7 @@ public class UsuariosController : Controller
     // POST: Usuarios/Create
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequierePermiso("USR_CREATE")]
     public async Task<IActionResult> Create(UsuarioCreateViewModel model)
     {
         if (!ModelState.IsValid)
@@ -94,6 +97,7 @@ public class UsuariosController : Controller
     }
 
     // GET: Usuarios/Edit/5
+    [RequierePermiso("USR_EDIT")]
     public async Task<IActionResult> Edit(int id)
     {
         var usuario = await _usuarioService.GetByIdAsync(id);
@@ -114,6 +118,7 @@ public class UsuariosController : Controller
     // POST: Usuarios/Edit/5
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequierePermiso("USR_EDIT")]
     public async Task<IActionResult> Edit(int id, UsuarioEditViewModel model)
     {
         if (id != model.Id)
@@ -146,6 +151,7 @@ public class UsuariosController : Controller
     // POST: Usuarios/Delete/5
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequierePermiso("USR_DELETE")]
     public async Task<IActionResult> Delete(int id)
     {
         try
@@ -163,6 +169,7 @@ public class UsuariosController : Controller
     // POST: Usuarios/ResetPassword/5
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequierePermiso("USR_RESET_PWD")]
     public async Task<IActionResult> ResetPassword(int id, string newPassword)
     {
         try
@@ -178,6 +185,7 @@ public class UsuariosController : Controller
     }
 
     // GET: Usuarios/GetRoles/5
+    [RequierePermiso("USR_ROLES")]
     public async Task<IActionResult> GetRoles(int id)
     {
         try
@@ -214,6 +222,7 @@ public class UsuariosController : Controller
     // POST: Usuarios/UpdateRoles
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [RequierePermiso("USR_ROLES")]
     public async Task<IActionResult> UpdateRoles(int usuarioId, List<int> rolesIds)
     {
         try
