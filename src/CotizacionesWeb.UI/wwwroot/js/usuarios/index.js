@@ -5,7 +5,7 @@
 $(document).ready(function() {
     
     // ============================================
-    // FILTROS DE BÚSQUEDA
+    // FILTROS DE BUSQUEDA
     // ============================================
     
     function filterTable() {
@@ -84,7 +84,6 @@ $(document).ready(function() {
         });
     });
     
-    // Submit del formulario de roles
     $(document).on('submit', '#updateRolesForm', function(e) {
         e.preventDefault();
         
@@ -105,7 +104,7 @@ $(document).ready(function() {
     });
     
     // ============================================
-    // RESETEAR CONTRASEÑA
+    // RESETEAR CONTRASENA
     // ============================================
     
     $('.btn-reset-password').on('click', function() {
@@ -127,12 +126,12 @@ $(document).ready(function() {
         const usuarioId = $('#resetPasswordUsuarioId').val();
         
         if (newPassword !== confirmPassword) {
-            showNotification('error', 'Las contraseñas no coinciden.');
+            showNotification('error', 'Las contrasenas no coinciden.');
             return;
         }
         
         if (newPassword.length < 6) {
-            showNotification('error', 'La contraseña debe tener al menos 6 caracteres.');
+            showNotification('error', 'La contrasena debe tener al menos 6 caracteres.');
             return;
         }
         
@@ -150,12 +149,12 @@ $(document).ready(function() {
                 showNotification('error', response.message);
             }
         }).fail(function() {
-            showNotification('error', 'Error al resetear la contraseña.');
+            showNotification('error', 'Error al resetear la contrasena.');
         });
     });
     
     // ============================================
-    // ELIMINAR USUARIO
+    // ELIMINAR USUARIO (CON MODAL DE CONFIRMACION)
     // ============================================
     
     $('.btn-delete-usuario').on('click', function() {
@@ -171,6 +170,8 @@ $(document).ready(function() {
         const usuarioId = $('#deleteUsuarioId').val();
         const token = $('input[name="__RequestVerificationToken"]').val();
         
+        $(this).prop('disabled', true);
+        
         $.post('/Usuarios/Delete', {
             id: usuarioId,
             __RequestVerificationToken: token
@@ -181,16 +182,12 @@ $(document).ready(function() {
                 setTimeout(() => location.reload(), 1500);
             } else {
                 showNotification('error', response.message);
+                $('#confirmDeleteBtn').prop('disabled', false);
             }
         }).fail(function() {
             showNotification('error', 'Error al eliminar el usuario.');
+            $('#confirmDeleteBtn').prop('disabled', false);
         });
     });
     
-    // ============================================
-    // NOTIFICACIONES
-    // ============================================
-    
-    // Usar la función global de notificaciones definida en site.js
 });
-

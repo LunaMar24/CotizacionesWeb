@@ -17,8 +17,14 @@ public class DbContextCotizaciones : DbContext
     public DbSet<Permiso> Permisos => Set<Permiso>();
     public DbSet<PermisoRol> PermisosRoles => Set<PermisoRol>();
     
-    // NOTA: Cotizaciones se agregará en una fase posterior
-    // public DbSet<Cotizacion> Cotizaciones => Set<Cotizacion>();
+    // Tablas de Cotizaciones
+    public DbSet<Interesado> Interesados => Set<Interesado>();
+    public DbSet<Parametros> Parametros => Set<Parametros>();
+    public DbSet<Cotizacion> Cotizaciones => Set<Cotizacion>();
+    public DbSet<CotizacionVersion> CotizacionesVersiones => Set<CotizacionVersion>();
+    public DbSet<DetalleCotizacionVersion> DetallesCotizacionVersion => Set<DetalleCotizacionVersion>();
+    public DbSet<HistorialCotizacion> HistorialesCotizacion => Set<HistorialCotizacion>();
+    public DbSet<ArchivoCotizacion> ArchivosCotizacion => Set<ArchivoCotizacion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

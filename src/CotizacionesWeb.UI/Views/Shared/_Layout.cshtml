@@ -151,21 +151,21 @@
                                         </p>
                                     </a>
                                     <ul class="nav nav-treeview">
+                                        @if (tieneCotView)
+                                        {
+                                            <li class="nav-item">
+                                                <a asp-controller="Cotizaciones" asp-action="Index" class="nav-link">
+                                                    <i class="far fa-circle nav-icon"></i>
+                                                    <p>Listar Cotizaciones</p>
+                                                </a>
+                                            </li>
+                                        }
                                         @if (tieneCotCreate)
                                         {
                                             <li class="nav-item">
                                                 <a href="#" class="nav-link">
                                                     <i class="far fa-circle nav-icon"></i>
                                                     <p>Nueva Cotización</p>
-                                                </a>
-                                            </li>
-                                        }
-                                        @if (tieneCotView)
-                                        {
-                                            <li class="nav-item">
-                                                <a href="#" class="nav-link">
-                                                    <i class="far fa-circle nav-icon"></i>
-                                                    <p>Listar Cotizaciones</p>
                                                 </a>
                                             </li>
                                         }

@@ -2,6 +2,30 @@
    ROLES INDEX - Estilos específicos
    ============================================ */
 
+/* Card de Filtros Colapsable */
+.card-filtros-custom {
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.card-filtros-custom .card-header {
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 20px;
+}
+
+.card-filtros-custom .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+}
+
+.card-filtros-custom .card-body {
+    padding: 20px;
+}
+
 /* Filtros */
 .input-group-prepend .input-group-text {
     background-color: var(--color-primary);

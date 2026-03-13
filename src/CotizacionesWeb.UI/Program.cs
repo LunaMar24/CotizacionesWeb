@@ -67,6 +67,7 @@ try
 
     // Application services - Cotizaciones
     builder.Services.AddScoped<ICrearCotizacionService, CrearCotizacionService>();
+    builder.Services.AddScoped<ICotizacionService, CotizacionesWeb.Infrastructure.Services.CotizacionService>();
 
     // Integrations
     builder.Services.AddScoped<IErpService, ErpService>();

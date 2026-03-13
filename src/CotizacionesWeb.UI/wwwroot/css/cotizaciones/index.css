@@ -1,0 +1,493 @@
+/* Estilos modernos para el listado de cotizaciones */
+
+/* Header Principal */
+.content-header-custom {
+    background: #f8f9fa;
+    padding: 24px 30px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.header-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 8px;
+}
+
+.header-title i {
+    color: var(--color-primary);
+    margin-right: 10px;
+}
+
+.header-subtitle {
+    color: #6c757d;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+/* Botón Crear (azul, esquina superior derecha) */
+.btn-create-custom {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.btn-create-custom:hover {
+    background-color: #1e40af;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+    color: white;
+}
+
+.btn-create-custom i {
+    margin-right: 8px;
+}
+
+/* Card de Filtros Colapsable */
+.card-filtros-custom {
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.card-filtros-custom .card-header {
+    background-color: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px 20px;
+}
+
+.card-filtros-custom .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin: 0;
+}
+
+.card-filtros-custom .card-body {
+    padding: 20px;
+}
+
+/* Filtros en línea */
+.input-group-text.input-icon-custom {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 4px 0 0 4px;
+}
+
+.form-control-custom {
+    border: 1px solid #d1d5db;
+    border-radius: 0 4px 4px 0;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+}
+
+.form-control-custom:focus {
+    border-color: var(--color-secondary);
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+}
+
+.btn-custom {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+/* Select de estados (multiselect) */
+#filtroEstados {
+    height: 38px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+/* Dropdown de Estados Personalizado */
+.dropdown-menu-estados {
+    padding: 8px;
+    min-width: 220px;
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.dropdown-item-custom {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+}
+
+.dropdown-item-custom:hover {
+    background-color: #f3f4f6;
+    border-radius: 4px;
+}
+
+.dropdown-item-custom .form-check-input {
+    position: relative;
+    margin-top: 0;
+    margin-left: 0;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.dropdown-item-custom .form-check-label {
+    cursor: pointer;
+    margin-bottom: 0;
+    margin-left: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.dropdown-item-custom .badge {
+    margin: 0;
+}
+
+.dropdown-toggle::after {
+    margin-left: 8px;
+}
+
+/* Tabla Moderna */
+.table-wrapper-custom {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.table-custom-modern {
+    width: 100%;
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
+
+.table-custom-modern thead th {
+    background-color: var(--color-primary);
+    color: white;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 16px 12px;
+    border: none;
+    white-space: nowrap;
+}
+
+.table-custom-modern tbody tr {
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.2s ease;
+}
+
+.table-custom-modern tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+.table-custom-modern tbody td {
+    padding: 14px 12px;
+    vertical-align: middle;
+    color: #374151;
+}
+
+/* Badges de Estado Personalizados */
+.badge-status {
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 12px;
+    text-transform: capitalize;
+}
+
+.badge-secondary-custom {
+    background-color: #6c757d;
+    color: white;
+}
+
+.badge-info-custom {
+    background-color: #17a2b8;
+    color: white;
+}
+
+.badge-success-custom {
+    background-color: #28a745;
+    color: white;
+}
+
+.badge-danger-custom {
+    background-color: #dc3545;
+    color: white;
+}
+
+.badge-warning-custom {
+    background-color: #ffc107;
+    color: #1f2937;
+}
+
+.badge-dark-custom {
+    background-color: #343a40;
+    color: white;
+}
+
+.badge-version {
+    background-color: #e5e7eb;
+    color: #374151;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 8px;
+}
+
+/* Botones de Acción (estilo de la imagen) */
+.btn-group-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.btn-action {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Colores de botones según la imagen */
+.btn-action-edit {
+    background-color: #f59e0b; /* Amarillo/Naranja - Editar */
+}
+
+.btn-action-edit:hover {
+    background-color: #d97706;
+}
+
+.btn-action-info {
+    background-color: #3b82f6; /* Azul - Info/Historial */
+}
+
+.btn-action-info:hover {
+    background-color: #2563eb;
+}
+
+.btn-action-secondary {
+    background-color: #6366f1; /* Morado/Azul - Versiones */
+}
+
+.btn-action-secondary:hover {
+    background-color: #4f46e5;
+}
+
+.btn-action-copy {
+    background-color: #10b981; /* Verde - Copiar */
+}
+
+.btn-action-copy:hover {
+    background-color: #059669;
+}
+
+.btn-action-delete {
+    background-color: #ef4444; /* Rojo - Duplicar/Eliminar */
+}
+
+.btn-action-delete:hover {
+    background-color: #dc2626;
+}
+
+/* Footer de tabla */
+.table-footer-custom {
+    background: white;
+    padding: 16px 20px;
+    border-top: 1px solid #e5e7eb;
+    border-radius: 0 0 8px 8px;
+}
+
+/* Estado vacío */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.empty-state i {
+    color: #9ca3af;
+}
+
+.empty-state p {
+    color: #6b7280;
+    font-size: 1.1rem;
+    margin-top: 16px;
+    margin-bottom: 8px;
+}
+
+/* Timeline para Historial */
+.timeline {
+    position: relative;
+    margin: 0 0 30px 0;
+    padding: 0;
+    list-style: none;
+}
+
+.timeline:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: #dee2e6;
+    left: 31px;
+    margin: 0;
+}
+
+.timeline > div > .timeline-item {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+    margin-top: 0;
+    background: #fff;
+    color: #495057;
+    margin-left: 60px;
+    margin-right: 15px;
+    margin-bottom: 15px;
+    padding: 0;
+    position: relative;
+}
+
+.timeline > div > .fa,
+.timeline > div > .fas,
+.timeline > div > .far,
+.timeline > div > .fab,
+.timeline > div > .glyphicon,
+.timeline > div > .ion {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+    line-height: 30px;
+    position: absolute;
+    color: #fff;
+    background: #999;
+    border-radius: 50%;
+    text-align: center;
+    left: 18px;
+    top: 0;
+}
+
+.timeline > .time-label > span {
+    font-weight: 600;
+    padding: 5px;
+    display: inline-block;
+    background-color: #fff;
+    border-radius: 4px;
+}
+
+.timeline-item > .time {
+    color: #999;
+    float: right;
+    padding: 10px;
+    font-size: 12px;
+}
+
+.timeline-item > .timeline-header {
+    margin: 0;
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    padding: 10px;
+    font-size: 16px;
+    line-height: 1.1;
+}
+
+.timeline-item > .timeline-body {
+    padding: 10px;
+}
+
+/* Colores para diferentes eventos */
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.bg-primary {
+    background-color: var(--color-primary) !important;
+}
+
+.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+.bg-gray {
+    background-color: #adb5bd !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .content-header-custom {
+        padding: 16px 20px;
+    }
+    
+    .header-title {
+        font-size: 1.4rem;
+    }
+    
+    .btn-create-custom {
+        padding: 8px 16px;
+        font-size: 0.85rem;
+    }
+    
+    .btn-group-actions {
+        flex-wrap: wrap;
+    }
+}
+
+/* Modal de Confirmacion */
+#modalConfirmacion .modal-header {
+    border-bottom: none;
+}
+
+#modalConfirmacion .modal-body {
+    padding: 24px;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+#modalConfirmacion .modal-footer {
+    border-top: 1px solid #e5e7eb;
+    padding: 16px 24px;
+}
+
+#modalConfirmacion .alert {
+    border-radius: 8px;
+}
