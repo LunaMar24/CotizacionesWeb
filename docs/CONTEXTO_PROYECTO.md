@@ -1,12 +1,12 @@
 # CONTEXTO DEL PROYECTO - CotizacionesWeb
 
-**Para nuevo chat de GitHub Copilot**: Este documento contiene toda la información importante sobre el proyecto, lineamientos y patrones establecidos.
+**Para nuevo chat de GitHub Copilot**: Este documento contiene toda la informacion importante sobre el proyecto, lineamientos y patrones establecidos.
 
 ---
 
-## ?? INFORMACIÓN GENERAL
+## INFORMACION GENERAL
 
-### Stack Tecnológico
+### Stack Tecnologico
 - **.NET 8** - ASP.NET Core MVC (NO es Blazor ni Razor Pages puro)
 - **Entity Framework Core 8** - Code First
 - **SQL Server** - LocalDB (dev) / Azure SQL (prod)
@@ -34,13 +34,13 @@ Domain ? NADA (independiente)
 
 ---
 
-## ??? BASE DE DATOS
+## BASE DE DATOS
 
 ### Dos Contextos Separados
 1. **DbContextCotizaciones**: Datos propios (Usuarios, Roles, Permisos, Cotizaciones)
 2. **DbContextErp**: Datos del ERP externo (SOLO LECTURA - NO transacciones distribuidas)
 
-### Auditoría Automática
+### Auditoria Automatica
 ```csharp
 public class BaseEntity {
     public int Id { get; set; }
@@ -52,27 +52,27 @@ public class BaseEntity {
 ```
 
 **AuditInterceptor** (Infrastructure/Data/Interceptors/):
-- Interceptor de EF Core que llena automáticamente los campos de auditoría
+- Interceptor de EF Core que llena automaticamente los campos de auditoria
 - **CreatedBy / ModifiedBy**: Email del usuario autenticado desde HttpContext
 - Si no hay usuario autenticado: usa "system"
 - Configurado en Program.cs al registrar DbContext
 
-### Contraseñas
+### Contrasenas
 - **BCrypt** con 11 rounds (clase PasswordHasher en Infrastructure/Security)
-- **Métodos**: Hash(password) y Verify(password, hash)
+- **Metodos**: Hash(password) y Verify(password, hash)
 - **Endpoint temporal** (solo desarrollo): `/Account/GenerarHash?password=xxx`
-- **?? NO hay bypass**: Todas las contraseñas deben estar hasheadas
+- **NO hay bypass**: Todas las contrasenas deben estar hasheadas
 
 ### Claims del Usuario
 Configurados en AccountController al hacer login:
 - **NameIdentifier**: ID del usuario (int) de la tabla Usuarios
 - **Name**: Nombre completo del usuario
 - **Email**: Email del usuario
-- **Role**: Roles asignados (múltiples claims)
+- **Role**: Roles asignados (multiples claims)
 
 ---
 
-## ?? ENTIDADES PRINCIPALES
+## ENTIDADES PRINCIPALES
 
 ### Rol
 ```csharp
@@ -91,7 +91,7 @@ public class Rol : BaseEntity
 ```csharp
 public class Permiso : BaseEntity
 {
-    public string Codigo { get; set; }        // varchar(30), UNIQUE INDEX ??
+    public string Codigo { get; set; }        // varchar(30), UNIQUE INDEX
     public string Categoria { get; set; }     // varchar(50), NOT NULL
     public string Descripcion { get; set; }   // varchar(200), NOT NULL
     
@@ -99,7 +99,7 @@ public class Permiso : BaseEntity
 }
 ```
 
-**?? IMPORTANTE**: El índice único está en `Codigo`, NO en `Descripcion`.
+**IMPORTANTE**: El indice unico esta en `Codigo`, NO en `Descripcion`.
 
 ### Usuario
 ```csharp
@@ -118,7 +118,7 @@ public class Usuario : BaseEntity
 
 ---
 
-## ?? DISEÑO Y ESTILOS
+## DISENO Y ESTILOS
 
 ### Paleta de Colores
 ```css
@@ -131,38 +131,38 @@ public class Usuario : BaseEntity
 
 ### Archivos CSS Globales (cargados en _Layout.cshtml)
 1. `~/css/variables.css` - Variables de colores
-2. `~/css/modals.css` - Estilos de modales (?? CRÍTICO - NO MODIFICAR)
+2. `~/css/modals.css` - Estilos de modales (CRITICO - NO MODIFICAR)
 3. `~/css/components.css` - Componentes reutilizables
 4. `~/css/site.css` - Estilos generales
 
-### Archivos CSS por Módulo
+### Archivos CSS por Modulo
 - `~/css/[modulo]/index.css` - Estilos para listados
 - `~/css/[modulo]/create.css` - Estilos para formularios y modales
 
-### Archivos JS por Módulo
+### Archivos JS por Modulo
 - `~/js/[modulo]/index.js` - Funcionalidad del listado
 - `~/js/site.js` - Funciones globales (showNotification)
 - `~/js/modals.js` - Comportamiento de modales
 
 ---
 
-## ?? MODALES (?? MUY IMPORTANTE)
+## MODALES (MUY IMPORTANTE)
 
-### Reglas Críticas
+### Reglas Criticas
 ```css
-/* ? CORRECTO */
+/* CORRECTO */
 .modal-dialog {
     margin-top: 10vh;
     margin-bottom: 10vh;
 }
 
-/* ? NUNCA HACER ESTO */
+/* NUNCA HACER ESTO */
 .modal {
     display: flex !important;  /* Rompe Bootstrap */
 }
 ```
 
-**Por qué**: Bootstrap controla el `display` del `.modal` con JavaScript. Si lo sobreescribes con `!important`, los modales no se abren/cierran correctamente.
+**Por que**: Bootstrap controla el `display` del `.modal` con JavaScript. Si lo sobreescribes con `!important`, los modales no se abren/cierran correctamente.
 
 ### Cargar Modal con AJAX
 ```javascript
@@ -178,19 +178,39 @@ $('.btn-edit').on('click', function() {
 });
 ```
 
-### ?? CSS para Modales Cargados con AJAX
-Si un modal se carga dinámicamente y usa estilos de `create.css`, **DEBES cargar ese CSS en el Index**:
+### Modal de Confirmacion Generico
+Usar la funcion `mostrarModalConfirmacion()` en lugar de `confirm()` o `alert()`:
+
+```javascript
+mostrarModalConfirmacion(
+    'Titulo',
+    'Mensaje HTML permitido',
+    'tipo',  // info, warning, danger, success
+    function() {
+        // Callback si confirma
+    }
+);
+```
+
+**Ventajas**:
+- Modal Bootstrap nativo (mejor UX)
+- Colores dinamicos segun tipo
+- Soporta HTML en el mensaje
+- Sin problemas de encoding
+
+### CSS para Modales Cargados con AJAX
+Si un modal se carga dinamicamente y usa estilos de `create.css`, **DEBES cargar ese CSS en el Index**:
 ```razor
 @section Scripts {
     <link rel="stylesheet" href="~/css/roles/index.css">
-    <link rel="stylesheet" href="~/css/roles/create.css"> <!-- ?? NECESARIO -->
+    <link rel="stylesheet" href="~/css/roles/create.css"> <!-- NECESARIO -->
     <script src="~/js/roles/index.js"></script>
 }
 ```
 
 ---
 
-## ?? SISTEMA DE PERMISOS
+## SISTEMA DE PERMISOS
 
 ### Estructura
 - Usuario tiene N Roles
@@ -198,14 +218,14 @@ Si un modal se carga dinámicamente y usa estilos de `create.css`, **DEBES cargar
 - Permisos identificados por `Codigo` (ej: "USR_CREATE")
 - Permisos agrupados por `Categoria` (ej: "Usuarios")
 
-### Códigos de Permisos Actuales (28 total)
+### Codigos de Permisos Actuales (28 total)
 ```
 Usuarios:      USR_VIEW, USR_CREATE, USR_EDIT, USR_DELETE, USR_ROLES, USR_RESET_PWD
 Roles:         ROL_VIEW, ROL_CREATE, ROL_EDIT, ROL_DELETE, ROL_PERMISOS
 Cotizaciones:  COT_VIEW, COT_CREATE, COT_EDIT, COT_DELETE, COT_APPROVE, COT_REJECT, COT_EXPORT
 Clientes:      CLI_VIEW, CLI_CREATE, CLI_EDIT, CLI_DELETE
 Reportes:      RPT_VIEW, RPT_EXPORT, RPT_DASHBOARD
-Configuración: CFG_VIEW, CFG_EDIT, CFG_LOGS
+Configuracion: CFG_VIEW, CFG_EDIT, CFG_LOGS
 ```
 
 ### Uso en Controllers
@@ -223,7 +243,7 @@ public class UsuariosController : Controller
 
 ### Uso en Vistas (Tag Helper)
 ```html
-<!-- Deshabilitar botón -->
+<!-- Deshabilitar boton -->
 <button requiere-permiso="USR_DELETE" class="btn btn-danger">
     Eliminar
 </button>
@@ -234,7 +254,7 @@ public class UsuariosController : Controller
 </div>
 ```
 
-### Uso en Layout (Menús Dinámicos)
+### Uso en Layout (Menus Dinamicos)
 ```razor
 @inject IPermisoChecker PermisoChecker
 
@@ -251,19 +271,13 @@ public class UsuariosController : Controller
 }
 ```
 
-**Regla**: Si el usuario no tiene ningún permiso en un menú padre, el menú completo se oculta.
-
-### Permisos Agrupados por Categoría (UI)
-Los permisos se muestran visualmente agrupados:
-- **Header con gradiente** (clickeable para seleccionar todos de la categoría)
-- Cada permiso muestra: **Código** (en negrita) + **Descripción** (en gris)
-- Ordenados por: Categoría ? Código
+**Regla**: Si el usuario no tiene ningun permiso en un menu padre, el menu completo se oculta.
 
 ---
 
-## ?? JAVASCRIPT GLOBAL
+## JAVASCRIPT GLOBAL
 
-### Función de Notificaciones
+### Funcion de Notificaciones
 ```javascript
 // Definida en ~/js/site.js
 window.showNotification = function(type, message) {
@@ -272,7 +286,7 @@ window.showNotification = function(type, message) {
 };
 
 // Uso en vistas:
-showNotification('success', 'Operación exitosa');
+showNotification('success', 'Operacion exitosa');
 ```
 
 ### Filtros de Tablas
@@ -282,7 +296,7 @@ function filterTable() {
     
     $('#table tbody tr').each(function() {
         const row = $(this);
-        const nombre = row.attr('data-nombre') || ''; // ?? USAR attr(), NO data()
+        const nombre = row.attr('data-nombre') || ''; // USAR attr(), NO data()
         
         if (nombre.includes(filter)) {
             row.show();
@@ -295,9 +309,9 @@ function filterTable() {
 $('#filterName').on('keyup change', filterTable);
 ```
 
-**?? IMPORTANTE**: Usar `row.attr('data-campo')` NO `row.data('campo')` (jQuery cachea data() y causa problemas).
+**IMPORTANTE**: Usar `row.attr('data-campo')` NO `row.data('campo')` (jQuery cachea data() y causa problemas).
 
-### Animación de Números
+### Animacion de Números
 ```javascript
 function animateValue(element, start, end, duration) {
     let startTimestamp = null;
@@ -316,7 +330,7 @@ function animateValue(element, start, end, duration) {
 
 ---
 
-## ?? COMPONENTES REUTILIZABLES
+## COMPONENTES REUTILIZABLES
 
 ### Switch Toggle
 ```html
@@ -330,7 +344,6 @@ function animateValue(element, start, end, duration) {
     </label>
 </div>
 ```
-Dimensiones: 60px × 34px, fondo gris `#f8f9fa`, borde `2px solid #e0e0e0`
 
 ### Cards con Hover
 ```css
@@ -346,183 +359,115 @@ Dimensiones: 60px × 34px, fondo gris `#f8f9fa`, borde `2px solid #e0e0e0`
 }
 ```
 
-### Tablas Estándar
+### Card de Filtros Colapsable
+Todos los modulos (Usuarios, Roles, Cotizaciones) usan cards colapsables para filtros:
 ```html
-<table class="table table-hover table-custom">
-    <thead>
-        <tr>
-            <th>Columna</th>
-        </tr>
-    </thead>
-    <tbody>
-        <!-- data-nombre y data-activo para filtros -->
-        <tr data-nombre="valor" data-activo="true">
-            <td>Dato</td>
-        </tr>
-    </tbody>
-</table>
+<div class="card card-filtros-custom mb-4">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-filter"></i> Filtros de Busqueda
+        </h3>
+        <div class="card-tools">
+            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                <i class="fas fa-minus"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Filtros aqui -->
+    </div>
+</div>
 ```
 
 ---
 
-## ?? ERRORES COMUNES A EVITAR
+## ERRORES COMUNES A EVITAR
 
-### 1. ? NO modificar `.modal` en CSS
+### 1. NO modificar `.modal` en CSS
 ```css
-/* ? MAL - Rompe Bootstrap */
+/* MAL - Rompe Bootstrap */
 .modal {
     display: flex !important;
 }
 
-/* ? BIEN - Solo ajustar márgenes */
+/* BIEN - Solo ajustar margenes */
 .modal-dialog {
     margin-top: 10vh;
 }
 ```
 
-### 2. ? NO usar row.data() para filtros
+### 2. NO usar row.data() para filtros
 ```javascript
-/* ? MAL - Cachea valores */
+/* MAL - Cachea valores */
 const nombre = row.data('nombre');
 
-/* ? BIEN - Lee del DOM */
+/* BIEN - Lee del DOM */
 const nombre = row.attr('data-nombre');
 ```
 
-### 3. ? NO duplicar función showNotification
+### 3. NO usar confirm() o alert()
 ```javascript
-/* ? MAL - Crear en cada módulo */
-function showNotification() { ... }
+/* MAL - Alerta del navegador */
+if (!confirm('Seguro?')) return;
 
-/* ? BIEN - Usar la global */
-window.showNotification('success', 'mensaje');
+/* BIEN - Modal Bootstrap */
+mostrarModalConfirmacion('Titulo', 'Mensaje', 'warning', callback);
 ```
 
-### 4. ? NO duplicar estilos de modales
+### 4. NO duplicar estilos de modales
 ```css
-/* ? MAL - En cada módulo */
+/* MAL - En cada modulo */
 .modal-header { ... }
 
-/* ? BIEN - Usar modals.css global */
+/* BIEN - Usar modals.css global */
 .modal-header-custom { ... }
 ```
 
-### 5. ? NO olvidar cargar CSS de modales en Index
-```razor
-<!-- ? MAL - Modal sin estilos -->
-@section Scripts {
-    <link href="~/css/roles/index.css">
-}
+### 5. NO usar tildes en JavaScript
+```javascript
+/* MAL - Problemas de encoding */
+showNotification('error', 'Contraseña incorrecta');
 
-<!-- ? BIEN - Include create.css para modales -->
-@section Scripts {
-    <link href="~/css/roles/index.css">
-    <link href="~/css/roles/create.css">
-}
+/* BIEN - Sin tildes */
+showNotification('error', 'Contrasena incorrecta');
 ```
 
 ---
 
-## ? CHECKLIST PARA NUEVO MÓDULO
+## MODULOS IMPLEMENTADOS
 
-### Domain Layer
-- [ ] Crear entidad en `Domain/Entities/NombreEntidad.cs`
-- [ ] Heredar de `BaseEntity`
-- [ ] Definir propiedades y relaciones
-
-### Infrastructure Layer
-- [ ] Crear `Data/Configurations/NombreEntidadConfiguration.cs`
-- [ ] Implementar `IEntityTypeConfiguration<T>`
-- [ ] Agregar `DbSet<T>` en DbContext
-- [ ] Crear migración con EF Core
-- [ ] Aplicar migración
-- [ ] Crear `Services/NombreEntidadService.cs`
-
-### Application Layer
-- [ ] Crear `NombreModulo/INombreModuloService.cs`
-- [ ] Definir DTOs con `record`
-- [ ] Definir Requests con `record`
-
-### UI Layer - Backend
-- [ ] Crear `Models/NombreModuloViewModels.cs`
-- [ ] Agregar validaciones: `[Required]`, `[StringLength]`, etc.
-- [ ] Crear `Controllers/NombreModuloController.cs`
-- [ ] Agregar `[Authorize(Roles = "Admin,Administrador")]`
-- [ ] Agregar `[RequierePermiso("CODIGO")]` en acciones
-
-### UI Layer - Frontend
-- [ ] Crear `Views/NombreModulo/Index.cshtml`
-- [ ] Crear `Views/NombreModulo/Create.cshtml`
-- [ ] Crear `Views/NombreModulo/_EditModal.cshtml`
-- [ ] Crear `wwwroot/css/nombremodulo/index.css`
-- [ ] Crear `wwwroot/css/nombremodulo/create.css`
-- [ ] Crear `wwwroot/js/nombremodulo/index.js`
-- [ ] Agregar link en `_Layout.cshtml` (con verificación de permisos)
-
-### Validación Final
-- [ ] `dotnet build` exitoso
-- [ ] Probar CRUD completo
-- [ ] Verificar filtros funcionando
-- [ ] Verificar modales (abrir/cerrar correctamente)
-- [ ] Verificar permisos (botones deshabilitados)
-- [ ] Verificar menú (oculto si sin permiso)
-- [ ] Responsive design
-
----
-
-## ?? MIGRACIONES EF CORE
-
-### Crear Migración
-```bash
-dotnet ef migrations add NombreMigracion \
-  --project src/CotizacionesWeb.Infrastructure \
-  --startup-project src/CotizacionesWeb.UI \
-  --context DbContextCotizaciones \
-  --output-dir Data/Migrations
-```
-
-### Aplicar Migración
-```bash
-dotnet ef database update \
-  --project src/CotizacionesWeb.Infrastructure \
-  --startup-project src/CotizacionesWeb.UI \
-  --context DbContextCotizaciones
-```
-
-### Revertir Última Migración
-```bash
-dotnet ef migrations remove \
-  --project src/CotizacionesWeb.Infrastructure \
-  --startup-project src/CotizacionesWeb.UI \
-  --context DbContextCotizaciones
-```
-
----
-
-## ?? MÓDULOS IMPLEMENTADOS
-
-### ? Dashboard/Home
-- Estadísticas generales
+### Dashboard/Home
+- Estadisticas generales
 - Actividad reciente
-- Accesos rápidos según rol
+- Accesos rapidos segun rol
 
-### ? Usuarios
+### Usuarios
 - CRUD completo
-- Gestión de roles (modal con checkboxes)
-- Resetear contraseña (modal con validación)
+- Gestion de roles (modal con checkboxes)
+- Resetear contrasena (modal con validacion)
 - Ver roles asignados (modal de solo lectura)
-- Filtros: nombre, email, estado
+- Filtros colapsables: nombre, email, estado
+- Modal de confirmacion para eliminar
 
-### ? Roles
+### Roles
 - CRUD completo
-- Gestión de permisos agrupados por categoría
-- Header de categoría clickeable (selecciona todos)
-- Filtros: nombre, estado
-- Validación: no eliminar rol con usuarios asignados
+- Gestion de permisos agrupados por categoria
+- Header de categoria clickeable (selecciona todos)
+- Filtros colapsables: nombre, estado
+- Validacion: no eliminar rol con usuarios asignados
+
+### Cotizaciones
+- Listado con filtros colapsables
+- Filtros: busqueda, fechas, estados (dropdown multiple)
+- Modal de historial con timeline
+- Modal de versiones
+- Copiar version (con modal de confirmacion)
+- Duplicar cotizacion (con modal de confirmacion)
+- Botones de accion coloreados (amarillo, azul, morado, verde, rojo)
 
 ---
 
-## ??? SERVICIOS REGISTRADOS (Program.cs)
+## SERVICIOS REGISTRADOS (Program.cs)
 
 ```csharp
 // Seguridad
@@ -533,6 +478,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IRolService, RolService>();
 builder.Services.AddScoped<IPermisoService, PermisoService>();
+
+// Cotizaciones
+builder.Services.AddScoped<ICotizacionService, CotizacionService>();
 
 // UI Services
 builder.Services.AddHttpContextAccessor();
@@ -560,52 +508,46 @@ builder.Services.AddDbContext<DbContextCotizaciones>((serviceProvider, options) 
 
 ---
 
-## ?? PASOS INICIALES DEL SISTEMA
+## MIGRACIONES EF CORE
 
-### 1. Generar Hash de Contraseña
-Visita (con la app corriendo):
-```
-https://localhost:5001/Account/GenerarHash?password=Admin123!
-```
-Copia el hash generado (60+ caracteres).
-
-### 2. Ejecutar Scripts SQL (en orden)
-**A. Poblar permisos:**
-```sql
--- Ejecutar: src/CotizacionesWeb.Infrastructure/Data/Scripts/SeedPermisos.sql
+### Crear Migracion
+```bash
+dotnet ef migrations add NombreMigracion \
+  --project src/CotizacionesWeb.Infrastructure \
+  --startup-project src/CotizacionesWeb.UI \
+  --context DbContextCotizaciones \
+  --output-dir Data/Migrations
 ```
 
-**B. Crear usuario admin:**
-```sql
--- 1. Abrir: src/CotizacionesWeb.Infrastructure/Data/Scripts/CrearUsuarioAdmin.sql
--- 2. Reemplazar: REEMPLAZAR_CON_HASH_GENERADO con el hash del paso 1
--- 3. Ejecutar el script
+### Aplicar Migracion
+```bash
+dotnet ef database update \
+  --project src/CotizacionesWeb.Infrastructure \
+  --startup-project src/CotizacionesWeb.UI \
+  --context DbContextCotizaciones
 ```
 
-### 3. Login y Verificar
-- Login con: `admin@cotizaciones.com` / `Admin123!`
-- Ir a: Roles > Administrador > Ver permisos
-- Verificar: Debe tener los 28 permisos asignados
-
-### 4. Probar Sistema de Permisos
-1. Crear rol de prueba con permisos limitados
-2. Crear usuario de prueba con ese rol
-3. Logout y login con usuario de prueba
-4. Verificar botones deshabilitados y menús ocultos
+### Revertir Ultima Migracion
+```bash
+dotnet ef migrations remove \
+  --project src/CotizacionesWeb.Infrastructure \
+  --startup-project src/CotizacionesWeb.UI \
+  --context DbContextCotizaciones
+```
 
 ---
 
-## ?? ARCHIVOS IMPORTANTES
+## ARCHIVOS IMPORTANTES
 
-### Configuración
+### Configuracion
 - `Program.cs` - Registro de servicios + AuditInterceptor
-- `appsettings.json` - Configuración general
+- `appsettings.json` - Configuracion general
 - `_ViewImports.cshtml` - Usings y Tag Helpers globales
 
 ### CSS Global
 - `variables.css` - Variables de colores
 - `components.css` - Componentes reutilizables
-- `modals.css` - Modales (?? NO MODIFICAR)
+- `modals.css` - Modales (NO MODIFICAR)
 - `site.css` - Estilos generales
 
 ### JavaScript Global
@@ -614,39 +556,30 @@ Copia el hash generado (60+ caracteres).
 
 ---
 
-## ?? DECISIONES DE DISEÑO CLAVE
+## DECISIONES DE DISENO CLAVE
 
-1. **Permisos agrupados por categoría** - Facilita asignación masiva
-2. **Header clickeable** - Selecciona/deselecciona toda la categoría
+1. **Permisos agrupados por categoria** - Facilita asignacion masiva
+2. **Header clickeable** - Selecciona/deselecciona toda la categoria
 3. **Tag Helper para permisos** - Deshabilita elementos sin JavaScript
-4. **Menús dinámicos** - Se ocultan si no hay permisos
+4. **Menus dinamicos** - Se ocultan si no hay permisos
 5. **Admin bypass** - Roles Admin/Administrador tienen acceso total
-6. **Índice único en Permiso.Codigo** - No en Descripcion
-7. **Modales centrados con CSS** - Sin JavaScript que modifique márgenes
-8. **AuditInterceptor automático** - No requiere código en servicios
+6. **Indice unico en Permiso.Codigo** - No en Descripcion
+7. **Modales centrados con CSS** - Sin JavaScript que modifique margenes
+8. **AuditInterceptor automatico** - No requiere codigo en servicios
+9. **Modales de confirmacion** - En lugar de confirm() del navegador
+10. **Sin tildes en JavaScript** - Evita problemas de encoding
+11. **Filtros colapsables** - Mas espacio para datos en pantalla
+12. **IDs no duplicados** - BaseEntity.Id se usa como PK en todas las entidades
 
 ---
 
-## ?? INSTRUCCIONES PARA NUEVO CHAT
-
-1. Lee este documento completo
-2. Familiarízate con los patrones establecidos
-3. Respeta la arquitectura por capas
-4. Usa los componentes y estilos existentes
-5. NO reinventes soluciones que ya existen
-6. Consulta los archivos de ejemplo antes de crear nuevos
-7. Siempre verifica con `dotnet build` antes de finalizar
-8. Los usuarios deben hacer logout/login después de cambios en claims
-
----
-
-## ?? INFORMACIÓN ADICIONAL
+## INFORMACION ADICIONAL
 
 ### Repositorio
 - **GitHub**: https://github.com/LunaMar24/CotizacionesWeb
 - **Branch**: `Marcela/TrabajoPrueba`
 
-### Autenticación
+### Autenticacion
 - **Basada en Cookies** (NO JWT)
 - **Timeout**: 60 minutos con sliding expiration
 - **Login**: `/Account/Login`
@@ -654,10 +587,10 @@ Copia el hash generado (60+ caracteres).
 
 ### Roles de Sistema
 - **Admin / Administrador**: Acceso total (bypass de permisos)
-- **Roles personalizados**: Verifican permisos específicos
+- **Roles personalizados**: Verifican permisos especificos
 
 ---
 
-**Versión**: 1.1  
-**Última actualización**: 10 de marzo de 2026, 7:50 PM  
-**Autor**: Marcela Jiménez (con GitHub Copilot)
+**Version**: 2.0  
+**Ultima actualizacion**: 12 de marzo de 2026, 11:15 PM  
+**Autor**: Marcela Jimenez (con GitHub Copilot)

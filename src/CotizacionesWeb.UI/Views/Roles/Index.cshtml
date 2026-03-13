@@ -22,22 +22,36 @@
     </div>
 </div>
 
-<!-- Filters -->
-<div class="row mb-3">
-    <div class="col-md-6">
-        <div class="input-group">
-            <div class="input-group-prepend">
-                <span class="input-group-text"><i class="fas fa-search"></i></span>
-            </div>
-            <input type="text" id="filterName" class="form-control" placeholder="Filtrar por nombre...">
+<!-- Filtros con Card Colapsable -->
+<div class="card card-filtros-custom mb-3">
+    <div class="card-header">
+        <h3 class="card-title">
+            <i class="fas fa-filter"></i> Filtros de Búsqueda
+        </h3>
+        <div class="card-tools">
+            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                <i class="fas fa-minus"></i>
+            </button>
         </div>
     </div>
-    <div class="col-md-6">
-        <select id="filterStatus" class="form-control">
-            <option value="">Todos los estados</option>
-            <option value="true">Activos</option>
-            <option value="false">Inactivos</option>
-        </select>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    </div>
+                    <input type="text" id="filterName" class="form-control" placeholder="Filtrar por nombre...">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <select id="filterStatus" class="form-control">
+                    <option value="">Todos los estados</option>
+                    <option value="true">Activos</option>
+                    <option value="false">Inactivos</option>
+                </select>
+            </div>
+        </div>
     </div>
 </div>
 

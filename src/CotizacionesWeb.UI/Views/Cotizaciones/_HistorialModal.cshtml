@@ -1,0 +1,97 @@
+@model List<CotizacionesWeb.UI.Models.HistorialViewModel>
+
+<div class="modal-header modal-header-custom">
+    <h5 class="modal-title">
+        <i class="fas fa-history"></i> Historial de Cotización @ViewBag.CotizacionId
+    </h5>
+    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
+<div class="modal-body">
+    @if (Model.Any())
+    {
+        <div class="timeline">
+            @foreach (var evento in Model)
+            {
+                <div class="time-label">
+                    <span class="bg-primary">@evento.FechaEvento.ToString("dd/MM/yyyy HH:mm")</span>
+                </div>
+                <div>
+                    <i class="fas @ObtenerIconoEvento(evento.TipoEvento) bg-@ObtenerColorEvento(evento.TipoEvento)"></i>
+                    <div class="timeline-item">
+                        <span class="time">
+                            <i class="fas fa-clock"></i> @evento.FechaEvento.ToString("HH:mm")
+                        </span>
+                        <h3 class="timeline-header">
+                            <strong>@evento.TipoEvento</strong>
+                            @if (!string.IsNullOrEmpty(evento.NombreUsuario))
+                            {
+                                <span> - @evento.NombreUsuario</span>
+                            }
+                        </h3>
+                        @if (!string.IsNullOrEmpty(evento.Comentario))
+                        {
+                            <div class="timeline-body">
+                                @evento.Comentario
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            <div>
+                <i class="fas fa-clock bg-gray"></i>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="text-center text-muted p-4">
+            <i class="fas fa-inbox fa-3x mb-3"></i>
+            <p>No hay eventos registrados para esta cotización</p>
+        </div>
+    }
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+        <i class="fas fa-times"></i> Cerrar
+    </button>
+</div>
+
+@functions {
+    string ObtenerIconoEvento(string tipoEvento)
+    {
+        return tipoEvento switch
+        {
+            "Creada" => "fa-plus-circle",
+            "Versión Generada" => "fa-code-branch",
+            "Modificada" => "fa-edit",
+            "Enviada" => "fa-paper-plane",
+            "Aprobada" => "fa-check-circle",
+            "Rechazada" => "fa-times-circle",
+            "Archivada" => "fa-archive",
+            "Reactivada" => "fa-redo",
+            "Cancelada" => "fa-ban",
+            "Enviada a ERP" => "fa-server",
+            _ => "fa-info-circle"
+        };
+    }
+
+    string ObtenerColorEvento(string tipoEvento)
+    {
+        return tipoEvento switch
+        {
+            "Creada" => "success",
+            "Versión Generada" => "info",
+            "Modificada" => "warning",
+            "Enviada" => "primary",
+            "Aprobada" => "success",
+            "Rechazada" => "danger",
+            "Archivada" => "secondary",
+            "Reactivada" => "info",
+            "Cancelada" => "warning",
+            "Enviada a ERP" => "primary",
+            _ => "secondary"
+        };
+    }
+}

@@ -1,0 +1,108 @@
+@model List<CotizacionesWeb.UI.Models.CotizacionVersionViewModel>
+
+<div class="modal-header modal-header-custom">
+    <h5 class="modal-title">
+        <i class="fas fa-code-branch"></i> Versiones de Cotización @ViewBag.CotizacionId
+    </h5>
+    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+</div>
+<div class="modal-body">
+    @if (Model.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-hover table-custom">
+                <thead>
+                    <tr>
+                        <th>Versión</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var version in Model)
+                    {
+                        <tr>
+                            <td>
+                                <strong>v@version.NumeroVersion</strong>
+                                @if (version.VersionActual == '1')
+                                {
+                                    <span class="badge badge-primary ml-2">
+                                        <i class="fas fa-check"></i> Actual
+                                    </span>
+                                }
+                            </td>
+                            <td>@version.FechaVersion.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <div>
+                                    <strong>@version.NombreInteresado</strong>
+                                </div>
+                                @if (!string.IsNullOrEmpty(version.EmpresaInteresado))
+                                {
+                                    <small class="text-muted">@version.EmpresaInteresado</small>
+                                }
+                            </td>
+                            <td>
+                                <strong>@version.Total.ToString("C2")</strong>
+                            </td>
+                            <td>
+                                @if (version.VersionActual == '1')
+                                {
+                                    <span class="badge badge-success">Vigente</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-secondary">Histórica</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" 
+                                            class="btn btn-info btn-ver-detalle-version" 
+                                            data-version-id="@version.VersionId"
+                                            title="Ver Detalle"
+                                            requiere-permiso="COT_VIEW">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-primary btn-historial-version" 
+                                            data-version-id="@version.VersionId"
+                                            title="Ver Historial"
+                                            requiere-permiso="COT_VIEW">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                    <button type="button" 
+                                            class="btn btn-warning btn-copiar-version" 
+                                            data-cotizacion-id="@version.CotizacionId"
+                                            data-version-id="@version.VersionId"
+                                            data-es-actual="@(version.VersionActual == '1' ? "true" : "false")"
+                                            data-numero-version="@version.NumeroVersion"
+                                            title="Copiar Versión"
+                                            requiere-permiso="COT_EDIT">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="text-center text-muted p-4">
+            <i class="fas fa-inbox fa-3x mb-3"></i>
+            <p>No se encontraron versiones para esta cotización</p>
+        </div>
+    }
+</div>
+<div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+        <i class="fas fa-times"></i> Cerrar
+    </button>
+</div>
