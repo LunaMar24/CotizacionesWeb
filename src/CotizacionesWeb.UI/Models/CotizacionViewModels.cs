@@ -12,6 +12,7 @@ public class CotizacionViewModel
     public char EstadoActual { get; set; }
     public string EstadoActualTexto { get; set; } = string.Empty;
     public int VersionActual { get; set; }
+    public decimal NumeroVersion { get; set; } // Número específico de la versión (ej: 1.0, 2.0)
     public DateTime FechaCreacion { get; set; }
     public DateTime? FechaUltimaActualizacion { get; set; }
     public decimal MontoCotizacion { get; set; }
@@ -58,7 +59,7 @@ public class CotizacionVersionViewModel
     public string EmailInteresado { get; set; } = string.Empty;
     public string EmpresaInteresado { get; set; } = string.Empty;
     public decimal Total { get; set; }
-    public char VersionActual { get; set; }
+    public int VersionActual { get; set; } // Cambiado de char a int
     public string? NombreUsuarioCreacion { get; set; }
 }
 

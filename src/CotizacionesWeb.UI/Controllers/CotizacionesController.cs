@@ -58,6 +58,7 @@ public class CotizacionesController : Controller
                     EstadoActual = c.EstadoActual,
                     EstadoActualTexto = ObtenerTextoEstado(c.EstadoActual),
                     VersionActual = c.VersionActual,
+                    NumeroVersion = c.NumeroVersion, // Incluir el número específico de versión
                     FechaCreacion = c.FechaCreacion,
                     FechaUltimaActualizacion = c.FechaUltimaActualizacion,
                     MontoCotizacion = c.MontoCotizacion,

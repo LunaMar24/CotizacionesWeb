@@ -81,7 +81,8 @@ public class StateTransitionValidator
     /// <returns>True si puede enviarse al ERP</returns>
     public static bool CanSendToERP(char state)
     {
-        // Solo estados Aprobada, Enviada, Aceptada pueden ir al ERP
-        return state is 'A' or 'E' or 'T';
+        // Solo estado Aceptada puede ir al ERP
+        // El envío al ERP solo tiene sentido cuando el cliente ya aceptó la cotización
+        return state == 'T';
     }
 }
