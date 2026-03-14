@@ -5,7 +5,7 @@
 $(document).ready(function() {
     
     // ============================================
-    // ANIMACI”N DE N⁄MEROS (Counter Animation)
+    // ANIMACI√ìN DE N√öMEROS (Counter Animation)
     // ============================================
     
     function animateValue(element, start, end, duration) {
@@ -22,12 +22,12 @@ $(document).ready(function() {
         window.requestAnimationFrame(step);
     }
     
-    // Animar los n˙meros de las estadÌsticas
+    // Animar los n√∫meros de las estad√≠sticas
     $('.small-box .inner h3, .info-box-number').each(function() {
         const $this = $(this);
         const text = $this.text().trim();
         
-        // Solo animar si es un n˙mero
+        // Solo animar si es un n√∫mero
         if (!isNaN(text) && text !== '') {
             const finalValue = parseInt(text);
             $this.text('0');
@@ -36,7 +36,7 @@ $(document).ready(function() {
     });
     
     // ============================================
-    // ACTUALIZACI”N AUTOM¡TICA DEL RELOJ
+    // ACTUALIZACI√ìN AUTOM√ÅTICA DEL RELOJ
     // ============================================
     
     function updateClock() {
@@ -68,11 +68,11 @@ $(document).ready(function() {
         let greeting = '';
         
         if (hour < 12) {
-            greeting = '°Buenos dÌas!';
+            greeting = '¬°Buenos d√≠as!';
         } else if (hour < 18) {
-            greeting = '°Buenas tardes!';
+            greeting = '¬°Buenas tardes!';
         } else {
-            greeting = '°Buenas noches!';
+            greeting = '¬°Buenas noches!';
         }
         
         // Solo si existe un elemento para mostrar el saludo

@@ -1,11 +1,11 @@
-// ============================================
+ï»¿// ============================================
 // ROLES INDEX - JavaScript
 // ============================================
 
 $(document).ready(function() {
     
     // ============================================
-    // FILTROS DE BÚSQUEDA
+    // FILTROS DE BUSQUEDA
     // ============================================
     
     function filterTable() {
@@ -47,7 +47,7 @@ $(document).ready(function() {
         });
     });
     
-    // Submit del formulario de edición
+    // Submit del formulario de ediciÃ³n
     $(document).on('submit', '#updateRolForm', function(e) {
         e.preventDefault();
         
@@ -105,15 +105,15 @@ $(document).ready(function() {
     });
     
     // ============================================
-    // SELECCIONAR TODOS LOS PERMISOS POR CATEGORÍA
+    // SELECCIONAR TODOS LOS PERMISOS POR CATEGORIA
     // ============================================
     
-    // Manejar cambio en el checkbox de categoría
+    // Manejar cambio en el checkbox de categorÃ­a
     $(document).on('change', '.categoria-checkbox', function() {
         const categoria = $(this).closest('.categoria-header').data('categoria');
         const isChecked = $(this).is(':checked');
         
-        // Marcar/desmarcar todos los permisos de esta categoría
+        // Marcar/desmarcar todos los permisos de esta categorÃ­a
         $(`.permiso-checkbox[data-categoria="${categoria}"]`).prop('checked', isChecked);
         
         // Feedback visual
@@ -124,7 +124,7 @@ $(document).ready(function() {
         }, 200);
     });
     
-    // Actualizar checkbox de categoría cuando cambian los permisos individuales
+    // Actualizar checkbox de categorÃ­a cuando cambian los permisos individuales
     $(document).on('change', '.permiso-checkbox', function() {
         const categoria = $(this).data('categoria');
         const categoriaGroup = $(`.categoria-header[data-categoria="${categoria}"]`);
@@ -149,7 +149,7 @@ $(document).ready(function() {
         }
     });
     
-    // Inicializar estado de checkboxes de categoría al cargar el modal
+    // Inicializar estado de checkboxes de categorÃ­a al cargar el modal
     $(document).on('shown.bs.modal', '#permisosManageModal', function() {
         $('.categoria-group').each(function() {
             const categoriaGroup = $(this);
@@ -184,6 +184,7 @@ $(document).ready(function() {
         
         $('#deleteRolId').val(rolId);
         $('#deleteRolNombre').text(rolNombre);
+        hideModalAlert('deleteRolAlert');
         
         if (cantUsuarios > 0) {
             $('#deleteWarning').show();
@@ -200,6 +201,8 @@ $(document).ready(function() {
         const rolId = $('#deleteRolId').val();
         const token = $('input[name="__RequestVerificationToken"]').val();
         
+        $(this).prop('disabled', true);
+        
         $.post('/Roles/Delete', {
             id: rolId,
             __RequestVerificationToken: token
@@ -209,17 +212,13 @@ $(document).ready(function() {
                 showNotification('success', response.message);
                 setTimeout(() => location.reload(), 1500);
             } else {
-                showNotification('error', response.message);
+                showModalAlert('deleteRolAlert', response.message);
+                $('#confirmDeleteBtn').prop('disabled', false);
             }
         }).fail(function() {
-            showNotification('error', 'Error al eliminar el rol.');
+            showModalAlert('deleteRolAlert', 'Error al eliminar el rol.');
+            $('#confirmDeleteBtn').prop('disabled', false);
         });
     });
     
-    // ============================================
-    // NOTIFICACIONES
-    // ============================================
-    
-    // Usar la función global de notificaciones definida en site.js
 });
-
