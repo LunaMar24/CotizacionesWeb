@@ -30,7 +30,6 @@ public record CotizacionVersionDto(
     string Moneda,
     decimal? TipoCambio,
     char VersionActual,
-    int? UsuarioCreacion,
     string? Notas
 );
 

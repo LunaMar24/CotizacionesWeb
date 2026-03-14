@@ -17,7 +17,6 @@ public class CotizacionVersion : BaseEntity
     public string Moneda { get; set; } = string.Empty;
     public decimal? TipoCambio { get; set; }
     public char VersionActual { get; set; }
-    public int? UsuarioCreacion { get; set; }
     public string? Notas { get; set; }
     
     public Cotizacion Cotizacion { get; set; } = null!;

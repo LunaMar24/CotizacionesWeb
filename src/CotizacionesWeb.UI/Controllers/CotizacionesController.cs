@@ -118,8 +118,7 @@ public class CotizacionesController : Controller
                 EmailInteresado = v.EmailInteresado,
                 EmpresaInteresado = v.EmpresaInteresado,
                 Total = v.Total,
-                VersionActual = v.VersionActual,
-                UsuarioCreacion = v.UsuarioCreacion
+                VersionActual = v.VersionActual
             }).ToList();
 
             ViewBag.CotizacionId = cotizacionId;

@@ -23,9 +23,6 @@ public class CotizacionConfiguration : IEntityTypeConfiguration<Cotizacion>
         builder.Property(c => c.VersionActual)
             .IsRequired();
         
-        builder.Property(c => c.FechaCreacion)
-            .IsRequired();
-        
         builder.Property(c => c.MontoCotizacion)
             .HasColumnType("decimal(18,2)")
             .IsRequired();
