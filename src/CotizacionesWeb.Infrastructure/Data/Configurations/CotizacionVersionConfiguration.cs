@@ -62,8 +62,7 @@ public class CotizacionVersionConfiguration : IEntityTypeConfiguration<Cotizacio
             .HasColumnType("decimal(18,2)");
         
         builder.Property(cv => cv.VersionActual)
-            .HasMaxLength(1)
-            .IsRequired();
+            .IsRequired(); // Cambiado de char(1) a int
         
         builder.Property(cv => cv.Notas)
             .HasMaxLength(2000);

@@ -163,6 +163,7 @@
                             <th>MONTO</th>
                             <th>FECHA CREACIÓN</th>
                             <th>FECHA ENVÍO</th>
+                            <th class="text-center">ESTADOS</th>
                             <th class="text-center">ACCIONES</th>
                         </tr>
                     </thead>
@@ -216,7 +217,12 @@
                                     }
                                 </td>
                                 <td>
-                                    <span class="badge badge-version">v@cotizacion.VersionActual</span>
+                                    @{
+                                        var versionText = cotizacion.NumeroVersion > 0 
+                                            ? $"v{cotizacion.NumeroVersion:0.0}" 
+                                            : $"v{cotizacion.VersionActual}";
+                                    }
+                                    <span class="badge badge-version">@versionText</span>
                                 </td>
                                 <td>
                                     <strong class="text-dark">@cotizacion.MontoCotizacion.ToString("C2")</strong>
@@ -234,8 +240,116 @@
                                         <span class="text-muted">-</span>
                                     }
                                 </td>
+                                
+                                <!-- NUEVA COLUMNA: Botones de Transición de Estados -->
+                                <td class="text-center">
+                                    <div class="btn-group-states">
+                                        @switch (cotizacion.EstadoActual)
+                                        {
+                                            case 'B': // Borrador
+                                                <button type="button" 
+                                                        class="btn-state btn-state-warning btn-enviar-aprobacion" 
+                                                        data-id="@cotizacion.CotizacionId"
+                                                        title="Enviar a Aprobación"
+                                                        requiere-permiso="COT_EDIT">
+                                                    <i class="fas fa-paper-plane"></i>
+                                                </button>
+                                                <button type="button" 
+                                                        class="btn-state btn-state-dark btn-archivar" 
+                                                        data-id="@cotizacion.CotizacionId"
+                                                        title="Archivar"
+                                                        requiere-permiso="COT_EDIT">
+                                                    <i class="fas fa-archive"></i>
+                                                </button>
+                                                break;
+                                                
+                                            case 'P': // PendienteAprobacion
+                                                <button type="button" 
+                                                        class="btn-state btn-state-success btn-aprobar" 
+                                                        data-id="@cotizacion.CotizacionId"
+                                                        title="Aprobar"
+                                                        requiere-permiso="COT_EDIT">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button type="button" 
+                                                        class="btn-state btn-state-warning btn-devolver-borrador" 
+                                                        data-id="@cotizacion.CotizacionId"
+                                                        title="Devolver a Borrador"
+                                                        requiere-permiso="COT_EDIT">
+                                                    <i class="fas fa-undo"></i>
+                                                </button>
+                                                break;
+                                                
+                                            case 'A': // Aprobada
+                                                <button type="button" 
+                                                        class="btn-state btn-state-info btn-enviar-cliente" 
+                                                        data-id="@cotizacion.CotizacionId"
+                                                        title="Enviar al Cliente"
+                                                        requiere-permiso="COT_EDIT">
+                                                    <i class="fas fa-envelope"></i>
+                                                </button>
+                                                break;
+                                                
+                                            case 'E': // Enviada
+                                                <button type="button" 
+                                                        class="btn-state btn-state-primary btn-marcar-aceptada" 
+                                                        data-id="@cotizacion.CotizacionId"
+                                                        title="Marcar como Aceptada"
+                                                        requiere-permiso="COT_EDIT">
+                                                    <i class="fas fa-thumbs-up"></i>
+                                                </button>
+                                                <button type="button" 
+                                                        class="btn-state btn-state-danger btn-marcar-rechazada" 
+                                                        data-id="@cotizacion.CotizacionId"
+                                                        title="Marcar como Rechazada"
+                                                        requiere-permiso="COT_EDIT">
+                                                    <i class="fas fa-thumbs-down"></i>
+                                                </button>
+                                                break;
+                                                
+                                            case 'T': // Aceptada
+                                                <button type="button" 
+                                                        class="btn-state btn-state-dark btn-archivar" 
+                                                        data-id="@cotizacion.CotizacionId"
+                                                        title="Archivar"
+                                                        requiere-permiso="COT_EDIT">
+                                                    <i class="fas fa-archive"></i>
+                                                </button>
+                                                @if (cotizacion.EnviadoERP != 'S')
+                                                {
+                                                    <button type="button" 
+                                                            class="btn-state btn-state-primary btn-enviar-erp" 
+                                                            data-id="@cotizacion.CotizacionId"
+                                                            title="Enviar al ERP"
+                                                            requiere-permiso="COT_EDIT">
+                                                        <i class="fas fa-database"></i>
+                                                    </button>
+                                                }
+                                                break;
+                                                
+                                            case 'R': // Rechazada
+                                                <button type="button" 
+                                                        class="btn-state btn-state-dark btn-archivar" 
+                                                        data-id="@cotizacion.CotizacionId"
+                                                        title="Archivar"
+                                                        requiere-permiso="COT_EDIT">
+                                                    <i class="fas fa-archive"></i>
+                                                </button>
+                                                break;
+                                                
+                                            case 'X': // Archivada
+                                                <span class="text-muted">
+                                                    <i class="fas fa-lock"></i> Sin acciones
+                                                </span>
+                                                break;
+                                        }
+                                    </div>
+                                </td>
+
+                                <!-- COLUMNA: Acciones Generales -->
                                 <td class="text-center">
                                     <div class="btn-group-actions">
+                                        <!-- Botones comunes para todos los estados -->
                                         <button type="button" 
                                                 class="btn-action btn-action-edit btn-detalle" 
                                                 data-id="@cotizacion.CotizacionId"
@@ -257,6 +371,8 @@
                                                 requiere-permiso="COT_VIEW">
                                             <i class="fas fa-code-branch"></i>
                                         </button>
+
+                                        @* Copiar - Disponible para cualquier estado con versión actual *@
                                         <button type="button" 
                                                 class="btn-action btn-action-copy btn-copiar" 
                                                 data-id="@cotizacion.CotizacionId"
@@ -264,6 +380,8 @@
                                                 requiere-permiso="COT_EDIT">
                                             <i class="fas fa-copy"></i>
                                         </button>
+
+                                        @* Duplicar - Disponible para cualquier estado *@
                                         <button type="button" 
                                                 class="btn-action btn-action-delete btn-duplicar" 
                                                 data-id="@cotizacion.CotizacionId"

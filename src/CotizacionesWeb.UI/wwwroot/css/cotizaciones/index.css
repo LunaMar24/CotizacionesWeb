@@ -321,6 +321,129 @@
     background-color: #dc2626;
 }
 
+/* Botones específicos por estado según lineamientos */
+.btn-action-warning {
+    background-color: #f59e0b; /* Naranja - Enviar a aprobación, Devolver a borrador */
+}
+
+.btn-action-warning:hover {
+    background-color: #d97706;
+}
+
+.btn-action-success {
+    background-color: #10b981; /* Verde - Aprobar */
+}
+
+.btn-action-success:hover {
+    background-color: #059669;
+}
+
+.btn-action-primary {
+    background-color: #1e40af; /* Azul oscuro - Marcar aceptada, Enviar ERP */
+}
+
+.btn-action-primary:hover {
+    background-color: #1d4ed8;
+}
+
+.btn-action-danger {
+    background-color: #dc3545; /* Rojo - Marcar rechazada */
+}
+
+.btn-action-danger:hover {
+    background-color: #c82333;
+}
+
+.btn-action-dark {
+    background-color: #343a40; /* Negro - Archivar */
+}
+
+.btn-action-dark:hover {
+    background-color: #23272b;
+}
+
+/* Botones específicos de transición de estado */
+.btn-group-states {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn-state {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+}
+
+.btn-state:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-state:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Colores para botones de estado (más compactos) */
+.btn-state-warning {
+    background-color: #f59e0b; /* Naranja - Enviar a aprobación, Devolver */
+}
+
+.btn-state-warning:hover {
+    background-color: #d97706;
+}
+
+.btn-state-success {
+    background-color: #10b981; /* Verde - Aprobar */
+}
+
+.btn-state-success:hover {
+    background-color: #059669;
+}
+
+.btn-state-info {
+    background-color: #17a2b8; /* Azul claro - Enviar cliente */
+}
+
+.btn-state-info:hover {
+    background-color: #138496;
+}
+
+.btn-state-primary {
+    background-color: #1e40af; /* Azul oscuro - Aceptar, ERP */
+}
+
+.btn-state-primary:hover {
+    background-color: #1d4ed8;
+}
+
+.btn-state-danger {
+    background-color: #dc3545; /* Rojo - Rechazar */
+}
+
+.btn-state-danger:hover {
+    background-color: #c82333;
+}
+
+.btn-state-dark {
+    background-color: #343a40; /* Negro - Archivar */
+}
+
+.btn-state-dark:hover {
+    background-color: #23272b;
+}
+
 /* Footer de tabla */
 .table-footer-custom {
     background: white;

@@ -9,6 +9,7 @@ public record CotizacionListDto(
     string EmpresaInteresado,
     char EstadoActual,
     int VersionActual,
+    decimal NumeroVersion, // Número específico de la versión actual (ej: 1.0, 2.0, etc.)
     DateTime FechaCreacion,
     DateTime? FechaUltimaActualizacion,
     decimal MontoCotizacion,
@@ -34,7 +35,7 @@ public record CotizacionVersionDto(
     decimal Total,
     string Moneda,
     decimal? TipoCambio,
-    char VersionActual,
+    int VersionActual, // Cambiado de char a int
     string? Notas
 );
 
