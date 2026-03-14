@@ -47,12 +47,14 @@ public class CotizacionService : ICotizacionService
         // Filtrar por rango de fechas
         if (request.FechaDesde.HasValue)
         {
-            query = query.Where(c => c.CreatedAt >= request.FechaDesde.Value);
+            var fechaDesdeInicioDia = request.FechaDesde.Value.Date; // 00:00:00
+            query = query.Where(c => c.CreatedAt >= fechaDesdeInicioDia);
         }
 
         if (request.FechaHasta.HasValue)
         {
-            query = query.Where(c => c.CreatedAt <= request.FechaHasta.Value);
+            var fechaHastaFinDia = request.FechaHasta.Value.Date.AddDays(1).AddTicks(-1); // 23:59:59.999
+            query = query.Where(c => c.CreatedAt <= fechaHastaFinDia);
         }
 
         var cotizaciones = await query
