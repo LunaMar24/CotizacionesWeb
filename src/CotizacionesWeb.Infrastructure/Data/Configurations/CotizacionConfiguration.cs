@@ -27,12 +27,30 @@ public class CotizacionConfiguration : IEntityTypeConfiguration<Cotizacion>
             .HasColumnType("decimal(18,2)")
             .IsRequired();
         
+        // Configuración de nuevos campos según lineamientos funcionales
+        builder.Property(c => c.FechaAceptacion)
+            .HasColumnType("datetime2");
+        
+        builder.Property(c => c.FechaRechazo)
+            .HasColumnType("datetime2");
+        
+        builder.Property(c => c.EnviadoERP)
+            .HasMaxLength(1)
+            .IsRequired()
+            .HasDefaultValue('N');
+        
+        builder.Property(c => c.FechaEnvioERP)
+            .HasColumnType("datetime2");
+        
         builder.Property(c => c.CreatedBy)
             .HasMaxLength(100)
             .IsRequired();
         
         builder.Property(c => c.ModifiedBy)
             .HasMaxLength(100);
+        
+        // Check constraint para EnviadoERP
+        builder.HasCheckConstraint("CK_Cotizacion_EnviadoERP", "[EnviadoERP] IN ('S', 'N')");
         
         builder.HasIndex(c => c.CotizacionId)
             .IsUnique();

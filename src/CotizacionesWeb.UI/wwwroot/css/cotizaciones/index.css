@@ -209,6 +209,11 @@
     color: white;
 }
 
+.badge-primary-custom {
+    background-color: #1e40af; /* Azul oscuro para Aceptada - mejor contraste */
+    color: white;
+}
+
 .badge-info-custom {
     background-color: #17a2b8;
     color: white;
@@ -225,8 +230,8 @@
 }
 
 .badge-warning-custom {
-    background-color: #ffc107;
-    color: #1f2937;
+    background-color: #f59e0b; /* Naranja más vibrante para Pendiente Aprobación */
+    color: white;
 }
 
 .badge-dark-custom {

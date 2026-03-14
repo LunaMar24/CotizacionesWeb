@@ -28,11 +28,14 @@ public class CotizacionesController : Controller
             var estadosSeleccionados = new List<char>();
             
             if (filtros.FiltroBorrador) estadosSeleccionados.Add('B');
-            if (filtros.FiltroEnviada) estadosSeleccionados.Add('E');
+            if (filtros.FiltroPendienteAprobacion) estadosSeleccionados.Add('P');
             if (filtros.FiltroAprobada) estadosSeleccionados.Add('A');
+            if (filtros.FiltroEnviada) estadosSeleccionados.Add('E');
+            if (filtros.FiltroAceptada) estadosSeleccionados.Add('T');
             if (filtros.FiltroRechazada) estadosSeleccionados.Add('R');
+            // Mantener Cancelada por retrocompatibilidad temporal
             if (filtros.FiltroCancelada) estadosSeleccionados.Add('C');
-            if (filtros.FiltroArchivada) estadosSeleccionados.Add('X');
+            // Nota: Archivada (X) NO se incluye en filtros según lineamientos
 
             var request = new GetCotizacionesListRequest(
                 estadosSeleccionados.Any() ? estadosSeleccionados : null,
@@ -58,7 +61,12 @@ public class CotizacionesController : Controller
                     FechaCreacion = c.FechaCreacion,
                     FechaUltimaActualizacion = c.FechaUltimaActualizacion,
                     MontoCotizacion = c.MontoCotizacion,
-                    FechaEnvio = c.FechaEnvio
+                    FechaEnvio = c.FechaEnvio,
+                    // Nuevos campos según lineamientos funcionales
+                    FechaAceptacion = c.FechaAceptacion,
+                    FechaRechazo = c.FechaRechazo,
+                    EnviadoERP = c.EnviadoERP,
+                    FechaEnvioERP = c.FechaEnvioERP
                 }).ToList(),
                 Filtros = filtros
             };
@@ -219,11 +227,13 @@ public class CotizacionesController : Controller
         return estado switch
         {
             'B' => "Borrador",
-            'E' => "Enviada",
+            'P' => "Pendiente Aprobación",
             'A' => "Aprobada",
+            'E' => "Enviada",
+            'T' => "Aceptada",
             'R' => "Rechazada",
-            'C' => "Cancelada",
-            'X' => "Archivada",
+            'C' => "Cancelada", // Legacy - mantener por retrocompatibilidad
+            'X' => "Archivada", // Legacy - mantener por retrocompatibilidad
             _ => "Desconocido"
         };
     }

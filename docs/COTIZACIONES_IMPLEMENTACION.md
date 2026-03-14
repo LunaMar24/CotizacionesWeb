@@ -1,7 +1,10 @@
 # MODULO DE COTIZACIONES - IMPLEMENTACION COMPLETA
 
 **Fecha**: 12 de marzo de 2026, 11:15 PM  
-**Fase**: Listado, Operaciones Basicas y UI Moderna
+**Fase**: Listado, Operaciones Basicas y UI Moderna  
+**Actualizacion**: Ver `COTIZACIONES_DOMINIO_FUNCIONAL.md` para nuevos lineamientos de estados y transiciones
+
+?? **IMPORTANTE**: Este documento describe la implementacion actual. Para los nuevos lineamientos funcionales, flujos de estados y reglas de negocio actualizadas, consultar el documento `COTIZACIONES_DOMINIO_FUNCIONAL.md`.
 
 ---
 

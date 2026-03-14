@@ -12,7 +12,12 @@ public record CotizacionListDto(
     DateTime FechaCreacion,
     DateTime? FechaUltimaActualizacion,
     decimal MontoCotizacion,
-    DateTime? FechaEnvio
+    DateTime? FechaEnvio,
+    // Nuevos campos según lineamientos funcionales
+    DateTime? FechaAceptacion,
+    DateTime? FechaRechazo,
+    char EnviadoERP,
+    DateTime? FechaEnvioERP
 );
 
 public record CotizacionVersionDto(
