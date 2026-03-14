@@ -4,13 +4,12 @@
 
 $(document).ready(function() {
     
-    // Los modales se centran autom·ticamente con CSS
-    // Este archivo est· disponible para funcionalidades adicionales futuras
+    // Los modales se centran autom√°ticamente con CSS
+    // Este archivo est√° disponible para funcionalidades adicionales futuras
     
-    // Agregar animaciÛn al contenido din·mico
+    // Agregar animaci√≥n al contenido din√°mico
     $('.modal').on('show.bs.modal', function() {
         $(this).find('.modal-content').addClass('fade-in-modal');
     });
     
 });
-

@@ -26,7 +26,7 @@
 <div class="card card-filtros-custom mb-3">
   <div class="card-header">
     <h3 class="card-title">
-      <i class="fas fa-filter"></i> Filtros de Búsqueda
+      <i class="fas fa-filter"></i> Filtros de BÃºsqueda
     </h3>
     <div class="card-tools">
       <button type="button" class="btn btn-tool" data-card-widget="collapse">
@@ -75,7 +75,7 @@
               <th>Roles</th>
               <th>Estado</th>
               <th>Fecha Registro</th>
-              <th>Último Acceso</th>
+              <th>Ãšltimo Acceso</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
@@ -162,7 +162,7 @@
                             data-usuario-id="@usuario.Id"
                             data-usuario-nombre="@usuario.Nombre"
                             requiere-permiso="USR_RESET_PWD"
-                            title="Resetear Contraseña">
+                            title="Resetear ContraseÃ±a">
                       <i class="fas fa-key"></i>
                     </button>
                     <button type="button"
@@ -211,18 +211,18 @@
 <div class="modal fade" id="rolesManageModal" tabindex="-1" role="dialog">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content" id="rolesManageContent">
-      <!-- Contenido cargado dinámicamente -->
+      <!-- Contenido cargado dinÃ¡micamente -->
     </div>
   </div>
 </div>
 
-<!-- Modal para resetear contraseña -->
+<!-- Modal para resetear contraseÃƒÂ±a -->
 <div class="modal fade" id="resetPasswordModal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header modal-header-custom">
         <h5 class="modal-title">
-          <i class="fas fa-key"></i> Resetear Contraseña
+          <i class="fas fa-key"></i> Resetear ContraseÃ±a
         </h5>
         <button type="button" class="close" data-dismiss="modal">
           <span>&times;</span>
@@ -231,35 +231,42 @@
       <form id="resetPasswordForm">
         <div class="modal-body">
           <input type="hidden" id="resetPasswordUsuarioId" />
-          <p>¿Está seguro que desea resetear la contraseña para <strong id="resetPasswordUsuarioNombre"></strong>?</p>
+          
+          <!-- Contenedor para mensajes de validaciÃƒÂ³n dentro del modal -->
+          <div id="resetPasswordAlert" class="alert alert-danger d-none" role="alert">
+            <i class="fas fa-exclamation-circle mr-2"></i>
+            <span id="resetPasswordAlertMessage"></span>
+          </div>
+          
+          <p>Â¿EstÃ¡ seguro que desea resetear la contraseÃ±a para <strong id="resetPasswordUsuarioNombre"></strong>?</p>
 
           <div class="form-group">
-            <label for="newPassword">Nueva Contraseña</label>
+            <label for="newPassword">Nueva ContraseÃ±a</label>
             <input type="password" class="form-control" id="newPassword" required minlength="6">
-            <small class="form-text text-muted">Mínimo 6 caracteres</small>
+            <small class="form-text text-muted">MÃ­nimo 6 caracteres</small>
           </div>
 
           <div class="form-group">
-            <label for="confirmNewPassword">Confirmar Contraseña</label>
+            <label for="confirmNewPassword">Confirmar ContraseÃ±a</label>
             <input type="password" class="form-control" id="confirmNewPassword" required>
           </div>
         </div>
         <div class="modal-footer modal-footer-custom">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary">Resetear Contraseña</button>
+          <button type="submit" class="btn btn-primary">Resetear ContraseÃ±a</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- Modal de confirmación para eliminar -->
+<!-- Modal de confirmaciÃƒÂ³n para eliminar -->
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1" role="dialog">
   <div class="modal-dialog" role="document">
     <div class="modal-content">
       <div class="modal-header bg-danger text-white">
         <h5 class="modal-title">
-          <i class="fas fa-exclamation-triangle"></i> Confirmar Eliminación
+          <i class="fas fa-exclamation-triangle"></i> Confirmar EliminaciÃ³n
         </h5>
         <button type="button" class="close text-white" data-dismiss="modal">
           <span>&times;</span>
@@ -267,8 +274,15 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="deleteUsuarioId" />
-        <p>¿Está seguro que desea eliminar el usuario <strong id="deleteUsuarioNombre"></strong>?</p>
-        <p class="text-danger"><i class="fas fa-exclamation-circle"></i> Esta acción no se puede deshacer.</p>
+        
+        <!-- Contenedor para mensajes de error dentro del modal -->
+        <div id="deleteUsuarioAlert" class="alert alert-danger d-none" role="alert">
+          <i class="fas fa-exclamation-circle mr-2"></i>
+          <span id="deleteUsuarioAlertMessage"></span>
+        </div>
+        
+        <p>Â¿EstÃ¡ seguro que desea eliminar el usuario <strong id="deleteUsuarioNombre"></strong>?</p>
+        <p class="text-danger"><i class="fas fa-exclamation-circle"></i> Esta acciÃ³n no se puede deshacer.</p>
       </div>
       <div class="modal-footer modal-footer-custom">
         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>

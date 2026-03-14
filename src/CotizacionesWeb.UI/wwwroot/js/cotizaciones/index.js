@@ -45,8 +45,8 @@ $(document).ready(function () {
         const button = $(this);
         
         mostrarModalConfirmacion(
-            'Copiar Version',
-            'Esta seguro de que desea crear una nueva version de esta cotizacion?',
+            'Copiar Versión',
+            '¿Está seguro de que desea crear una nueva versión de esta cotización?',
             'info',
             function() {
                 copiarVersion(cotizacionId, button);
@@ -60,9 +60,9 @@ $(document).ready(function () {
         const button = $(this);
         
         mostrarModalConfirmacion(
-            'Duplicar Cotizacion',
-            'Esta seguro de que desea duplicar esta cotizacion?<br><br>' +
-            '<small class="text-muted">Se creara una nueva cotizacion en estado Borrador sin cliente asignado.</small>',
+            'Duplicar Cotización',
+            '¿Está seguro de que desea duplicar esta cotización?<br><br>' +
+            '<small class="text-muted">Se creará una nueva cotización en estado Borrador sin cliente asignado.</small>',
             'warning',
             function() {
                 duplicarCotizacion(cotizacionId, button);
@@ -97,7 +97,7 @@ function copiarVersion(cotizacionId, button) {
             }
         },
         error: function () {
-            showNotification('error', 'Error al copiar la version');
+            showNotification('error', 'Error al copiar la versión');
             button.prop('disabled', false);
         }
     });
@@ -125,7 +125,7 @@ function duplicarCotizacion(cotizacionId, button) {
             }
         },
         error: function () {
-            showNotification('error', 'Error al duplicar la cotizacion');
+            showNotification('error', 'Error al duplicar la cotización');
             button.prop('disabled', false);
         }
     });
@@ -156,7 +156,7 @@ function copiarVersionEspecifica(cotizacionId, versionId, esVersionAntigua, butt
             }
         },
         error: function () {
-            showNotification('error', 'Error al copiar la version');
+            showNotification('error', 'Error al copiar la versión');
             button.prop('disabled', false);
         }
     });
@@ -174,17 +174,17 @@ function inicializarEventosVersiones() {
         const numeroVersion = $(this).attr('data-numero-version');
         const button = $(this);
 
-        let titulo = 'Copiar Version ' + numeroVersion;
-        let mensaje = 'Esta seguro de que desea crear una nueva version basada en la version ' + numeroVersion + '?';
+        let titulo = 'Copiar Versión ' + numeroVersion;
+        let mensaje = '¿Está seguro de que desea crear una nueva versión basada en la versión ' + numeroVersion + '?';
         let tipo = 'info';
         
         if (!esActual) {
-            titulo = 'Advertencia: Version Historica';
+            titulo = 'Advertencia: Versión Histórica';
             mensaje = '<div class="alert alert-warning mb-0">' +
-                      '<strong>ATENCION:</strong> Esta a punto de crear una nueva version basada en una version historica (v' + numeroVersion + ').' +
+                      '<strong>ATENCIÓN:</strong> Está a punto de crear una nueva versión basada en una versión histórica (v' + numeroVersion + ').' +
                       '</div>' +
-                      '<p class="mt-3">Esto reemplazara la version actual vigente de la cotizacion.</p>' +
-                      '<p class="mb-0">Desea continuar?</p>';
+                      '<p class="mt-3">Esto reemplazará la versión actual vigente de la cotización.</p>' +
+                      '<p class="mb-0">¿Desea continuar?</p>';
             tipo = 'warning';
         }
 
@@ -194,11 +194,11 @@ function inicializarEventosVersiones() {
     });
 
     $('.btn-historial-version').on('click', function () {
-        showNotification('info', 'Funcion de historial de version en desarrollo');
+        showNotification('info', 'Función de historial de versión en desarrollo');
     });
 
     $('.btn-ver-detalle-version').on('click', function () {
-        showNotification('info', 'Funcion de detalle de version en desarrollo');
+        showNotification('info', 'Función de detalle de versión en desarrollo');
     });
 }
 

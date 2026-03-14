@@ -104,7 +104,7 @@ $(document).ready(function() {
     });
     
     // ============================================
-    // RESETEAR CONTRASENA
+    // RESETEAR CONTRASEÑA
     // ============================================
     
     $('.btn-reset-password').on('click', function() {
@@ -115,6 +115,7 @@ $(document).ready(function() {
         $('#resetPasswordUsuarioNombre').text(usuarioNombre);
         $('#newPassword').val('');
         $('#confirmNewPassword').val('');
+        hideModalAlert('resetPasswordAlert');
         $('#resetPasswordModal').modal('show');
     });
     
@@ -126,12 +127,12 @@ $(document).ready(function() {
         const usuarioId = $('#resetPasswordUsuarioId').val();
         
         if (newPassword !== confirmPassword) {
-            showNotification('error', 'Las contrasenas no coinciden.');
+            showModalAlert('resetPasswordAlert', 'Las contraseñas no coinciden.');
             return;
         }
         
         if (newPassword.length < 6) {
-            showNotification('error', 'La contrasena debe tener al menos 6 caracteres.');
+            showModalAlert('resetPasswordAlert', 'La contraseña debe tener al menos 6 caracteres.');
             return;
         }
         
@@ -146,10 +147,10 @@ $(document).ready(function() {
                 $('#resetPasswordModal').modal('hide');
                 showNotification('success', response.message);
             } else {
-                showNotification('error', response.message);
+                showModalAlert('resetPasswordAlert', response.message);
             }
         }).fail(function() {
-            showNotification('error', 'Error al resetear la contrasena.');
+            showModalAlert('resetPasswordAlert', 'Error al resetear la contraseña.');
         });
     });
     
@@ -163,6 +164,7 @@ $(document).ready(function() {
         
         $('#deleteUsuarioId').val(usuarioId);
         $('#deleteUsuarioNombre').text(usuarioNombre);
+        hideModalAlert('deleteUsuarioAlert');
         $('#deleteConfirmModal').modal('show');
     });
     
@@ -181,11 +183,11 @@ $(document).ready(function() {
                 showNotification('success', response.message);
                 setTimeout(() => location.reload(), 1500);
             } else {
-                showNotification('error', response.message);
+                showModalAlert('deleteUsuarioAlert', response.message);
                 $('#confirmDeleteBtn').prop('disabled', false);
             }
         }).fail(function() {
-            showNotification('error', 'Error al eliminar el usuario.');
+            showModalAlert('deleteUsuarioAlert', 'Error al eliminar el usuario.');
             $('#confirmDeleteBtn').prop('disabled', false);
         });
     });
