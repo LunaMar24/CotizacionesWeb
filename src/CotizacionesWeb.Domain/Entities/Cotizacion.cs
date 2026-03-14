@@ -8,8 +8,6 @@ public class Cotizacion : BaseEntity
     public int? InteresadoId { get; set; }
     public char EstadoActual { get; set; }
     public int VersionActual { get; set; }
-    public DateTime FechaCreacion { get; set; }
-    public DateTime? FechaUltimaActualizacion { get; set; }
     public decimal MontoCotizacion { get; set; }
     public DateTime? FechaEnvio { get; set; }
     

@@ -47,16 +47,16 @@ public class CotizacionService : ICotizacionService
         // Filtrar por rango de fechas
         if (request.FechaDesde.HasValue)
         {
-            query = query.Where(c => c.FechaCreacion >= request.FechaDesde.Value);
+            query = query.Where(c => c.CreatedAt >= request.FechaDesde.Value);
         }
 
         if (request.FechaHasta.HasValue)
         {
-            query = query.Where(c => c.FechaCreacion <= request.FechaHasta.Value);
+            query = query.Where(c => c.CreatedAt <= request.FechaHasta.Value);
         }
 
         var cotizaciones = await query
-            .OrderByDescending(c => c.FechaCreacion)
+            .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
 
         return cotizaciones.Select(c =>
@@ -70,8 +70,8 @@ public class CotizacionService : ICotizacionService
                 versionActual?.EmpresaInteresado ?? "",
                 c.EstadoActual,
                 c.VersionActual,
-                c.FechaCreacion,
-                c.FechaUltimaActualizacion,
+                c.CreatedAt, // Using CreatedAt instead of FechaCreacion
+                c.ModifiedAt, // Using ModifiedAt instead of FechaUltimaActualizacion
                 c.MontoCotizacion,
                 c.FechaEnvio
             );
@@ -145,7 +145,6 @@ public class CotizacionService : ICotizacionService
             v.Moneda,
             v.TipoCambio,
             v.VersionActual,
-            v.UsuarioCreacion,
             v.Notas
         )).ToList();
     }
@@ -176,7 +175,6 @@ public class CotizacionService : ICotizacionService
             version.Moneda,
             version.TipoCambio,
             version.VersionActual,
-            version.UsuarioCreacion,
             version.Notas
         );
 
@@ -264,7 +262,6 @@ public class CotizacionService : ICotizacionService
                 Moneda = versionBase.Moneda,
                 TipoCambio = versionBase.TipoCambio,
                 VersionActual = '1',
-                UsuarioCreacion = versionBase.UsuarioCreacion,
                 Notas = versionBase.Notas
             };
 
@@ -288,7 +285,6 @@ public class CotizacionService : ICotizacionService
 
             // Actualizar cotización
             cotizacion.VersionActual = nuevoNumeroVersion;
-            cotizacion.FechaUltimaActualizacion = DateTime.Now;
 
             // Registrar evento en historial
             var historial = new HistorialCotizacion
@@ -361,7 +357,6 @@ public class CotizacionService : ICotizacionService
                 Moneda = versionBase.Moneda,
                 TipoCambio = versionBase.TipoCambio,
                 VersionActual = '1',
-                UsuarioCreacion = versionBase.UsuarioCreacion,
                 Notas = versionBase.Notas
             };
 
@@ -385,7 +380,6 @@ public class CotizacionService : ICotizacionService
 
             // Actualizar cotización
             cotizacion.VersionActual = nuevoNumeroVersion;
-            cotizacion.FechaUltimaActualizacion = DateTime.Now;
 
             // Registrar evento en historial
             var historial = new HistorialCotizacion
@@ -443,7 +437,6 @@ public class CotizacionService : ICotizacionService
                 InteresadoId = null, // Se limpia el interesado
                 EstadoActual = (char)EstadoCotizacion.Borrador,
                 VersionActual = 1,
-                FechaCreacion = DateTime.Now,
                 MontoCotizacion = versionBase.Total
             };
 

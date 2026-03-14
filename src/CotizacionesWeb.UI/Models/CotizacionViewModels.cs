@@ -50,7 +50,6 @@ public class CotizacionVersionViewModel
     public string EmpresaInteresado { get; set; } = string.Empty;
     public decimal Total { get; set; }
     public char VersionActual { get; set; }
-    public int? UsuarioCreacion { get; set; }
     public string? NombreUsuarioCreacion { get; set; }
 }
 
