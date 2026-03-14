@@ -101,9 +101,9 @@
                                     </label>
                                 </div>
                                 <div class="dropdown-item-custom">
-                                    <input class="form-check-input" type="checkbox" id="chkEnviada" name="Filtros.FiltroEnviada" value="true" @(Model.Filtros.FiltroEnviada ? "checked" : "")>
-                                    <label class="form-check-label" for="chkEnviada">
-                                        <span class="badge badge-info-custom">Enviada</span>
+                                    <input class="form-check-input" type="checkbox" id="chkPendienteAprobacion" name="Filtros.FiltroPendienteAprobacion" value="true" @(Model.Filtros.FiltroPendienteAprobacion ? "checked" : "")>
+                                    <label class="form-check-label" for="chkPendienteAprobacion">
+                                        <span class="badge badge-warning-custom">Pendiente Aprobación</span>
                                     </label>
                                 </div>
                                 <div class="dropdown-item-custom">
@@ -113,21 +113,21 @@
                                     </label>
                                 </div>
                                 <div class="dropdown-item-custom">
+                                    <input class="form-check-input" type="checkbox" id="chkEnviada" name="Filtros.FiltroEnviada" value="true" @(Model.Filtros.FiltroEnviada ? "checked" : "")>
+                                    <label class="form-check-label" for="chkEnviada">
+                                        <span class="badge badge-info-custom">Enviada</span>
+                                    </label>
+                                </div>
+                                <div class="dropdown-item-custom">
+                                    <input class="form-check-input" type="checkbox" id="chkAceptada" name="Filtros.FiltroAceptada" value="true" @(Model.Filtros.FiltroAceptada ? "checked" : "")>
+                                    <label class="form-check-label" for="chkAceptada">
+                                        <span class="badge badge-primary-custom">Aceptada</span>
+                                    </label>
+                                </div>
+                                <div class="dropdown-item-custom">
                                     <input class="form-check-input" type="checkbox" id="chkRechazada" name="Filtros.FiltroRechazada" value="true" @(Model.Filtros.FiltroRechazada ? "checked" : "")>
                                     <label class="form-check-label" for="chkRechazada">
                                         <span class="badge badge-danger-custom">Rechazada</span>
-                                    </label>
-                                </div>
-                                <div class="dropdown-item-custom">
-                                    <input class="form-check-input" type="checkbox" id="chkCancelada" name="Filtros.FiltroCancelada" value="true" @(Model.Filtros.FiltroCancelada ? "checked" : "")>
-                                    <label class="form-check-label" for="chkCancelada">
-                                        <span class="badge badge-warning-custom">Cancelada</span>
-                                    </label>
-                                </div>
-                                <div class="dropdown-item-custom">
-                                    <input class="form-check-input" type="checkbox" id="chkArchivada" name="Filtros.FiltroArchivada" value="true" @(Model.Filtros.FiltroArchivada ? "checked" : "")>
-                                    <label class="form-check-label" for="chkArchivada">
-                                        <span class="badge badge-dark-custom">Archivada</span>
                                     </label>
                                 </div>
                             </div>
@@ -192,11 +192,17 @@
                                         case 'B':
                                             <span class="badge badge-status badge-secondary-custom">Borrador</span>
                                             break;
-                                        case 'E':
-                                            <span class="badge badge-status badge-info-custom">Enviada</span>
+                                        case 'P':
+                                            <span class="badge badge-status badge-warning-custom">Pendiente Aprobación</span>
                                             break;
                                         case 'A':
                                             <span class="badge badge-status badge-success-custom">Aprobada</span>
+                                            break;
+                                        case 'E':
+                                            <span class="badge badge-status badge-info-custom">Enviada</span>
+                                            break;
+                                        case 'T':
+                                            <span class="badge badge-status badge-primary-custom">Aceptada</span>
                                             break;
                                         case 'R':
                                             <span class="badge badge-status badge-danger-custom">Rechazada</span>

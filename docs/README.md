@@ -17,7 +17,29 @@ Esta carpeta contiene la documentacion tecnica completa del proyecto.
 
 **Tamano**: ~19 KB | **Ultima actualizacion**: 10/03/2026 7:46 PM
 
-### 2. SISTEMA_PERMISOS.md
+### 2. COTIZACIONES_DOMINIO_FUNCIONAL.md
+**Lineamientos funcionales y de dominio** del modulo de Cotizaciones:
+- Estados validos y flujos de transicion
+- Reglas de negocio y validaciones
+- Estructura de base de datos actualizada
+- Casos de uso y servicios de Application
+- Matriz de acciones por estado
+- Implementacion tecnica detallada
+
+**Tamano**: ~15 KB | **Ultima actualizacion**: 14/03/2026
+
+### 3. COTIZACIONES_IMPLEMENTACION.md
+**Documentacion de implementacion** del modulo de Cotizaciones:
+- Componentes implementados por capa
+- Funcionalidades y logica de negocio
+- Estructura de base de datos
+- UI moderna con filtros y modales
+- Scripts de datos de prueba
+- Guia de testing y debugging
+
+**Tamano**: ~17 KB | **Ultima actualizacion**: 12/03/2026 11:17 PM
+
+### 4. SISTEMA_PERMISOS.md
 **Documentacion especifica** del sistema de autorizacion:
 - Componentes del sistema de permisos
 - 28 permisos definidos en 6 categorias
@@ -27,7 +49,7 @@ Esta carpeta contiene la documentacion tecnica completa del proyecto.
 
 **Tamano**: ~16 KB | **Ultima actualizacion**: 10/03/2026 7:47 PM
 
-### 3. CHECKBOX_CATEGORIAS.md
+### 5. CHECKBOX_CATEGORIAS.md
 **Documentacion tecnica** del checkbox de categorias:
 - Como funcionan los checkboxes en headers de categoria
 - Estados: marcado, desmarcado, indeterminado
@@ -40,7 +62,20 @@ Esta carpeta contiene la documentacion tecnica completa del proyecto.
 
 ## Uso Recomendado
 
-### Para compartir contexto con un nuevo chat de GitHub Copilot:
+### Para compartir lineamientos funcionales de Cotizaciones:
+
+1. Abre `COTIZACIONES_DOMINIO_FUNCIONAL.md`
+2. Revisa los estados validos y flujos de transicion
+3. Copia las reglas de negocio relevantes
+4. En el nuevo chat, escribe:
+   ```
+   Implementa estas reglas funcionales para el modulo de Cotizaciones:
+   
+   [Pegar seccion relevante aqui]
+   ```
+5. Asegurate de seguir estrictamente las transiciones permitidas
+
+### Para compartir contexto tecnico completo:
 
 1. Abre `CONTEXTO_PROYECTO.md`
 2. Copia todo el contenido (Ctrl+A, Ctrl+C)
@@ -96,10 +131,13 @@ docs/
 - Dashboard/Home (estadisticas, actividad reciente)
 - Usuarios (CRUD completo + gestion roles + reset password)
 - Roles (CRUD completo + gestion permisos con checkboxes de categoria)
+- Cotizaciones (listado, filtros, versiones, historial - Estados basicos implementados)
 
 ### Modulos Pendientes
 - Permisos (mantenimiento CRUD)
-- Cotizaciones (modulo principal)
+- Cotizaciones - Estados avanzados (PendienteAprobacion, Aceptada, flujos de transicion)
+- Cotizaciones - Acciones por estado (Aprobar, Enviar a cliente, etc.)
+- Cotizaciones - Integracion ERP
 - Clientes
 - Productos/Servicios
 - Reportes
@@ -116,4 +154,4 @@ docs/
 
 ---
 
-**Ultima actualizacion de esta documentacion**: 10 de marzo de 2026, 8:30 PM
+**Ultima actualizacion de esta documentacion**: 14 de marzo de 2026, 11:30 PM

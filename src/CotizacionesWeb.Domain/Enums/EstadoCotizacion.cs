@@ -3,9 +3,10 @@ namespace CotizacionesWeb.Domain.Enums;
 public enum EstadoCotizacion
 {
     Borrador = 'B',
-    Enviada = 'E',
+    PendienteAprobacion = 'P',
     Aprobada = 'A',
+    Enviada = 'E',
+    Aceptada = 'T',
     Rechazada = 'R',
-    Cancelada = 'C',
     Archivada = 'X'
 }

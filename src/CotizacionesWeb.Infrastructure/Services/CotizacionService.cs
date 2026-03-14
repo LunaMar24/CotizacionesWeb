@@ -75,7 +75,12 @@ public class CotizacionService : ICotizacionService
                 c.CreatedAt, // Using CreatedAt instead of FechaCreacion
                 c.ModifiedAt, // Using ModifiedAt instead of FechaUltimaActualizacion
                 c.MontoCotizacion,
-                c.FechaEnvio
+                c.FechaEnvio,
+                // Nuevos campos según lineamientos funcionales
+                c.FechaAceptacion,
+                c.FechaRechazo,
+                c.EnviadoERP,
+                c.FechaEnvioERP
             );
         }).ToList();
     }

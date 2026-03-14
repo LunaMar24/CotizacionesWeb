@@ -16,6 +16,12 @@ public class CotizacionViewModel
     public DateTime? FechaUltimaActualizacion { get; set; }
     public decimal MontoCotizacion { get; set; }
     public DateTime? FechaEnvio { get; set; }
+    
+    // Nuevos campos según lineamientos funcionales
+    public DateTime? FechaAceptacion { get; set; }
+    public DateTime? FechaRechazo { get; set; }
+    public char EnviadoERP { get; set; } = 'N';
+    public DateTime? FechaEnvioERP { get; set; }
 }
 
 public class CotizacionFiltrosViewModel
@@ -24,13 +30,16 @@ public class CotizacionFiltrosViewModel
     public DateTime? FechaDesde { get; set; }
     public DateTime? FechaHasta { get; set; }
     
-    // Estados seleccionados para filtrar
+    // Estados seleccionados para filtrar (según nuevos lineamientos)
     public bool FiltroBorrador { get; set; }
-    public bool FiltroEnviada { get; set; }
+    public bool FiltroPendienteAprobacion { get; set; }
     public bool FiltroAprobada { get; set; }
+    public bool FiltroEnviada { get; set; }
+    public bool FiltroAceptada { get; set; }
     public bool FiltroRechazada { get; set; }
+    // Nota: Archivada NO se incluye en filtros según lineamientos
+    // Nota: Cancelada se mantiene por retrocompatibilidad temporal
     public bool FiltroCancelada { get; set; }
-    public bool FiltroArchivada { get; set; }
 }
 
 public class CotizacionIndexViewModel
