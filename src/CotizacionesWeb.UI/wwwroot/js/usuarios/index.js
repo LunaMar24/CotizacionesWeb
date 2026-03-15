@@ -130,7 +130,7 @@ $(document).ready(function() {
             showModalAlert('resetPasswordAlert', 'Las contraseñas no coinciden.');
             return;
         }
-        
+
         if (newPassword.length < 6) {
             showModalAlert('resetPasswordAlert', 'La contraseña debe tener al menos 6 caracteres.');
             return;

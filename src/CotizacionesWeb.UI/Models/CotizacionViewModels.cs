@@ -66,6 +66,7 @@ public class CotizacionVersionViewModel
     public string EmailInteresado { get; set; } = string.Empty;
     public string EmpresaInteresado { get; set; } = string.Empty;
     public decimal Total { get; set; }
+    public string Moneda { get; set; } = string.Empty;
     public int VersionActual { get; set; } // Cambiado de char a int
     public string? NombreUsuarioCreacion { get; set; }
 }

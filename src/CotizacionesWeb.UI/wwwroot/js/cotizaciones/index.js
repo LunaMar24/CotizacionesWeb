@@ -58,7 +58,7 @@ $(document).ready(function () {
     $('.btn-duplicar').on('click', function () {
         const cotizacionId = $(this).attr('data-id');
         const button = $(this);
-        
+
         mostrarModalConfirmacion(
             'Duplicar Cotización',
             '¿Está seguro de que desea duplicar esta cotización?<br><br>' +
@@ -66,6 +66,135 @@ $(document).ready(function () {
             'warning',
             function() {
                 duplicarCotizacion(cotizacionId, button);
+            }
+        );
+    });
+
+    // ========================================
+    // BOTONES DE TRANSICION DE ESTADOS
+    // ========================================
+
+    // Enviar a Aprobación (Borrador -> Pendiente Aprobación)
+    $('.btn-enviar-aprobacion').on('click', function () {
+        const cotizacionId = $(this).attr('data-id');
+        const button = $(this);
+
+        mostrarModalConfirmacion(
+            'Enviar a Aprobación',
+            '¿Está seguro de que desea enviar esta cotización para aprobación?',
+            'warning',
+            function() {
+                cambiarEstadoCotizacion(cotizacionId, 'EnviarAprobacion', button);
+            }
+        );
+    });
+
+    // Aprobar (Pendiente -> Aprobada)
+    $('.btn-aprobar').on('click', function () {
+        const cotizacionId = $(this).attr('data-id');
+        const button = $(this);
+
+        mostrarModalConfirmacion(
+            'Aprobar Cotización',
+            '¿Está seguro de que desea aprobar esta cotización?<br><br>' +
+            '<small class="text-muted">Una vez aprobada, podrá ser enviada al cliente.</small>',
+            'success',
+            function() {
+                cambiarEstadoCotizacion(cotizacionId, 'Aprobar', button);
+            }
+        );
+    });
+
+    // Devolver a Borrador (Pendiente -> Borrador)
+    $('.btn-devolver-borrador').on('click', function () {
+        const cotizacionId = $(this).attr('data-id');
+        const button = $(this);
+
+        mostrarModalConfirmacion(
+            'Devolver a Borrador',
+            '¿Está seguro de que desea devolver esta cotización a estado Borrador?',
+            'warning',
+            function() {
+                cambiarEstadoCotizacion(cotizacionId, 'DevolverBorrador', button);
+            }
+        );
+    });
+
+    // Enviar al Cliente (Aprobada -> Enviada)
+    $('.btn-enviar-cliente').on('click', function () {
+        const cotizacionId = $(this).attr('data-id');
+        const button = $(this);
+
+        mostrarModalConfirmacion(
+            'Enviar al Cliente',
+            '¿Está seguro de que desea enviar esta cotización al cliente?<br><br>' +
+            '<small class="text-muted">Se registrará la fecha de envío.</small>',
+            'info',
+            function() {
+                cambiarEstadoCotizacion(cotizacionId, 'EnviarCliente', button);
+            }
+        );
+    });
+
+    // Marcar como Aceptada (Enviada -> Aceptada)
+    $('.btn-marcar-aceptada').on('click', function () {
+        const cotizacionId = $(this).attr('data-id');
+        const button = $(this);
+
+        mostrarModalConfirmacion(
+            'Marcar como Aceptada',
+            '¿Confirma que el cliente ha aceptado esta cotización?<br><br>' +
+            '<small class="text-muted">La cotización podrá ser enviada al ERP.</small>',
+            'success',
+            function() {
+                cambiarEstadoCotizacion(cotizacionId, 'MarcarAceptada', button);
+            }
+        );
+    });
+
+    // Marcar como Rechazada (Enviada -> Rechazada)
+    $('.btn-marcar-rechazada').on('click', function () {
+        const cotizacionId = $(this).attr('data-id');
+        const button = $(this);
+
+        mostrarModalConfirmacion(
+            'Marcar como Rechazada',
+            '¿Confirma que el cliente ha rechazado esta cotización?',
+            'danger',
+            function() {
+                cambiarEstadoCotizacion(cotizacionId, 'MarcarRechazada', button);
+            }
+        );
+    });
+
+    // Archivar Cotización
+    $('.btn-archivar').on('click', function () {
+        const cotizacionId = $(this).attr('data-id');
+        const button = $(this);
+
+        mostrarModalConfirmacion(
+            'Archivar Cotización',
+            '¿Está seguro de que desea archivar esta cotización?<br><br>' +
+            '<small class="text-muted">Una cotización archivada no puede ser modificada.</small>',
+            'warning',
+            function() {
+                cambiarEstadoCotizacion(cotizacionId, 'Archivar', button);
+            }
+        );
+    });
+
+    // Enviar al ERP
+    $('.btn-enviar-erp').on('click', function () {
+        const cotizacionId = $(this).attr('data-id');
+        const button = $(this);
+
+        mostrarModalConfirmacion(
+            'Enviar al ERP',
+            '¿Está seguro de que desea enviar esta cotización al ERP?<br><br>' +
+            '<small class="text-muted">Esta acción integrará la cotización con el sistema ERP.</small>',
+            'info',
+            function() {
+                cambiarEstadoCotizacion(cotizacionId, 'EnviarERP', button);
             }
         );
     });
@@ -131,6 +260,38 @@ function duplicarCotizacion(cotizacionId, button) {
     });
 }
 
+function cambiarEstadoCotizacion(cotizacionId, accion, button) {
+    button.prop('disabled', true);
+
+    $.ajax({
+        url: '/Cotizaciones/' + accion,
+        type: 'POST',
+        data: {
+            cotizacionId: cotizacionId,
+            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        },
+        success: function (response) {
+            if (response.success) {
+                showNotification('success', response.message);
+                setTimeout(function () {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotification('error', response.message);
+                button.prop('disabled', false);
+            }
+        },
+        error: function (xhr) {
+            let errorMsg = 'Error al cambiar el estado de la cotización';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            }
+            showNotification('error', errorMsg);
+            button.prop('disabled', false);
+        }
+    });
+}
+
 function copiarVersionEspecifica(cotizacionId, versionId, esVersionAntigua, button) {
     button.prop('disabled', true);
 
@@ -177,7 +338,7 @@ function inicializarEventosVersiones() {
         let titulo = 'Copiar Versión ' + numeroVersion;
         let mensaje = '¿Está seguro de que desea crear una nueva versión basada en la versión ' + numeroVersion + '?';
         let tipo = 'info';
-        
+
         if (!esActual) {
             titulo = 'Advertencia: Versión Histórica';
             mensaje = '<div class="alert alert-warning mb-0">' +
@@ -193,12 +354,27 @@ function inicializarEventosVersiones() {
         });
     });
 
-    $('.btn-historial-version').on('click', function () {
-        showNotification('info', 'Función de historial de versión en desarrollo');
+    $('.btn-duplicar-version').on('click', function () {
+        const cotizacionId = $(this).attr('data-cotizacion-id');
+        const button = $(this);
+
+        mostrarModalConfirmacion(
+            'Duplicar Cotización',
+            '¿Está seguro de que desea duplicar esta cotización?<br><br>' +
+            '<small class="text-muted">Se creará una nueva cotización en estado Borrador sin cliente asignado.</small>',
+            'warning',
+            function() {
+                duplicarCotizacion(cotizacionId, button);
+            }
+        );
     });
 
-    $('.btn-ver-detalle-version').on('click', function () {
-        showNotification('info', 'Función de detalle de versión en desarrollo');
+    $('.btn-detalle-version').on('click', function () {
+        const versionId = $(this).attr('data-version-id');
+        const cotizacionId = $(this).attr('data-cotizacion-id');
+
+        // Navegar a la vista de detalle de la versión
+        window.location.href = '/Cotizaciones/Detalle/' + cotizacionId + '?versionId=' + versionId;
     });
 }
 
