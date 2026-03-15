@@ -70,7 +70,10 @@ public record GetCotizacionesListRequest(
     List<char>? Estados,
     string? Busqueda,
     DateTime? FechaDesde,
-    DateTime? FechaHasta
+    DateTime? FechaHasta,
+    decimal? MontoDesde,
+    decimal? MontoHasta,
+    decimal? Version
 );
 
 public record CopiarVersionRequest(

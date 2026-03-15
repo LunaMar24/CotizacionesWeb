@@ -30,7 +30,14 @@ public class CotizacionFiltrosViewModel
     public string? Busqueda { get; set; }
     public DateTime? FechaDesde { get; set; }
     public DateTime? FechaHasta { get; set; }
-    
+
+    // Filtros específicos para monto
+    public decimal? MontoDesde { get; set; }
+    public decimal? MontoHasta { get; set; }
+
+    // Filtro específico para versión
+    public decimal? Version { get; set; }
+
     // Estados seleccionados para filtrar (según nuevos lineamientos)
     public bool FiltroBorrador { get; set; }
     public bool FiltroPendienteAprobacion { get; set; }

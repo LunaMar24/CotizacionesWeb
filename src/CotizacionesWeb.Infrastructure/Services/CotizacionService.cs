@@ -35,17 +35,6 @@ public class CotizacionService : ICotizacionService
             query = query.Where(x => request.Estados.Contains(x.Cotizacion.EstadoActual));
         }
 
-        // Filtrar por búsqueda general (CotizacionId, Nombre, Empresa)
-        if (!string.IsNullOrWhiteSpace(request.Busqueda))
-        {
-            var busqueda = request.Busqueda.ToLower();
-            query = query.Where(x =>
-                x.Cotizacion.CotizacionId.ToLower().Contains(busqueda) ||
-                x.Version.NombreInteresado.ToLower().Contains(busqueda) ||
-                x.Version.EmpresaInteresado.ToLower().Contains(busqueda)
-            );
-        }
-
         // Filtrar por rango de fechas
         if (request.FechaDesde.HasValue)
         {
@@ -57,6 +46,34 @@ public class CotizacionService : ICotizacionService
         {
             var fechaHastaFinDia = request.FechaHasta.Value.Date.AddDays(1).AddTicks(-1); // 23:59:59.999
             query = query.Where(x => x.Cotizacion.CreatedAt <= fechaHastaFinDia);
+        }
+
+        // Filtrar por búsqueda general (solo texto: ID, Nombre, Empresa)
+        if (!string.IsNullOrWhiteSpace(request.Busqueda))
+        {
+            var busqueda = request.Busqueda.ToLower();
+            query = query.Where(x =>
+                x.Cotizacion.CotizacionId.ToLower().Contains(busqueda) ||
+                x.Version.NombreInteresado.ToLower().Contains(busqueda) ||
+                x.Version.EmpresaInteresado.ToLower().Contains(busqueda)
+            );
+        }
+
+        // Filtrar por rango de monto (eficiente en SQL)
+        if (request.MontoDesde.HasValue)
+        {
+            query = query.Where(x => x.Cotizacion.MontoCotizacion >= request.MontoDesde.Value);
+        }
+
+        if (request.MontoHasta.HasValue)
+        {
+            query = query.Where(x => x.Cotizacion.MontoCotizacion <= request.MontoHasta.Value);
+        }
+
+        // Filtrar por versión específica (eficiente en SQL)
+        if (request.Version.HasValue)
+        {
+            query = query.Where(x => x.Version.NumeroVersion == request.Version.Value);
         }
 
         var resultados = await query

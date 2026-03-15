@@ -25,8 +25,16 @@ public class CotizacionesController : Controller
     {
         try
         {
+            // Establecer filtro de fecha predeterminado: últimos 30 días
+            // Solo si no se han especificado fechas manualmente
+            if (!filtros.FechaDesde.HasValue && !filtros.FechaHasta.HasValue)
+            {
+                filtros.FechaDesde = DateTime.Today.AddDays(-30);
+                filtros.FechaHasta = DateTime.Today;
+            }
+
             var estadosSeleccionados = new List<char>();
-            
+
             if (filtros.FiltroBorrador) estadosSeleccionados.Add('B');
             if (filtros.FiltroPendienteAprobacion) estadosSeleccionados.Add('P');
             if (filtros.FiltroAprobada) estadosSeleccionados.Add('A');
@@ -41,7 +49,10 @@ public class CotizacionesController : Controller
                 estadosSeleccionados.Any() ? estadosSeleccionados : null,
                 filtros.Busqueda,
                 filtros.FechaDesde,
-                filtros.FechaHasta
+                filtros.FechaHasta,
+                filtros.MontoDesde,
+                filtros.MontoHasta,
+                filtros.Version
             );
 
             var cotizaciones = await _cotizacionService.GetCotizacionesListAsync(request);
