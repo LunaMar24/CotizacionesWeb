@@ -281,31 +281,33 @@
                                                         class="btn-state btn-state-warning btn-enviar-aprobacion" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Enviar a Aprobación"
-                                                        requiere-permiso="COT_EDIT">
+                                                        data-confirm="true">
                                                     <i class="fas fa-paper-plane"></i>
                                                 </button>
                                                 <button type="button" 
                                                         class="btn-state btn-state-dark btn-archivar" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Archivar"
-                                                        requiere-permiso="COT_EDIT">
+                                                        requiere-permiso="COT_ARCHIVE"
+                                                        data-confirm="true">
                                                     <i class="fas fa-archive"></i>
                                                 </button>
                                                 break;
-                                                
+
                                             case 'P': // PendienteAprobacion
                                                 <button type="button" 
                                                         class="btn-state btn-state-success btn-aprobar" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Aprobar"
-                                                        requiere-permiso="COT_EDIT">
+                                                        requiere-permiso="COT_APPROVE"
+                                                        data-confirm="true">
                                                     <i class="fas fa-check"></i>
                                                 </button>
                                                 <button type="button" 
                                                         class="btn-state btn-state-warning btn-devolver-borrador" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Devolver a Borrador"
-                                                        requiere-permiso="COT_EDIT">
+                                                        data-confirm="true">
                                                     <i class="fas fa-undo"></i>
                                                 </button>
                                                 break;
@@ -315,7 +317,8 @@
                                                         class="btn-state btn-state-info btn-enviar-cliente" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Enviar al Cliente"
-                                                        requiere-permiso="COT_EDIT">
+                                                        requiere-permiso="COT_SEND_CLIENT"
+                                                        data-confirm="true">
                                                     <i class="fas fa-envelope"></i>
                                                 </button>
                                                 break;
@@ -325,14 +328,16 @@
                                                         class="btn-state btn-state-primary btn-marcar-aceptada" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Marcar como Aceptada"
-                                                        requiere-permiso="COT_EDIT">
+                                                        requiere-permiso="COT_ACCEPT"
+                                                        data-confirm="true">
                                                     <i class="fas fa-thumbs-up"></i>
                                                 </button>
                                                 <button type="button" 
                                                         class="btn-state btn-state-danger btn-marcar-rechazada" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Marcar como Rechazada"
-                                                        requiere-permiso="COT_EDIT">
+                                                        requiere-permiso="COT_REJECT"
+                                                        data-confirm="true">
                                                     <i class="fas fa-thumbs-down"></i>
                                                 </button>
                                                 break;
@@ -342,7 +347,8 @@
                                                         class="btn-state btn-state-dark btn-archivar" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Archivar"
-                                                        requiere-permiso="COT_EDIT">
+                                                        requiere-permiso="COT_ARCHIVE"
+                                                        data-confirm="true">
                                                     <i class="fas fa-archive"></i>
                                                 </button>
                                                 @if (cotizacion.EnviadoERP != 'S')
@@ -351,7 +357,8 @@
                                                             class="btn-state btn-state-primary btn-enviar-erp" 
                                                             data-id="@cotizacion.CotizacionId"
                                                             title="Enviar al ERP"
-                                                            requiere-permiso="COT_EDIT">
+                                                            requiere-permiso="COT_SEND_ERP"
+                                                            data-confirm="true">
                                                         <i class="fas fa-database"></i>
                                                     </button>
                                                 }
@@ -362,7 +369,8 @@
                                                         class="btn-state btn-state-dark btn-archivar" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Archivar"
-                                                        requiere-permiso="COT_EDIT">
+                                                        requiere-permiso="COT_ARCHIVE"
+                                                        data-confirm="true">
                                                     <i class="fas fa-archive"></i>
                                                 </button>
                                                 break;
@@ -384,21 +392,21 @@
                                                 class="btn-action btn-action-edit btn-detalle" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Ver Detalle"
-                                                requiere-permiso="COT_VIEW">
+                                                requiere-permiso="COT_VIEW_DETAIL">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <button type="button" 
                                                 class="btn-action btn-action-info btn-historial" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Ver Historial"
-                                                requiere-permiso="COT_VIEW">
+                                                requiere-permiso="COT_VIEW_HISTORY">
                                             <i class="fas fa-history"></i>
                                         </button>
                                         <button type="button" 
                                                 class="btn-action btn-action-secondary btn-versiones" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Ver Versiones"
-                                                requiere-permiso="COT_VIEW">
+                                                requiere-permiso="COT_VIEW_VERSIONS">
                                             <i class="fas fa-code-branch"></i>
                                         </button>
 
@@ -407,7 +415,7 @@
                                                 class="btn-action btn-action-copy btn-copiar" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Copiar (Nueva Versión)"
-                                                requiere-permiso="COT_EDIT">
+                                                requiere-permiso="COT_COPY">
                                             <i class="fas fa-copy"></i>
                                         </button>
 
@@ -416,7 +424,7 @@
                                                 class="btn-action btn-action-delete btn-duplicar" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Duplicar (Nueva Cotización)"
-                                                requiere-permiso="COT_CREATE">
+                                                requiere-permiso="COT_DUPLICATE">
                                             <i class="fas fa-clone"></i>
                                         </button>
                                     </div>

@@ -154,8 +154,20 @@ public class CotizacionService : ICotizacionService
 
     public async Task<List<CotizacionVersionDto>> GetCotizacionVersionsAsync(string cotizacionId)
     {
+        // Obtener la cotización para saber cuál es la versión actual vigente
+        var cotizacion = await _context.Cotizaciones
+            .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
+
+        if (cotizacion == null)
+        {
+            return new List<CotizacionVersionDto>();
+        }
+
+        var versionActualId = cotizacion.VersionActual;
+
+        // Obtener SOLO las versiones anteriores (excluir la versión actual)
         var versiones = await _context.CotizacionesVersiones
-            .Where(v => v.CotizacionId == cotizacionId)
+            .Where(v => v.CotizacionId == cotizacionId && v.VersionActual != versionActualId)
             .OrderByDescending(v => v.NumeroVersion)
             .ToListAsync();
 
@@ -173,7 +185,7 @@ public class CotizacionService : ICotizacionService
             v.Total,
             v.Moneda,
             v.TipoCambio,
-            v.VersionActual,
+            0, // Siempre 0 porque son versiones históricas (no actuales)
             v.Notas
         )).ToList();
     }

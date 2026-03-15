@@ -93,7 +93,7 @@ public class CotizacionesController : Controller
         }
     }
 
-    [HttpGet]
+    [HttpGet("Cotizaciones/Historial/{cotizacionId}")]
     [RequierePermiso("COT_VIEW")]
     public async Task<IActionResult> Historial(string cotizacionId)
     {
@@ -120,7 +120,7 @@ public class CotizacionesController : Controller
         }
     }
 
-    [HttpGet]
+    [HttpGet("Cotizaciones/Versiones/{cotizacionId}")]
     [RequierePermiso("COT_VIEW")]
     public async Task<IActionResult> Versiones(string cotizacionId)
     {
@@ -138,6 +138,7 @@ public class CotizacionesController : Controller
                 EmailInteresado = v.EmailInteresado,
                 EmpresaInteresado = v.EmpresaInteresado,
                 Total = v.Total,
+                Moneda = v.Moneda,
                 VersionActual = v.VersionActual
             }).ToList();
 

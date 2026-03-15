@@ -24,15 +24,22 @@ INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
 
 -- Permisos de Cotizaciones
 INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
-('COT_VIEW', 'Cotizaciones', 'Ver cotizaciones'),
+('COT_VIEW', 'Cotizaciones', 'Ver mantenimiento de cotizaciones'),
+('COT_VIEW_DETAIL', 'Cotizaciones', 'Ver detalle de cotizacion (solo lectura)'),
+('COT_VIEW_HISTORY', 'Cotizaciones', 'Ver historial de cotizacion'),
+('COT_VIEW_VERSIONS', 'Cotizaciones', 'Ver versiones de cotizacion'),
 ('COT_CREATE', 'Cotizaciones', 'Crear nuevas cotizaciones'),
 ('COT_EDIT', 'Cotizaciones', 'Editar cotizaciones'),
 ('COT_DELETE', 'Cotizaciones', 'Eliminar cotizaciones'),
-('COT_APPROVE', 'Cotizaciones', 'Aprobar cotizaciones'),
-('COT_REJECT', 'Cotizaciones', 'Rechazar cotizaciones'),
+('COT_APPROVE', 'Cotizaciones', 'Aprobar cotizaciones (Pendiente -> Aprobada)'),
+('COT_REJECT', 'Cotizaciones', 'Rechazar cotizaciones (Enviada -> Rechazada)'),
+('COT_ACCEPT', 'Cotizaciones', 'Aceptar cotizaciones (Enviada -> Aceptada)'),
+('COT_SEND_CLIENT', 'Cotizaciones', 'Enviar cotizacion al cliente (Aprobada -> Enviada)'),
 ('COT_EXPORT', 'Cotizaciones', 'Exportar cotizaciones'),
-('COT_VERSION', 'Cotizaciones', 'Gestionar versiones de cotizaciones'),
-('COT_DUPLICATE', 'Cotizaciones', 'Duplicar cotizaciones');
+('COT_COPY', 'Cotizaciones', 'Copiar version de cotizacion'),
+('COT_DUPLICATE', 'Cotizaciones', 'Duplicar cotizaciones'),
+('COT_ARCHIVE', 'Cotizaciones', 'Archivar cotizaciones'),
+('COT_SEND_ERP', 'Cotizaciones', 'Enviar cotizaciones al ERP');
 
 -- Permisos de Clientes/Interesados
 INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
@@ -82,3 +89,52 @@ SELECT
 FROM Permisos 
 GROUP BY Categoria
 ORDER BY Categoria;
+
+-- ============================================
+-- Script para actualizar permisos de Cotizaciones
+-- Fecha: 2026
+-- ============================================
+
+-- 1. Actualizar descripción del permiso COT_VIEW
+UPDATE Permisos 
+SET Descripcion = 'Ver cotizaciones (solo lectura)'
+WHERE Codigo = 'COT_VIEW';
+
+-- 2. Eliminar permiso COT_VERSION (obsoleto, se reemplaza por COT_COPY)
+-- Primero eliminar las relaciones en PermisosRoles
+DELETE FROM PermisosRoles 
+WHERE PermisoId IN (SELECT PermisoId FROM Permisos WHERE Codigo = 'COT_VERSION');
+
+-- Luego eliminar el permiso
+DELETE FROM Permisos WHERE Codigo = 'COT_VERSION';
+
+-- 3. Agregar nuevos permisos específicos
+INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
+('COT_COPY', 'Cotizaciones', 'Copiar versión de cotización'),
+('COT_ARCHIVE', 'Cotizaciones', 'Archivar cotizaciones'),
+('COT_SEND_ERP', 'Cotizaciones', 'Enviar cotizaciones al ERP');
+
+GO
+
+-- Verificar permisos de cotizaciones actualizados
+SELECT 
+    PermisoId,
+    Codigo, 
+    Descripcion 
+FROM Permisos 
+WHERE Categoria = 'Cotizaciones'
+ORDER BY Codigo;
+
+PRINT '========================================';
+PRINT 'Permisos de cotizaciones actualizados';
+PRINT '========================================';
+PRINT 'Nuevos permisos:';
+PRINT '  - COT_COPY: Copiar versión de cotización';
+PRINT '  - COT_ARCHIVE: Archivar cotizaciones';
+PRINT '  - COT_SEND_ERP: Enviar al ERP';
+PRINT '';
+PRINT 'Permisos eliminados:';
+PRINT '  - COT_VERSION (reemplazado por COT_COPY)';
+PRINT '';
+PRINT 'Permisos actualizados:';
+PRINT '  - COT_VIEW: Ahora específica "solo lectura"';
