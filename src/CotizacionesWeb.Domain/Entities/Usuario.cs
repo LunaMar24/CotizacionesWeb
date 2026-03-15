@@ -4,6 +4,7 @@ namespace CotizacionesWeb.Domain.Entities;
 
 public class Usuario : BaseEntity
 {
+    public int UsuarioId { get; set; }  // Llave primaria específica según modelo
     public string Nombre { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;

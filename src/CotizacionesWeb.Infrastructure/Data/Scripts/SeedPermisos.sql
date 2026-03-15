@@ -1,56 +1,84 @@
 -- ============================================
 -- Script para poblar permisos iniciales
+-- ACTUALIZADO PARA NUEVA ESTRUCTURA DE LLAVES PRIMARIAS
 -- ============================================
 
+-- NOTA: Permisos NO tienen auditoría según el modelo (sin CreatedAt/CreatedBy)
+
 -- Permisos de Usuarios
-INSERT INTO Permisos (Codigo, Categoria, Descripcion, CreatedAt, CreatedBy) VALUES
-('USR_VIEW', 'Usuarios', 'Ver usuarios del sistema', GETUTCDATE(), 'system'),
-('USR_CREATE', 'Usuarios', 'Crear nuevos usuarios', GETUTCDATE(), 'system'),
-('USR_EDIT', 'Usuarios', 'Editar usuarios existentes', GETUTCDATE(), 'system'),
-('USR_DELETE', 'Usuarios', 'Eliminar usuarios', GETUTCDATE(), 'system'),
-('USR_ROLES', 'Usuarios', 'Gestionar roles de usuarios', GETUTCDATE(), 'system'),
-('USR_RESET_PWD', 'Usuarios', 'Resetear contraseñas', GETUTCDATE(), 'system');
+INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
+('USR_VIEW', 'Usuarios', 'Ver usuarios del sistema'),
+('USR_CREATE', 'Usuarios', 'Crear nuevos usuarios'),
+('USR_EDIT', 'Usuarios', 'Editar usuarios existentes'),
+('USR_DELETE', 'Usuarios', 'Eliminar usuarios'),
+('USR_ROLES', 'Usuarios', 'Gestionar roles de usuarios'),
+('USR_RESET_PWD', 'Usuarios', 'Resetear contraseñas');
 
 -- Permisos de Roles
-INSERT INTO Permisos (Codigo, Categoria, Descripcion, CreatedAt, CreatedBy) VALUES
-('ROL_VIEW', 'Roles', 'Ver roles del sistema', GETUTCDATE(), 'system'),
-('ROL_CREATE', 'Roles', 'Crear nuevos roles', GETUTCDATE(), 'system'),
-('ROL_EDIT', 'Roles', 'Editar roles existentes', GETUTCDATE(), 'system'),
-('ROL_DELETE', 'Roles', 'Eliminar roles', GETUTCDATE(), 'system'),
-('ROL_PERMISOS', 'Roles', 'Gestionar permisos de roles', GETUTCDATE(), 'system');
+INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
+('ROL_VIEW', 'Roles', 'Ver roles del sistema'),
+('ROL_CREATE', 'Roles', 'Crear nuevos roles'),
+('ROL_EDIT', 'Roles', 'Editar roles existentes'),
+('ROL_DELETE', 'Roles', 'Eliminar roles'),
+('ROL_PERMISOS', 'Roles', 'Gestionar permisos de roles');
 
 -- Permisos de Cotizaciones
-INSERT INTO Permisos (Codigo, Categoria, Descripcion, CreatedAt, CreatedBy) VALUES
-('COT_VIEW', 'Cotizaciones', 'Ver cotizaciones', GETUTCDATE(), 'system'),
-('COT_CREATE', 'Cotizaciones', 'Crear nuevas cotizaciones', GETUTCDATE(), 'system'),
-('COT_EDIT', 'Cotizaciones', 'Editar cotizaciones', GETUTCDATE(), 'system'),
-('COT_DELETE', 'Cotizaciones', 'Eliminar cotizaciones', GETUTCDATE(), 'system'),
-('COT_APPROVE', 'Cotizaciones', 'Aprobar cotizaciones', GETUTCDATE(), 'system'),
-('COT_REJECT', 'Cotizaciones', 'Rechazar cotizaciones', GETUTCDATE(), 'system'),
-('COT_EXPORT', 'Cotizaciones', 'Exportar cotizaciones', GETUTCDATE(), 'system');
+INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
+('COT_VIEW', 'Cotizaciones', 'Ver cotizaciones'),
+('COT_CREATE', 'Cotizaciones', 'Crear nuevas cotizaciones'),
+('COT_EDIT', 'Cotizaciones', 'Editar cotizaciones'),
+('COT_DELETE', 'Cotizaciones', 'Eliminar cotizaciones'),
+('COT_APPROVE', 'Cotizaciones', 'Aprobar cotizaciones'),
+('COT_REJECT', 'Cotizaciones', 'Rechazar cotizaciones'),
+('COT_EXPORT', 'Cotizaciones', 'Exportar cotizaciones'),
+('COT_VERSION', 'Cotizaciones', 'Gestionar versiones de cotizaciones'),
+('COT_DUPLICATE', 'Cotizaciones', 'Duplicar cotizaciones');
 
--- Permisos de Clientes
-INSERT INTO Permisos (Codigo, Categoria, Descripcion, CreatedAt, CreatedBy) VALUES
-('CLI_VIEW', 'Clientes', 'Ver clientes', GETUTCDATE(), 'system'),
-('CLI_CREATE', 'Clientes', 'Crear nuevos clientes', GETUTCDATE(), 'system'),
-('CLI_EDIT', 'Clientes', 'Editar clientes', GETUTCDATE(), 'system'),
-('CLI_DELETE', 'Clientes', 'Eliminar clientes', GETUTCDATE(), 'system');
+-- Permisos de Clientes/Interesados
+INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
+('CLI_VIEW', 'Clientes', 'Ver clientes/interesados'),
+('CLI_CREATE', 'Clientes', 'Crear nuevos clientes/interesados'),
+('CLI_EDIT', 'Clientes', 'Editar clientes/interesados'),
+('CLI_DELETE', 'Clientes', 'Eliminar clientes/interesados'),
+('CLI_SYNC', 'Clientes', 'Sincronizar con HubSpot');
 
 -- Permisos de Reportes
-INSERT INTO Permisos (Codigo, Categoria, Descripcion, CreatedAt, CreatedBy) VALUES
-('RPT_VIEW', 'Reportes', 'Ver reportes', GETUTCDATE(), 'system'),
-('RPT_EXPORT', 'Reportes', 'Exportar reportes', GETUTCDATE(), 'system'),
-('RPT_DASHBOARD', 'Reportes', 'Acceso al dashboard ejecutivo', GETUTCDATE(), 'system');
+INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
+('RPT_VIEW', 'Reportes', 'Ver reportes'),
+('RPT_EXPORT', 'Reportes', 'Exportar reportes'),
+('RPT_DASHBOARD', 'Reportes', 'Acceso al dashboard ejecutivo'),
+('RPT_HISTORIAL', 'Reportes', 'Ver historial de cotizaciones');
 
 -- Permisos de Configuración
-INSERT INTO Permisos (Codigo, Categoria, Descripcion, CreatedAt, CreatedBy) VALUES
-('CFG_VIEW', 'Configuración', 'Ver configuración del sistema', GETUTCDATE(), 'system'),
-('CFG_EDIT', 'Configuración', 'Editar configuración del sistema', GETUTCDATE(), 'system'),
-('CFG_LOGS', 'Configuración', 'Ver logs del sistema', GETUTCDATE(), 'system');
+INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
+('CFG_VIEW', 'Configuración', 'Ver configuración del sistema'),
+('CFG_EDIT', 'Configuración', 'Editar configuración del sistema'),
+('CFG_LOGS', 'Configuración', 'Ver logs del sistema'),
+('CFG_PARAMS', 'Configuración', 'Gestionar parámetros del sistema');
+
+-- Permisos de Integraciones
+INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
+('INT_HUBSPOT', 'Integraciones', 'Gestionar integración con HubSpot'),
+('INT_ERP', 'Integraciones', 'Gestionar integración con ERP'),
+('INT_CONFIG', 'Integraciones', 'Configurar integraciones');
 
 GO
 
 -- Verificar los permisos creados
-SELECT Codigo, Categoria, Descripcion 
+SELECT 
+    PermisoId,  -- NUEVA ESTRUCTURA: PermisoId en lugar de Id
+    Codigo, 
+    Categoria, 
+    Descripcion 
 FROM Permisos 
 ORDER BY Categoria, Codigo;
+
+PRINT 'Permisos creados exitosamente con nueva estructura';
+
+-- Mostrar resumen por categoría
+SELECT 
+    Categoria,
+    COUNT(*) as TotalPermisos
+FROM Permisos 
+GROUP BY Categoria
+ORDER BY Categoria;

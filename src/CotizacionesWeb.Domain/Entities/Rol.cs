@@ -4,6 +4,7 @@ namespace CotizacionesWeb.Domain.Entities;
 
 public class Rol : BaseEntity
 {
+    public int RolId { get; set; }  // Llave primaria específica según modelo
     public string Nombre { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public bool Activo { get; set; } = true;

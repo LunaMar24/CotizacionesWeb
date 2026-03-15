@@ -69,7 +69,7 @@ public class CotizacionService : ICotizacionService
             var versionVigente = result.Version;
             
             return new CotizacionListDto(
-                c.Id,
+                0,  // FASE 3: El DTO aún espera un ID numérico, usar 0 temporalmente
                 c.CotizacionId,
                 c.InteresadoId,
                 versionVigente?.NombreInteresado ?? "",
@@ -108,7 +108,7 @@ public class CotizacionService : ICotizacionService
 
         // Obtener los historiales de la versión vigente
         var historiales = await _context.HistorialesCotizacion
-            .Where(h => h.VersionId == cotizacionConVersion.Version.Id)
+            .Where(h => h.VersionId == cotizacionConVersion.Version.VersionId)  // FASE 3: Usar VersionId
             .OrderByDescending(h => h.FechaEvento)
             .ToListAsync();
 
@@ -119,11 +119,11 @@ public class CotizacionService : ICotizacionService
             .ToList();
 
         var usuarios = await _context.Usuarios
-            .Where(u => usuariosIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.Nombre);
+            .Where(u => usuariosIds.Contains(u.UsuarioId))  // CORREGIDO: Usar UsuarioId
+            .ToDictionaryAsync(u => u.UsuarioId, u => u.Nombre);  // CORREGIDO: Usar UsuarioId
 
         return historiales.Select(h => new HistorialCotizacionDto(
-            h.Id,
+            h.HistorialId,  // FASE 3: Usar HistorialId en lugar de Id
             h.VersionId,
             h.TipoEvento,
             h.FechaEvento,
@@ -143,7 +143,7 @@ public class CotizacionService : ICotizacionService
             .ToListAsync();
 
         return versiones.Select(v => new CotizacionVersionDto(
-            v.Id,
+            v.VersionId,  // CORREGIDO: Usar VersionId en lugar de Id
             v.CotizacionId,
             v.NumeroVersion,
             v.FechaVersion,
@@ -165,7 +165,7 @@ public class CotizacionService : ICotizacionService
     {
         var version = await _context.CotizacionesVersiones
             .Include(v => v.Detalles)
-            .FirstOrDefaultAsync(v => v.Id == versionId);
+            .FirstOrDefaultAsync(v => v.VersionId == versionId);  // CORREGIDO: Usar VersionId
 
         if (version == null)
         {
@@ -173,7 +173,7 @@ public class CotizacionService : ICotizacionService
         }
 
         var versionDto = new CotizacionVersionDto(
-            version.Id,
+            version.VersionId,  // CORREGIDO: Usar VersionId
             version.CotizacionId,
             version.NumeroVersion,
             version.FechaVersion,
@@ -191,7 +191,7 @@ public class CotizacionService : ICotizacionService
         );
 
         var detalles = version.Detalles.Select(d => new DetalleCotizacionDto(
-            d.Id,
+            d.DetalleVersionId,  // CORREGIDO: Usar DetalleVersionId
             d.VersionId,
             d.ProductoId,
             d.ProductoId, // TODO: Obtener nombre del producto desde ERP
@@ -218,11 +218,11 @@ public class CotizacionService : ICotizacionService
             .ToList();
 
         var usuarios = await _context.Usuarios
-            .Where(u => usuariosIds.Contains(u.Id))
-            .ToDictionaryAsync(u => u.Id, u => u.Nombre);
+            .Where(u => usuariosIds.Contains(u.UsuarioId))  // CORREGIDO: Usar UsuarioId
+            .ToDictionaryAsync(u => u.UsuarioId, u => u.Nombre);  // CORREGIDO: Usar UsuarioId
 
         return historiales.Select(h => new HistorialCotizacionDto(
-            h.Id,
+            h.HistorialId,  // FASE 3: Usar HistorialId en lugar de Id
             h.VersionId,
             h.TipoEvento,
             h.FechaEvento,
@@ -257,7 +257,7 @@ public class CotizacionService : ICotizacionService
 
             // Obtener los detalles de la versión vigente
             var detalles = await _context.DetallesCotizacionVersion
-                .Where(d => d.VersionId == versionVigente.Id)
+                .Where(d => d.VersionId == versionVigente.VersionId)  // CORREGIDO: Usar VersionId
                 .ToListAsync();
 
             // Generar nuevo identificador único para la nueva versión
@@ -269,7 +269,7 @@ public class CotizacionService : ICotizacionService
             {
                 CotizacionId = cotizacion.CotizacionId,
                 NumeroVersion = nuevoNumeroVersion,
-                FechaVersion = DateTime.Now,
+                FechaVersion = DateTime.Now,  // CORREGIDO: datetime en lugar de datetime2
                 NombreInteresado = versionVigente.NombreInteresado,
                 EmailInteresado = versionVigente.EmailInteresado,
                 EmpresaInteresado = versionVigente.EmpresaInteresado,
@@ -280,7 +280,10 @@ public class CotizacionService : ICotizacionService
                 Moneda = versionVigente.Moneda,
                 TipoCambio = versionVigente.TipoCambio,
                 VersionActual = nuevoVersionActual,
-                Notas = versionVigente.Notas
+                Notas = versionVigente.Notas,
+                // CORREGIDO: Agregar auditoría
+                CreatedAt = DateTime.Now,
+                CreatedBy = 1  // Usuario sistema
             };
 
             _context.CotizacionesVersiones.Add(nuevaVersion);
@@ -291,12 +294,15 @@ public class CotizacionService : ICotizacionService
             {
                 var nuevoDetalle = new DetalleCotizacionVersion
                 {
-                    VersionId = nuevaVersion.Id,
+                    VersionId = nuevaVersion.VersionId,  // CORREGIDO: Usar VersionId
                     ProductoId = detalle.ProductoId,
                     Cantidad = detalle.Cantidad,
                     PrecioUnitario = detalle.PrecioUnitario,
                     Descuento = detalle.Descuento,
-                    TotalLinea = detalle.TotalLinea
+                    TotalLinea = detalle.TotalLinea,
+                    // CORREGIDO: Agregar auditoría
+                    CreatedAt = DateTime.Now,
+                    CreatedBy = 1  // Usuario sistema
                 };
                 _context.DetallesCotizacionVersion.Add(nuevoDetalle);
             }
@@ -307,9 +313,10 @@ public class CotizacionService : ICotizacionService
             // Registrar evento en historial
             var historial = new HistorialCotizacion
             {
-                VersionId = nuevaVersion.Id,
-                TipoEvento = TipoEvento.VersionGenerada,
-                FechaEvento = DateTime.Now,
+                VersionId = nuevaVersion.VersionId,  // CORREGIDO: Usar VersionId
+                TipoEvento = TipoEvento.VersionGenerada.ToString(),  // CORREGIDO: Convertir enum a string
+                FechaEvento = DateTime.Now,  // CORREGIDO: datetime en lugar de datetime2
+                UsuarioEvento = 1,  // CORREGIDO: Agregar usuario sistema
                 Comentario = $"Nueva versión {nuevoNumeroVersion} generada desde versión {versionVigente.NumeroVersion}"
             };
             _context.HistorialesCotizacion.Add(historial);

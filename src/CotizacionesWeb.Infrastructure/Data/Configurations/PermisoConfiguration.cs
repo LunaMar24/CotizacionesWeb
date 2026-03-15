@@ -8,7 +8,11 @@ public class PermisoConfiguration : IEntityTypeConfiguration<Permiso>
 {
     public void Configure(EntityTypeBuilder<Permiso> builder)
     {
-        builder.HasKey(p => p.Id);
+        // FASE 2: Permiso usa PermisoId como llave primaria (sin BaseEntity)
+        builder.HasKey(p => p.PermisoId);
+        
+        builder.Property(p => p.PermisoId)
+               .ValueGeneratedOnAdd();  // Configurar como IDENTITY
         
         builder.Property(p => p.Codigo)
                .HasMaxLength(30)
@@ -16,8 +20,6 @@ public class PermisoConfiguration : IEntityTypeConfiguration<Permiso>
         
         builder.HasIndex(p => p.Codigo)
                .IsUnique();
-        
-        builder.HasIndex(p => p.Codigo);
         
         builder.Property(p => p.Categoria)
                .HasMaxLength(50)
@@ -27,11 +29,7 @@ public class PermisoConfiguration : IEntityTypeConfiguration<Permiso>
                .HasMaxLength(200)
                .IsRequired();
         
-        builder.Property(p => p.CreatedBy)
-               .HasMaxLength(100);
-        
-        builder.Property(p => p.ModifiedBy)
-               .HasMaxLength(100);
+        // Sin campos de auditoría - no hereda de BaseEntity según modelo
     }
 }
 

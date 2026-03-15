@@ -4,6 +4,7 @@ namespace CotizacionesWeb.Domain.Entities;
 
 public class CotizacionVersion : BaseEntity
 {
+    public int VersionId { get; set; }  // FASE 3: Llave primaria específica según modelo
     public string CotizacionId { get; set; } = string.Empty;
     public int NumeroVersion { get; set; }
     public DateTime FechaVersion { get; set; }

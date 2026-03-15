@@ -10,10 +10,11 @@ public class HistorialCotizacionConfiguration : IEntityTypeConfiguration<Histori
     {
         builder.ToTable("HistorialCotizacion");
         
-        builder.HasKey(h => h.Id);
+        // HistorialId como llave primaria (sin BaseEntity según modelo)
+        builder.HasKey(h => h.HistorialId);
         
-        builder.Property(h => h.Id)
-            .HasColumnName("HistorialId");
+        builder.Property(h => h.HistorialId)
+               .ValueGeneratedOnAdd();
         
         builder.Property(h => h.VersionId)
             .IsRequired();
@@ -22,18 +23,24 @@ public class HistorialCotizacionConfiguration : IEntityTypeConfiguration<Histori
             .HasMaxLength(50)
             .IsRequired();
         
+        // CORREGIDO: Fechas como datetime (no datetime2)
         builder.Property(h => h.FechaEvento)
+            .HasColumnType("datetime")
             .IsRequired();
         
         builder.Property(h => h.Comentario)
             .HasMaxLength(500);
         
-        builder.Property(h => h.CreatedBy)
-            .HasMaxLength(100)
-            .IsRequired();
+        // AGREGADO: Foreign Key para UsuarioEvento
+        builder.Property(h => h.UsuarioEvento);
         
-        builder.Property(h => h.ModifiedBy)
-            .HasMaxLength(100);
+        // Foreign Key para UsuarioEvento
+        builder.HasOne<Usuario>()
+               .WithMany()
+               .HasForeignKey(h => h.UsuarioEvento)
+               .HasPrincipalKey(u => u.UsuarioId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .HasConstraintName("FK_HistorialCotizacion_Usuarios_UsuarioEvento");
         
         builder.HasOne(h => h.Version)
             .WithMany(v => v.Historiales)

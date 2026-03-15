@@ -6,11 +6,11 @@ namespace CotizacionesWeb.Infrastructure.Data.Interceptors;
 
 public class AuditInterceptor : SaveChangesInterceptor
 {
-    private readonly Func<string?> _getCurrentUser;
+    private readonly Func<int?> _getCurrentUserId;
 
-    public AuditInterceptor(Func<string?> getCurrentUser)
+    public AuditInterceptor(Func<int?> getCurrentUserId)
     {
-        _getCurrentUser = getCurrentUser;
+        _getCurrentUserId = getCurrentUserId;
     }
 
     public override InterceptionResult<int> SavingChanges(
@@ -35,19 +35,19 @@ public class AuditInterceptor : SaveChangesInterceptor
         if (context == null) return;
 
         var now = DateTime.UtcNow;
-        var currentUser = _getCurrentUser() ?? "system";
+        var currentUserId = _getCurrentUserId() ?? 0; // 0 para sistema/anonimo
 
         foreach (var entry in context.ChangeTracker.Entries<BaseEntity>())
         {
             if (entry.State == EntityState.Added)
             {
                 entry.Entity.CreatedAt = now;
-                entry.Entity.CreatedBy = currentUser;
+                entry.Entity.CreatedBy = currentUserId;
             }
             else if (entry.State == EntityState.Modified)
             {
                 entry.Entity.ModifiedAt = now;
-                entry.Entity.ModifiedBy = currentUser;
+                entry.Entity.ModifiedBy = currentUserId;
             }
         }
     }

@@ -41,9 +41,13 @@ try
             var user = httpContextAccessor.HttpContext?.User;
             if (user?.Identity?.IsAuthenticated == true)
             {
-                return user.FindFirst(ClaimTypes.Email)?.Value ?? "system";
+                var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (int.TryParse(userIdClaim, out int userId))
+                {
+                    return userId;
+                }
             }
-            return "system";
+            return null; // null para usuarios no autenticados - se convertirá en 0 en el interceptor
         });
         
         options.UseSqlServer(builder.Configuration.GetConnectionString("CotizacionesDb"))

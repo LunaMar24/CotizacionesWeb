@@ -10,10 +10,11 @@ public class ParametrosConfiguration : IEntityTypeConfiguration<Parametros>
     {
         builder.ToTable("Parametros");
         
-        builder.HasKey(p => p.Id);
+        // FASE 3: Parametros usa ParametroId (sin BaseEntity según modelo)
+        builder.HasKey(p => p.ParametroId);
         
-        builder.Property(p => p.Id)
-            .HasColumnName("ParametroId");
+        builder.Property(p => p.ParametroId)
+               .ValueGeneratedOnAdd();  // Configurar como IDENTITY
         
         builder.Property(p => p.Descripcion)
             .HasMaxLength(100)
@@ -27,11 +28,6 @@ public class ParametrosConfiguration : IEntityTypeConfiguration<Parametros>
             .HasMaxLength(1)
             .IsRequired();
         
-        builder.Property(p => p.CreatedBy)
-            .HasMaxLength(100)
-            .IsRequired();
-        
-        builder.Property(p => p.ModifiedBy)
-            .HasMaxLength(100);
+        // Sin campos de auditoría - no hereda de BaseEntity según modelo
     }
 }

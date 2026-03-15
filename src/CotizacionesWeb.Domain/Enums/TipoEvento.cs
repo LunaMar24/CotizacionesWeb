@@ -19,11 +19,4 @@ public static class TipoEvento
     // Eventos administrativos
     public const string Archivada = "Archivada";
     public const string EnviadaERP = "EnviadaERP";
-    
-    // Eventos legacy (mantener por compatibilidad)
-    public const string Modificada = "Modificada";
-    public const string Enviada = "Enviada";
-    public const string Rechazada = "Rechazada";
-    public const string Reactivada = "Reactivada";
-    public const string Cancelada = "Cancelada";
 }

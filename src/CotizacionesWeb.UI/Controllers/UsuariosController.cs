@@ -199,12 +199,12 @@ public class UsuariosController : Controller
 
             var model = new UsuarioRolesViewModel
             {
-                UsuarioId = usuario.Id,
+                UsuarioId = usuario.Id,  // UsuarioDto ya usa UsuarioId correcto
                 UsuarioNombre = usuario.Nombre,
-                RolesAsignados = rolesAsignados.Select(r => r.Id).ToList(),
+                RolesAsignados = rolesAsignados.Select(r => r.Id).ToList(),  // RolDto ya usa RolId correcto
                 RolesDisponibles = rolesDisponibles.Select(r => new RolItemViewModel
                 {
-                    Id = r.Id,
+                    Id = r.Id,  // RolDto ya usa RolId correcto
                     Nombre = r.Nombre,
                     Descripcion = r.Descripcion
                 }).ToList()
@@ -215,7 +215,7 @@ public class UsuariosController : Controller
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al obtener roles del usuario {Id}", id);
-            return BadRequest();
+            return BadRequest("Error al cargar los roles.");
         }
     }
 
