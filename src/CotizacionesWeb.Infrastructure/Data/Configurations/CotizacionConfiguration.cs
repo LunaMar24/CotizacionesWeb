@@ -10,7 +10,11 @@ public class CotizacionConfiguration : IEntityTypeConfiguration<Cotizacion>
     {
         builder.ToTable("Cotizacion");
         
-        builder.HasKey(c => c.Id);
+        // CotizacionId VARCHAR como llave primaria
+        builder.HasKey(c => c.CotizacionId);
+        
+        // Ignorar Id de BaseEntity ya que usamos CotizacionId
+        builder.Ignore(c => c.Id);
         
         builder.Property(c => c.CotizacionId)
             .HasMaxLength(30)
@@ -27,33 +31,54 @@ public class CotizacionConfiguration : IEntityTypeConfiguration<Cotizacion>
             .HasColumnType("decimal(18,2)")
             .IsRequired();
         
-        // Configuración de nuevos campos según lineamientos funcionales
+        // CORREGIDO: Fechas como datetime (no datetime2)
+        builder.Property(c => c.FechaEnvio)
+            .HasColumnType("datetime");
+        
         builder.Property(c => c.FechaAceptacion)
-            .HasColumnType("datetime2");
+            .HasColumnType("datetime");
         
         builder.Property(c => c.FechaRechazo)
-            .HasColumnType("datetime2");
+            .HasColumnType("datetime");
+        
+        builder.Property(c => c.FechaEnvioERP)
+            .HasColumnType("datetime");
+        
+        builder.Property(c => c.CreatedAt)
+            .HasColumnType("datetime")
+            .IsRequired();
+        
+        builder.Property(c => c.ModifiedAt)
+            .HasColumnType("datetime");
         
         builder.Property(c => c.EnviadoERP)
             .HasMaxLength(1)
             .IsRequired()
             .HasDefaultValue('N');
         
-        builder.Property(c => c.FechaEnvioERP)
-            .HasColumnType("datetime2");
-        
+        // AGREGADO: Foreign Keys para auditoría
         builder.Property(c => c.CreatedBy)
-            .HasMaxLength(100)
             .IsRequired();
         
-        builder.Property(c => c.ModifiedBy)
-            .HasMaxLength(100);
+        builder.Property(c => c.ModifiedBy);
+        
+        // Foreign Keys para auditoría
+        builder.HasOne<Usuario>()
+               .WithMany()
+               .HasForeignKey(c => c.CreatedBy)
+               .HasPrincipalKey(u => u.UsuarioId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .HasConstraintName("FK_Cotizacion_Usuarios_CreatedBy");
+               
+        builder.HasOne<Usuario>()
+               .WithMany()
+               .HasForeignKey(c => c.ModifiedBy)
+               .HasPrincipalKey(u => u.UsuarioId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .HasConstraintName("FK_Cotizacion_Usuarios_ModifiedBy");
         
         // Check constraint para EnviadoERP
         builder.HasCheckConstraint("CK_Cotizacion_EnviadoERP", "[EnviadoERP] IN ('S', 'N')");
-        
-        builder.HasIndex(c => c.CotizacionId)
-            .IsUnique();
         
         builder.HasOne(c => c.Interesado)
             .WithMany(i => i.Cotizaciones)

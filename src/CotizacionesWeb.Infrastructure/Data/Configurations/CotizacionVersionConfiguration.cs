@@ -10,10 +10,14 @@ public class CotizacionVersionConfiguration : IEntityTypeConfiguration<Cotizacio
     {
         builder.ToTable("CotizacionVersion");
         
-        builder.HasKey(cv => cv.Id);
+        // VersionId como llave primaria
+        builder.HasKey(cv => cv.VersionId);
         
-        builder.Property(cv => cv.Id)
-            .HasColumnName("VersionId");
+        builder.Property(cv => cv.VersionId)
+               .ValueGeneratedOnAdd();
+        
+        // Ignorar Id de BaseEntity ya que usamos VersionId
+        builder.Ignore(cv => cv.Id);
         
         builder.Property(cv => cv.CotizacionId)
             .HasMaxLength(30)
@@ -23,8 +27,17 @@ public class CotizacionVersionConfiguration : IEntityTypeConfiguration<Cotizacio
             .HasColumnType("decimal(3,1)")
             .IsRequired();
         
+        // CORREGIDO: Fechas como datetime (no datetime2)
         builder.Property(cv => cv.FechaVersion)
+            .HasColumnType("datetime")
             .IsRequired();
+        
+        builder.Property(cv => cv.CreatedAt)
+            .HasColumnType("datetime")
+            .IsRequired();
+        
+        builder.Property(cv => cv.ModifiedAt)
+            .HasColumnType("datetime");
         
         builder.Property(cv => cv.NombreInteresado)
             .HasMaxLength(200)
@@ -62,17 +75,31 @@ public class CotizacionVersionConfiguration : IEntityTypeConfiguration<Cotizacio
             .HasColumnType("decimal(18,2)");
         
         builder.Property(cv => cv.VersionActual)
-            .IsRequired(); // Cambiado de char(1) a int
+            .IsRequired();
         
         builder.Property(cv => cv.Notas)
             .HasMaxLength(2000);
         
+        // AGREGADO: Foreign Keys para auditoría
         builder.Property(cv => cv.CreatedBy)
-            .HasMaxLength(100)
             .IsRequired();
         
-        builder.Property(cv => cv.ModifiedBy)
-            .HasMaxLength(100);
+        builder.Property(cv => cv.ModifiedBy);
+        
+        // Foreign Keys para auditoría
+        builder.HasOne<Usuario>()
+               .WithMany()
+               .HasForeignKey(cv => cv.CreatedBy)
+               .HasPrincipalKey(u => u.UsuarioId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .HasConstraintName("FK_CotizacionVersion_Usuarios_CreatedBy");
+               
+        builder.HasOne<Usuario>()
+               .WithMany()
+               .HasForeignKey(cv => cv.ModifiedBy)
+               .HasPrincipalKey(u => u.UsuarioId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .HasConstraintName("FK_CotizacionVersion_Usuarios_ModifiedBy");
         
         builder.HasOne(cv => cv.Cotizacion)
             .WithMany(c => c.Versiones)

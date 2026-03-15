@@ -21,7 +21,7 @@ public class PermisoService : IPermisoService
             .ToListAsync();
 
         return permisos.Select(p => new PermisoDto(
-            p.Id,
+            p.PermisoId,  // FASE 2: Usar PermisoId en lugar de Id
             p.Codigo,
             p.Categoria,
             p.Descripcion

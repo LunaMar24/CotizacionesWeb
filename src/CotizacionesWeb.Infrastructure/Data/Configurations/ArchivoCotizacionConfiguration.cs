@@ -10,17 +10,23 @@ public class ArchivoCotizacionConfiguration : IEntityTypeConfiguration<ArchivoCo
     {
         builder.ToTable("ArchivoCotizacion");
         
-        builder.HasKey(a => a.Id);
+        // ArchivoId como llave primaria (sin BaseEntity según modelo)
+        builder.HasKey(a => a.ArchivoId);
         
-        builder.Property(a => a.Id)
-            .HasColumnName("ArchivoId");
+        builder.Property(a => a.ArchivoId)
+               .ValueGeneratedOnAdd();
         
         builder.Property(a => a.CotizacionId)
             .HasMaxLength(30)
             .IsRequired();
         
+        // CORREGIDO: Fechas como datetime (no datetime2)
         builder.Property(a => a.FechaArchivado)
+            .HasColumnType("datetime")
             .IsRequired();
+        
+        builder.Property(a => a.FechaReactivacion)
+            .HasColumnType("datetime");
         
         builder.Property(a => a.TipoArchivo)
             .HasMaxLength(1)
@@ -33,12 +39,24 @@ public class ArchivoCotizacionConfiguration : IEntityTypeConfiguration<ArchivoCo
         builder.Property(a => a.Comentario)
             .HasMaxLength(500);
         
-        builder.Property(a => a.CreatedBy)
-            .HasMaxLength(100)
-            .IsRequired();
+        // AGREGADO: Foreign Keys para usuarios
+        builder.Property(a => a.UsuarioArchiva);
+        builder.Property(a => a.UsuarioReactiva);
         
-        builder.Property(a => a.ModifiedBy)
-            .HasMaxLength(100);
+        // Foreign Keys para UsuarioArchiva y UsuarioReactiva
+        builder.HasOne<Usuario>()
+               .WithMany()
+               .HasForeignKey(a => a.UsuarioArchiva)
+               .HasPrincipalKey(u => u.UsuarioId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .HasConstraintName("FK_ArchivoCotizacion_Usuarios_UsuarioArchiva");
+               
+        builder.HasOne<Usuario>()
+               .WithMany()
+               .HasForeignKey(a => a.UsuarioReactiva)
+               .HasPrincipalKey(u => u.UsuarioId)
+               .OnDelete(DeleteBehavior.Restrict)
+               .HasConstraintName("FK_ArchivoCotizacion_Usuarios_UsuarioReactiva");
         
         builder.HasOne(a => a.Cotizacion)
             .WithMany(c => c.Archivos)

@@ -1,9 +1,8 @@
-using CotizacionesWeb.Domain.Common;
-
 namespace CotizacionesWeb.Domain.Entities;
 
-public class Permiso : BaseEntity
+public class Permiso
 {
+    public int PermisoId { get; set; }  // Llave primaria específica según modelo
     public string Codigo { get; set; } = string.Empty;
     public string Categoria { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;

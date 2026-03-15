@@ -8,7 +8,15 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
 {
     public void Configure(EntityTypeBuilder<Usuario> builder)
     {
-        builder.HasKey(u => u.Id);
+        // FASE 2: Usuario tiene tanto Id (BaseEntity) como UsuarioId (específico)
+        // Configurar UsuarioId como llave primaria principal
+        builder.HasKey(u => u.UsuarioId);
+        
+        builder.Property(u => u.UsuarioId)
+               .ValueGeneratedOnAdd();  // Configurar como IDENTITY
+        
+        // El Id de BaseEntity se mantiene para futuras migraciones
+        builder.Ignore(u => u.Id);
         
         builder.Property(u => u.Nombre)
                .HasMaxLength(100)
@@ -33,12 +41,21 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
                .IsRequired()
                .HasDefaultValue(0);
         
-        builder.Property(u => u.UltimoAcceso);
+        builder.Property(u => u.UltimoAcceso)
+               .HasColumnType("datetime");
         
+        // CORREGIDO: Fechas como datetime (no datetime2)
+        builder.Property(u => u.CreatedAt)
+               .HasColumnType("datetime")
+               .IsRequired();
+        
+        builder.Property(u => u.ModifiedAt)
+               .HasColumnType("datetime");
+        
+        // Auditoría con IDs de usuario
         builder.Property(u => u.CreatedBy)
-               .HasMaxLength(100);
+               .IsRequired();
         
-        builder.Property(u => u.ModifiedBy)
-               .HasMaxLength(100);
+        builder.Property(u => u.ModifiedBy);
     }
 }

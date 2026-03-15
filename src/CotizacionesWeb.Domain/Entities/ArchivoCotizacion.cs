@@ -1,9 +1,8 @@
-using CotizacionesWeb.Domain.Common;
-
 namespace CotizacionesWeb.Domain.Entities;
 
-public class ArchivoCotizacion : BaseEntity
+public class ArchivoCotizacion
 {
+    public int ArchivoId { get; set; }  // FASE 3: Llave primaria específica (sin BaseEntity según modelo)
     public string CotizacionId { get; set; } = string.Empty;
     public int? VersionArchivada { get; set; }
     public DateTime FechaArchivado { get; set; }

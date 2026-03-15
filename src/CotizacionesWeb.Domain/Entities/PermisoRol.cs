@@ -1,9 +1,8 @@
-using CotizacionesWeb.Domain.Common;
-
 namespace CotizacionesWeb.Domain.Entities;
 
-public class PermisoRol : BaseEntity
+public class PermisoRol
 {
+    // Llave compuesta: PermisoId + RolId (sin BaseEntity según modelo)
     public int PermisoId { get; set; }
     public Permiso Permiso { get; set; } = null!;
     

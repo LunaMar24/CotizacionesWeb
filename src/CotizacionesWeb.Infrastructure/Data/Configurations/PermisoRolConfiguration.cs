@@ -8,7 +8,8 @@ public class PermisoRolConfiguration : IEntityTypeConfiguration<PermisoRol>
 {
     public void Configure(EntityTypeBuilder<PermisoRol> builder)
     {
-        builder.HasKey(pr => pr.Id);
+        // FASE 2: Llave compuesta PermisoId + RolId (sin BaseEntity según modelo)
+        builder.HasKey(pr => new { pr.PermisoId, pr.RolId });
         
         // Relación: PermisoRol -> Permiso
         builder.HasOne(pr => pr.Permiso)
@@ -22,8 +23,6 @@ public class PermisoRolConfiguration : IEntityTypeConfiguration<PermisoRol>
                .HasForeignKey(pr => pr.RolId)
                .OnDelete(DeleteBehavior.Cascade);
         
-        // Índice compuesto único para evitar duplicados
-        builder.HasIndex(pr => new { pr.PermisoId, pr.RolId })
-               .IsUnique();
+        // Sin campos de auditoría - no hereda de BaseEntity según modelo
     }
 }
