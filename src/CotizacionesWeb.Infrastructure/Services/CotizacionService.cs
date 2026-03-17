@@ -263,7 +263,7 @@ public class CotizacionService : ICotizacionService
         )).ToList();
     }
 
-    public async Task<CopiarVersionResult> CopiarVersionActualAsync(string cotizacionId)
+    public async Task<CopiarVersionResult> CopiarVersionActualAsync(string cotizacionId, string? comentario = null, int? userId = null)
     {
         try
         {
@@ -292,13 +292,13 @@ public class CotizacionService : ICotizacionService
             // Generar nuevo identificador único para la nueva versión
             var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
             
-            // Crear nueva versión
-            var nuevoNumeroVersion = versionVigente.NumeroVersion + 1;
+            // Crear nueva versión con lógica de incremento correcta
+            var nuevoNumeroVersion = CalcularNuevaVersion(versionVigente.NumeroVersion);
             var nuevaVersion = new CotizacionVersion
             {
                 CotizacionId = cotizacion.CotizacionId,
                 NumeroVersion = nuevoNumeroVersion,
-                FechaVersion = DateTime.Now,  // CORREGIDO: datetime en lugar de datetime2
+                FechaVersion = DateTime.Now,
                 NombreInteresado = versionVigente.NombreInteresado,
                 EmailInteresado = versionVigente.EmailInteresado,
                 EmpresaInteresado = versionVigente.EmpresaInteresado,
@@ -309,10 +309,8 @@ public class CotizacionService : ICotizacionService
                 Moneda = versionVigente.Moneda,
                 TipoCambio = versionVigente.TipoCambio,
                 VersionActual = nuevoVersionActual,
-                Notas = versionVigente.Notas,
-                // CORREGIDO: Agregar auditoría
-                CreatedAt = DateTime.Now,
-                CreatedBy = 1  // Usuario sistema
+                Notas = versionVigente.Notas
+                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
             };
 
             _context.CotizacionesVersiones.Add(nuevaVersion);
@@ -323,30 +321,37 @@ public class CotizacionService : ICotizacionService
             {
                 var nuevoDetalle = new DetalleCotizacionVersion
                 {
-                    VersionId = nuevaVersion.VersionId,  // CORREGIDO: Usar VersionId
+                    VersionId = nuevaVersion.VersionId,
                     ProductoId = detalle.ProductoId,
                     Cantidad = detalle.Cantidad,
                     PrecioUnitario = detalle.PrecioUnitario,
                     Descuento = detalle.Descuento,
-                    TotalLinea = detalle.TotalLinea,
-                    // CORREGIDO: Agregar auditoría
-                    CreatedAt = DateTime.Now,
-                    CreatedBy = 1  // Usuario sistema
+                    TotalLinea = detalle.TotalLinea
+                    // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
                 };
                 _context.DetallesCotizacionVersion.Add(nuevoDetalle);
             }
 
             // Actualizar cotización para apuntar a la nueva versión vigente
             cotizacion.VersionActual = nuevoVersionActual;
+            
+            // ?? CAMBIO CRÍTICO: Al crear una nueva versión, la cotización vuelve a estado Borrador
+            // porque es una nueva versión que debe pasar por todo el ciclo de estados
+            cotizacion.EstadoActual = (char)EstadoCotizacion.Borrador;
+
+            // Crear comentario para el historial
+            var comentarioFinal = string.IsNullOrWhiteSpace(comentario) 
+                ? $"Nueva versión {nuevoNumeroVersion} generada desde versión {versionVigente.NumeroVersion}"
+                : $"Nueva versión generada: {comentario.Trim()}";
 
             // Registrar evento en historial
             var historial = new HistorialCotizacion
             {
-                VersionId = nuevaVersion.VersionId,  // CORREGIDO: Usar VersionId
-                TipoEvento = TipoEvento.VersionGenerada.ToString(),  // CORREGIDO: Convertir enum a string
-                FechaEvento = DateTime.Now,  // CORREGIDO: datetime en lugar de datetime2
-                UsuarioEvento = 1,  // CORREGIDO: Agregar usuario sistema
-                Comentario = $"Nueva versión {nuevoNumeroVersion} generada desde versión {versionVigente.NumeroVersion}"
+                VersionId = nuevaVersion.VersionId,
+                TipoEvento = "VersionGenerada",
+                FechaEvento = DateTime.Now,
+                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario dinámico, 0 si no se proporciona
+                Comentario = comentarioFinal
             };
             _context.HistorialesCotizacion.Add(historial);
 
@@ -355,7 +360,7 @@ public class CotizacionService : ICotizacionService
             _logger.LogInformation("Nueva versión {NumeroVersion} creada para cotización {CotizacionId}", 
                 nuevoNumeroVersion, cotizacionId);
 
-            return new CopiarVersionResult(true, null, nuevaVersion.Id, (int)nuevoNumeroVersion);
+            return new CopiarVersionResult(true, null, nuevaVersion.VersionId, nuevoNumeroVersion);  // CORREGIDO: No cast a int
         }
         catch (Exception ex)
         {
@@ -364,7 +369,7 @@ public class CotizacionService : ICotizacionService
         }
     }
 
-    public async Task<CopiarVersionResult> CopiarVersionEspecificaAsync(CopiarVersionRequest request)
+    public async Task<CopiarVersionResult> CopiarVersionEspecificaAsync(CopiarVersionRequest request, int? userId = null)
     {
         try
         {
@@ -378,7 +383,7 @@ public class CotizacionService : ICotizacionService
 
             var versionBase = await _context.CotizacionesVersiones
                 .Include(v => v.Detalles)
-                .FirstOrDefaultAsync(v => v.Id == request.VersionIdBase);
+                .FirstOrDefaultAsync(v => v.VersionId == request.VersionIdBase);  // CORREGIDO: Usar VersionId
 
             if (versionBase == null)
             {
@@ -388,8 +393,8 @@ public class CotizacionService : ICotizacionService
             // Generar nuevo identificador único para la nueva versión
             var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
             
-            // Crear nueva versión
-            var nuevoNumeroVersion = versionBase.NumeroVersion + 1;
+            // Crear nueva versión con lógica de incremento correcta
+            var nuevoNumeroVersion = CalcularNuevaVersion(versionBase.NumeroVersion);
             var nuevaVersion = new CotizacionVersion
             {
                 CotizacionId = cotizacion.CotizacionId,
@@ -406,6 +411,7 @@ public class CotizacionService : ICotizacionService
                 TipoCambio = versionBase.TipoCambio,
                 VersionActual = nuevoVersionActual,
                 Notas = versionBase.Notas
+                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
             };
 
             _context.CotizacionesVersiones.Add(nuevaVersion);
@@ -416,28 +422,37 @@ public class CotizacionService : ICotizacionService
             {
                 var nuevoDetalle = new DetalleCotizacionVersion
                 {
-                    VersionId = nuevaVersion.Id,
+                    VersionId = nuevaVersion.VersionId,
                     ProductoId = detalle.ProductoId,
                     Cantidad = detalle.Cantidad,
                     PrecioUnitario = detalle.PrecioUnitario,
                     Descuento = detalle.Descuento,
                     TotalLinea = detalle.TotalLinea
+                    // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
                 };
                 _context.DetallesCotizacionVersion.Add(nuevoDetalle);
             }
 
             // Actualizar cotización para apuntar a la nueva versión vigente
             cotizacion.VersionActual = nuevoVersionActual;
+            
+            // ?? CAMBIO CRÍTICO: Al crear una nueva versión, la cotización vuelve a estado Borrador
+            // porque es una nueva versión que debe pasar por todo el ciclo de estados
+            cotizacion.EstadoActual = (char)EstadoCotizacion.Borrador;
+
+            // Crear comentario para el historial
+            var comentarioFinal = string.IsNullOrWhiteSpace(request.Comentario) 
+                ? $"Nueva versión {nuevoNumeroVersion} generada desde versión {(request.EsVersionAntigua ? "antigua " : "")}{versionBase.NumeroVersion}"
+                : $"Nueva versión generada: {request.Comentario.Trim()}";
 
             // Registrar evento en historial
             var historial = new HistorialCotizacion
             {
-                VersionId = nuevaVersion.Id,
-                TipoEvento = TipoEvento.VersionGenerada,
+                VersionId = nuevaVersion.VersionId,
+                TipoEvento = "VersionGenerada",
                 FechaEvento = DateTime.Now,
-                Comentario = request.EsVersionAntigua
-                    ? $"Nueva versión {nuevoNumeroVersion} generada desde versión antigua {versionBase.NumeroVersion}"
-                    : $"Nueva versión {nuevoNumeroVersion} generada desde versión {versionBase.NumeroVersion}"
+                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario dinámico, 0 si no se proporciona
+                Comentario = comentarioFinal
             };
             _context.HistorialesCotizacion.Add(historial);
 
@@ -446,7 +461,7 @@ public class CotizacionService : ICotizacionService
             _logger.LogInformation("Nueva versión {NumeroVersion} creada desde versión {VersionBase} para cotización {CotizacionId}",
                 nuevoNumeroVersion, versionBase.NumeroVersion, request.CotizacionId);
 
-            return new CopiarVersionResult(true, null, nuevaVersion.Id, (int)nuevoNumeroVersion);
+            return new CopiarVersionResult(true, null, nuevaVersion.VersionId, nuevoNumeroVersion);  // CORREGIDO: No cast a int
         }
         catch (Exception ex)
         {
@@ -455,7 +470,7 @@ public class CotizacionService : ICotizacionService
         }
     }
 
-    public async Task<DuplicarCotizacionResult> DuplicarCotizacionAsync(DuplicarCotizacionRequest request)
+    public async Task<DuplicarCotizacionResult> DuplicarCotizacionAsync(DuplicarCotizacionRequest request, int? userId = null)
     {
         try
         {
@@ -478,7 +493,7 @@ public class CotizacionService : ICotizacionService
 
             // Obtener los detalles de la versión vigente
             var detalles = await _context.DetallesCotizacionVersion
-                .Where(d => d.VersionId == versionVigente.Id)
+                .Where(d => d.VersionId == versionVigente.VersionId)  // CORREGIDO: Usar VersionId
                 .ToListAsync();
 
             // Generar nuevo ID de cotización
@@ -495,6 +510,7 @@ public class CotizacionService : ICotizacionService
                 EstadoActual = (char)EstadoCotizacion.Borrador,
                 VersionActual = nuevoVersionActual, // Apuntar a la nueva versión
                 MontoCotizacion = versionVigente.Total
+                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
             };
 
             _context.Cotizaciones.Add(nuevaCotizacion);
@@ -517,6 +533,7 @@ public class CotizacionService : ICotizacionService
                 TipoCambio = versionVigente.TipoCambio,
                 VersionActual = nuevoVersionActual, // Usar el identificador único generado
                 Notas = null // Se limpian las notas
+                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
             };
 
             _context.CotizacionesVersiones.Add(nuevaVersion);
@@ -527,12 +544,13 @@ public class CotizacionService : ICotizacionService
             {
                 var nuevoDetalle = new DetalleCotizacionVersion
                 {
-                    VersionId = nuevaVersion.Id,
+                    VersionId = nuevaVersion.VersionId,
                     ProductoId = detalle.ProductoId,
                     Cantidad = detalle.Cantidad,
                     PrecioUnitario = detalle.PrecioUnitario,
                     Descuento = detalle.Descuento,
                     TotalLinea = detalle.TotalLinea
+                    // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
                 };
                 _context.DetallesCotizacionVersion.Add(nuevoDetalle);
             }
@@ -540,9 +558,10 @@ public class CotizacionService : ICotizacionService
             // Registrar evento inicial en historial
             var historial = new HistorialCotizacion
             {
-                VersionId = nuevaVersion.Id,
-                TipoEvento = TipoEvento.Creada,
+                VersionId = nuevaVersion.VersionId,
+                TipoEvento = "Creada",
                 FechaEvento = DateTime.Now,
+                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario dinámico, 0 si no se proporciona
                 Comentario = $"Cotización creada por duplicación de {request.CotizacionIdBase}"
             };
             _context.HistorialesCotizacion.Add(historial);
@@ -591,5 +610,23 @@ public class CotizacionService : ICotizacionService
             .MaxAsync(v => (int?)v.VersionActual) ?? 0;
         
         return maxVersionActual + 1;
+    }
+
+    private static decimal CalcularNuevaVersion(decimal versionActual)
+    {
+        // Implementar lógica de incremento según documentación:
+        // Si es versión mayor (1.0, 2.0, 3.0) ? incrementar entero: 1.0 ? 2.0
+        // Si es versión menor (1.1, 1.2, 2.5) ? incrementar decimal: 1.1 ? 1.2
+        
+        if (versionActual % 1 == 0)
+        {
+            // Es versión mayor (ej: 1.0, 2.0)
+            return versionActual + 1.0m;
+        }
+        else
+        {
+            // Es versión menor (ej: 1.1, 2.5)
+            return versionActual + 0.1m;
+        }
     }
 }

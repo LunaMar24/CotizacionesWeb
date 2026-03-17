@@ -1,0 +1,101 @@
+<!-- Modal para solicitar comentario al copiar versión -->
+<div class="modal fade" id="modalComentarioCopia" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header modal-header-custom">
+                <h5 class="modal-title">
+                    <i class="fas fa-copy"></i> <span id="tituloComentarioCopia">Copiar Versión</span>
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="mensajeComentarioCopia">Se creará una nueva versión de la cotización.</span>
+                </div>
+                
+                <form id="formComentarioCopia">
+                    <div class="form-group">
+                        <label for="comentarioCopia" class="form-label">
+                            <strong>Comentario de la nueva versión:</strong>
+                        </label>
+                        <textarea 
+                            id="comentarioCopia" 
+                            name="comentario" 
+                            class="form-control" 
+                            rows="3" 
+                            placeholder="Describe el motivo de la nueva versión (ej: Ajustes de precios solicitados por el cliente, Agregar servicios adicionales, etc.)"
+                            maxlength="500"></textarea>
+                        <small class="text-muted">Opcional. Este comentario aparecerá en el historial de la nueva versión.</small>
+                    </div>
+                    
+                    <!-- Campos ocultos para pasar datos -->
+                    <input type="hidden" id="cotizacionIdCopia" name="cotizacionId" />
+                    <input type="hidden" id="versionIdCopia" name="versionId" />
+                    <input type="hidden" id="esVersionAntiguaCopia" name="esVersionAntigua" value="false" />
+                    <input type="hidden" id="tipoCopiaCopia" name="tipoCopia" /> <!-- 'actual' o 'especifica' -->
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarCopia">
+                    <i class="fas fa-copy"></i> Crear Nueva Versión
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Estilos específicos para la modal de comentario de copia */
+#modalComentarioCopia .form-control:focus {
+    border-color: var(--color-secondary);
+    box-shadow: 0 0 0 0.2rem var(--color-secondary-light);
+}
+
+#modalComentarioCopia .alert {
+    border-radius: 6px;
+    border-left: 4px solid #17a2b8;
+}
+
+#modalComentarioCopia .modal-body {
+    padding: 1.5rem;
+}
+
+#modalComentarioCopia .form-label {
+    color: var(--color-dark);
+    margin-bottom: 0.5rem;
+}
+
+#modalComentarioCopia textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+#btnConfirmarCopia {
+    min-width: 160px;
+}
+
+#btnConfirmarCopia:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>

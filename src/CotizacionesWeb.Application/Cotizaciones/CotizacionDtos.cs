@@ -79,7 +79,8 @@ public record GetCotizacionesListRequest(
 public record CopiarVersionRequest(
     string CotizacionId,
     int VersionIdBase,
-    bool EsVersionAntigua
+    bool EsVersionAntigua,
+    string? Comentario = null
 );
 
 public record DuplicarCotizacionRequest(
@@ -91,7 +92,7 @@ public record CopiarVersionResult(
     bool Success,
     string? ErrorMessage,
     int? NuevaVersionId,
-    int? NumeroVersion
+    decimal? NumeroVersion  // CORREGIDO: Cambiar de int? a decimal?
 );
 
 public record DuplicarCotizacionResult(

@@ -321,6 +321,19 @@
     background-color: #dc2626;
 }
 
+/* NUEVO: Botón deshabilitado */
+.btn-action-disabled {
+    background-color: #9ca3af !important; /* Gris */
+    color: #6b7280 !important;
+    cursor: not-allowed !important;
+}
+
+.btn-action-disabled:hover {
+    background-color: #9ca3af !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
 /* Botones específicos por estado según lineamientos */
 .btn-action-warning {
     background-color: #f59e0b; /* Naranja - Enviar a aprobación, Devolver a borrador */

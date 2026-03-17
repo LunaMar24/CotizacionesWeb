@@ -66,6 +66,15 @@
                                         <i class="fas fa-eye"></i>
                                     </button>
                                     <button type="button" 
+                                            class="btn-action btn-action-info btn-historial-version" 
+                                            data-version-id="@version.VersionId"
+                                            data-cotizacion-id="@version.CotizacionId"
+                                            data-numero-version="@version.NumeroVersion"
+                                            title="Ver Historial de esta Versión"
+                                            requiere-permiso="COT_VIEW">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                    <button type="button" 
                                             class="btn-action btn-action-copy btn-copiar-version" 
                                             data-cotizacion-id="@version.CotizacionId"
                                             data-version-id="@version.VersionId"

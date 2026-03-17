@@ -2,47 +2,79 @@
 
 <div class="modal-header modal-header-custom">
     <h5 class="modal-title">
-        <i class="fas fa-history"></i> Historial de Cotización @ViewBag.CotizacionId
+        <i class="fas fa-history"></i> 
+        @if (ViewBag.EsHistorialVersion == true)
+        {
+            <text>Historial - Cotización @ViewBag.CotizacionId (Versión @ViewBag.NumeroVersion)</text>
+        }
+        else
+        {
+            <text>Historial de Cotización @ViewBag.CotizacionId</text>
+        }
     </h5>
     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
         <span aria-hidden="true">&times;</span>
     </button>
 </div>
-<div class="modal-body">
+<div class="modal-body modal-body-historial">
     @if (Model.Any())
     {
-        <div class="timeline">
-            @foreach (var evento in Model)
-            {
-                <div class="time-label">
-                    <span class="bg-primary">@evento.FechaEvento.ToString("dd/MM/yyyy HH:mm")</span>
-                </div>
-                <div>
-                    <i class="fas @ObtenerIconoEvento(evento.TipoEvento) bg-@ObtenerColorEvento(evento.TipoEvento)"></i>
-                    <div class="timeline-item">
-                        <span class="time">
-                            <i class="fas fa-clock"></i> @evento.FechaEvento.ToString("HH:mm")
-                        </span>
-                        <h3 class="timeline-header">
-                            <strong>@evento.TipoEvento</strong>
-                            @if (!string.IsNullOrEmpty(evento.NombreUsuario))
-                            {
-                                <span> - @evento.NombreUsuario</span>
-                            }
-                        </h3>
-                        @if (!string.IsNullOrEmpty(evento.Comentario))
-                        {
-                            <div class="timeline-body">
-                                @evento.Comentario
-                            </div>
-                        }
+        <div class="timeline-wrapper">
+            <div class="timeline">
+                @{
+                    // Agrupar eventos por fecha
+                    var eventosPorFecha = Model.GroupBy(e => e.FechaEvento.Date)
+                                               .OrderByDescending(g => g.Key)
+                                               .ToList();
+                }
+                
+                @foreach (var grupoFecha in eventosPorFecha)
+                {
+                    <!-- Label de fecha agrupada (solo fecha, sin hora) -->
+                    <div class="time-label">
+                        <span class="bg-primary">@grupoFecha.Key.ToString("dd/MM/yyyy")</span>
                     </div>
+                    
+                    @foreach (var evento in grupoFecha.OrderByDescending(e => e.FechaEvento))
+                    {
+                        <div>
+                            <i class="fas @ObtenerIconoEvento(evento.TipoEvento) bg-@ObtenerColorEvento(evento.TipoEvento)"></i>
+                            <div class="timeline-item">
+                                <span class="time">
+                                    <i class="fas fa-clock"></i> @evento.FechaEvento.ToString("HH:mm")
+                                </span>
+                                <h3 class="timeline-header">
+                                    <strong>@evento.TipoEvento</strong>
+                                    @if (!string.IsNullOrEmpty(evento.NombreUsuario))
+                                    {
+                                        <span> - @evento.NombreUsuario</span>
+                                    }
+                                </h3>
+                                @if (!string.IsNullOrEmpty(evento.Comentario))
+                                {
+                                    <div class="timeline-body">
+                                        @evento.Comentario
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                <div>
+                    <i class="fas fa-clock bg-gray"></i>
                 </div>
-            }
-            <div>
-                <i class="fas fa-clock bg-gray"></i>
             </div>
         </div>
+        
+        @if (Model.Count > 5)
+        {
+            <div class="timeline-footer">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i> 
+                    Mostrando @Model.Count eventos. Usa scroll para ver todos los registros.
+                </small>
+            </div>
+        }
     }
     else
     {
@@ -53,6 +85,13 @@
     }
 </div>
 <div class="modal-footer">
+    @if (ViewBag.EsHistorialVersion == true)
+    {
+        <button type="button" class="btn btn-outline-primary btn-volver-versiones" 
+                data-cotizacion-id="@ViewBag.CotizacionId">
+            <i class="fas fa-arrow-left"></i> Volver a Versiones
+        </button>
+    }
     <button type="button" class="btn btn-secondary" data-dismiss="modal">
         <i class="fas fa-times"></i> Cerrar
     </button>
@@ -65,14 +104,32 @@
         {
             "Creada" => "fa-plus-circle",
             "Versión Generada" => "fa-code-branch",
+            "VersionGenerada" => "fa-code-branch", // Variante sin espacio
+            "Version Generada" => "fa-code-branch", // Variante con espacio
             "Modificada" => "fa-edit",
             "Enviada" => "fa-paper-plane",
+            
+            // Eventos de aprobación - iconos específicos
+            "EnviadaAProbacion" => "fa-paper-plane",
             "Aprobada" => "fa-check-circle",
-            "Rechazada" => "fa-times-circle",
+            "DevueltaABorrador" => "fa-undo", // Icono de devolución por aprobador
+            
+            // Eventos de cliente - iconos específicos
+            "EnviadaCliente" => "fa-envelope",
+            "AceptadaCliente" => "fa-check-circle", // Mismo check que aprobada
+            "RechazadaCliente" => "fa-times-circle", // X para rechazo del cliente
+            
+            // Eventos administrativos
             "Archivada" => "fa-archive",
             "Reactivada" => "fa-redo",
             "Cancelada" => "fa-ban",
+            "EnviadaERP" => "fa-server",
             "Enviada a ERP" => "fa-server",
+            
+            // Fallback para compatibilidad con nombres genéricos
+            "Rechazada" => "fa-times-circle", // X genérica
+            "Aceptada" => "fa-check-circle", // Check genérico
+            
             _ => "fa-info-circle"
         };
     }
@@ -83,15 +140,229 @@
         {
             "Creada" => "success",
             "Versión Generada" => "info",
+            "VersionGenerada" => "info", // Variante sin espacio
+            "Version Generada" => "info", // Variante con espacio
             "Modificada" => "warning",
             "Enviada" => "primary",
-            "Aprobada" => "success",
-            "Rechazada" => "danger",
+            
+            // Eventos de aprobación - colores específicos
+            "EnviadaAProbacion" => "warning", // Naranja para envío a aprobación
+            "Aprobada" => "success", // Verde para aprobación
+            "DevueltaABorrador" => "warning", // Naranja para devolución por aprobador
+            
+            // Eventos de cliente - colores específicos
+            "EnviadaCliente" => "info", // Azul para envío al cliente
+            "AceptadaCliente" => "success", // Verde para aceptación del cliente
+            "RechazadaCliente" => "danger", // Rojo para rechazo del cliente
+            
+            // Eventos administrativos
             "Archivada" => "secondary",
             "Reactivada" => "info",
             "Cancelada" => "warning",
+            "EnviadaERP" => "primary",
             "Enviada a ERP" => "primary",
+            
+            // Fallback para compatibilidad con nombres genéricos
+            "Rechazada" => "danger", // Rojo genérico
+            "Aceptada" => "success", // Verde genérico
+            
             _ => "secondary"
         };
     }
 }
+
+<style>
+/* Estilos específicos para la modal de historial con scroll */
+.modal-body-historial {
+    padding: 1rem;
+    max-height: 70vh; /* Altura máxima del 70% del viewport */
+    overflow-y: auto; /* Scroll vertical cuando sea necesario */
+    overflow-x: hidden; /* Sin scroll horizontal */
+}
+
+.timeline-wrapper {
+    position: relative;
+    padding-right: 10px; /* Espacio para el scrollbar */
+}
+
+/* Estilos mejorados para el scrollbar */
+.modal-body-historial::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-body-historial::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.modal-body-historial::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.modal-body-historial::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Para Firefox */
+.modal-body-historial {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+/* Footer informativo */
+.timeline-footer {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #dee2e6;
+    text-align: center;
+}
+
+.timeline-footer .text-muted {
+    font-size: 0.875rem;
+}
+
+/* MEJORA: Posicionamiento de la modal más centrada */
+#modalHistorial .modal-dialog {
+    margin: 5vh auto; /* Reducir margen superior e inferior */
+    display: flex;
+    align-items: center;
+    min-height: calc(100vh - 10vh); /* Altura mínima para centrado */
+}
+
+#modalHistorial .modal-dialog .modal-content {
+    width: 100%;
+    max-height: 90vh; /* Altura máxima de toda la modal */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Asegurar que el body de la modal respete los límites */
+#modalHistorial .modal-body-historial {
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(90vh - 120px); /* Restar header y footer */
+}
+
+/* Ajustes para mobile */
+@@media (max-width: 768px) {
+    .modal-body-historial {
+        max-height: 60vh; /* Menos altura en móviles */
+        padding: 0.75rem;
+    }
+    
+    .timeline-wrapper {
+        padding-right: 5px;
+    }
+    
+    #modalHistorial .modal-dialog {
+        margin: 2vh auto; /* Menos margen en móviles */
+        min-height: calc(100vh - 4vh);
+    }
+    
+    #modalHistorial .modal-dialog .modal-content {
+        max-height: 96vh; /* Más altura en móviles */
+    }
+    
+    #modalHistorial .modal-body-historial {
+        max-height: calc(96vh - 100px); /* Ajustar para móviles */
+    }
+}
+
+/* Mejoras visuales para el timeline con scroll */
+.timeline > div > .timeline-item {
+    margin-bottom: 10px; /* Reducir espacio entre eventos */
+}
+
+.time-label {
+    position: sticky;
+    top: -1rem;
+    z-index: 10;
+    background: #f8f9fa;
+    margin: 0 -1rem 15px -1rem;
+    padding: 10px 1rem 5px 1rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.time-label span {
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Indicador visual de scroll */
+.timeline-wrapper::after {
+    content: '';
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width: 100%;
+    height: 20px;
+    background: linear-gradient(transparent, rgba(248, 249, 250, 0.8));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modal-body-historial.has-scroll .timeline-wrapper::after {
+    opacity: 1;
+}
+</style>
+
+<script>
+// Script para detectar si hay scroll y agregar clase visual
+$(document).ready(function() {
+    const modalBody = $('.modal-body-historial');
+    const timelineWrapper = $('.timeline-wrapper');
+    
+    // Verificar si el contenido necesita scroll
+    if (modalBody.length && timelineWrapper.length) {
+        if (modalBody[0].scrollHeight > modalBody[0].clientHeight) {
+            modalBody.addClass('has-scroll');
+        }
+        
+        // Actualizar estado al hacer scroll
+        modalBody.on('scroll', function() {
+            const scrollTop = $(this).scrollTop();
+            const scrollHeight = $(this)[0].scrollHeight;
+            const clientHeight = $(this)[0].clientHeight;
+            
+            // Agregar/quitar clase según posición del scroll
+            if (scrollTop > 0 && scrollTop < (scrollHeight - clientHeight - 10)) {
+                $(this).addClass('scrolling');
+            } else {
+                $(this).removeClass('scrolling');
+            }
+        });
+    }
+    
+    // Manejar botón "Volver a Versiones"
+    $('.btn-volver-versiones').on('click', function() {
+        const cotizacionId = $(this).attr('data-cotizacion-id');
+        
+        // Cerrar modal de historial
+        $('#modalHistorial').modal('hide');
+        
+        // Esperar a que se cierre y abrir modal de versiones
+        $('#modalHistorial').on('hidden.bs.modal.versiones', function() {
+            // Remover event listener
+            $(this).off('hidden.bs.modal.versiones');
+            
+            // Cargar modal de versiones
+            $('#modalVersionesContent').html('<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>');
+            $('#modalVersiones').modal('show');
+            
+            $.get('/Cotizaciones/Versiones/' + cotizacionId, function (data) {
+                $('#modalVersionesContent').html(data);
+                // Reinicializar eventos cuando se carga el contenido
+                inicializarEventosVersiones();
+            }).fail(function () {
+                $('#modalVersionesContent').html('<div class="p-4 text-center text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><p>Error al cargar las versiones</p></div>');
+            });
+        });
+    });
+});
+</script>

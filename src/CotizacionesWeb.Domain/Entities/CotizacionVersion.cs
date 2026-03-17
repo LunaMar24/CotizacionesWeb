@@ -6,7 +6,7 @@ public class CotizacionVersion : BaseEntity
 {
     public int VersionId { get; set; }  // FASE 3: Llave primaria específica según modelo
     public string CotizacionId { get; set; } = string.Empty;
-    public int NumeroVersion { get; set; }
+    public decimal NumeroVersion { get; set; }  // CAMBIADO: de int a decimal para soportar versiones como 1.1, 1.2, etc.
     public DateTime FechaVersion { get; set; }
     public string NombreInteresado { get; set; } = string.Empty;
     public string EmailInteresado { get; set; } = string.Empty;
