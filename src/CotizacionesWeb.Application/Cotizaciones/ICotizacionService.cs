@@ -18,11 +18,11 @@ public interface ICotizacionService
     Task<List<HistorialCotizacionDto>> GetCotizacionVersionHistoryAsync(int versionId);
     
     // Copiar versión actual (desde listado principal)
-    Task<CopiarVersionResult> CopiarVersionActualAsync(string cotizacionId);
+    Task<CopiarVersionResult> CopiarVersionActualAsync(string cotizacionId, string? comentario = null, int? userId = null);
     
     // Copiar versión específica (desde sub-listado de versiones)
-    Task<CopiarVersionResult> CopiarVersionEspecificaAsync(CopiarVersionRequest request);
+    Task<CopiarVersionResult> CopiarVersionEspecificaAsync(CopiarVersionRequest request, int? userId = null);
     
     // Duplicar cotización (crear nueva independiente)
-    Task<DuplicarCotizacionResult> DuplicarCotizacionAsync(DuplicarCotizacionRequest request);
+    Task<DuplicarCotizacionResult> DuplicarCotizacionAsync(DuplicarCotizacionRequest request, int? userId = null);
 }

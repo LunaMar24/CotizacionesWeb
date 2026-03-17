@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using CotizacionesWeb.Application.Cotizaciones;
 using CotizacionesWeb.UI.Models;
 using CotizacionesWeb.UI.Filters;
+using System.Security.Claims;
 
 namespace CotizacionesWeb.UI.Controllers;
 
@@ -120,6 +121,35 @@ public class CotizacionesController : Controller
         }
     }
 
+    [HttpGet("Cotizaciones/HistorialVersion/{versionId}")]
+    [RequierePermiso("COT_VIEW")]
+    public async Task<IActionResult> HistorialVersion(int versionId, string cotizacionId, decimal numeroVersion)
+    {
+        try
+        {
+            var historiales = await _cotizacionService.GetCotizacionVersionHistoryAsync(versionId);
+
+            var viewModel = historiales.Select(h => new HistorialViewModel
+            {
+                HistorialId = h.HistorialId,
+                TipoEvento = h.TipoEvento,
+                FechaEvento = h.FechaEvento,
+                NombreUsuario = h.NombreUsuario,
+                Comentario = h.Comentario
+            }).ToList();
+
+            ViewBag.CotizacionId = cotizacionId;
+            ViewBag.NumeroVersion = numeroVersion;
+            ViewBag.EsHistorialVersion = true;
+            return PartialView("_HistorialModal", viewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener historial de versión {VersionId}", versionId);
+            return PartialView("_HistorialModal", new List<HistorialViewModel>());
+        }
+    }
+
     [HttpGet("Cotizaciones/Versiones/{cotizacionId}")]
     [RequierePermiso("COT_VIEW")]
     public async Task<IActionResult> Versiones(string cotizacionId)
@@ -155,11 +185,12 @@ public class CotizacionesController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequierePermiso("COT_EDIT")]
-    public async Task<IActionResult> CopiarVersion(string cotizacionId)
+    public async Task<IActionResult> CopiarVersion(string cotizacionId, string comentario)
     {
         try
         {
-            var result = await _cotizacionService.CopiarVersionActualAsync(cotizacionId);
+            var currentUserId = GetCurrentUserId();
+            var result = await _cotizacionService.CopiarVersionActualAsync(cotizacionId, comentario, currentUserId);
 
             if (result.Success)
             {
@@ -182,12 +213,13 @@ public class CotizacionesController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [RequierePermiso("COT_EDIT")]
-    public async Task<IActionResult> CopiarVersionEspecifica(string cotizacionId, int versionId, bool esVersionAntigua)
+    public async Task<IActionResult> CopiarVersionEspecifica(string cotizacionId, int versionId, bool esVersionAntigua, string comentario)
     {
         try
         {
-            var request = new CopiarVersionRequest(cotizacionId, versionId, esVersionAntigua);
-            var result = await _cotizacionService.CopiarVersionEspecificaAsync(request);
+            var currentUserId = GetCurrentUserId();
+            var request = new CopiarVersionRequest(cotizacionId, versionId, esVersionAntigua, comentario);
+            var result = await _cotizacionService.CopiarVersionEspecificaAsync(request, currentUserId);
 
             if (result.Success)
             {
@@ -214,8 +246,9 @@ public class CotizacionesController : Controller
     {
         try
         {
+            var currentUserId = GetCurrentUserId();
             var request = new DuplicarCotizacionRequest(cotizacionId);
-            var result = await _cotizacionService.DuplicarCotizacionAsync(request);
+            var result = await _cotizacionService.DuplicarCotizacionAsync(request, currentUserId);
 
             if (result.Success)
             {
@@ -249,5 +282,15 @@ public class CotizacionesController : Controller
             'X' => "Archivada", // Legacy - mantener por retrocompatibilidad
             _ => "Desconocido"
         };
+    }
+
+    private int GetCurrentUserId()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(userIdClaim, out int userId))
+        {
+            return userId;
+        }
+        return 0; // Fallback para casos donde no se puede obtener el ID
     }
 }

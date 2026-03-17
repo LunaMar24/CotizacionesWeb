@@ -91,7 +91,7 @@ INSERT INTO DetalleCotizacionVersion (VersionId, ProductoId, Cantidad, PrecioUni
 -- Insertar historial de Versión 2 de Cotización 2
 INSERT INTO HistorialCotizacion (VersionId, TipoEvento, FechaEvento, UsuarioEvento, Comentario) VALUES
 (@VersionId2_2, 'VersionGenerada', DATEADD(DAY, -2, GETDATE()), 1, 'Nueva versión generada con productos adicionales'),
-(@VersionId2_2, 'Enviada', DATEADD(DAY, -1, GETDATE()), 1, 'Cotización enviada al cliente por email');
+(@VersionId2_2, 'EnviadaCliente', DATEADD(DAY, -1, GETDATE()), 1, 'Cotización enviada al cliente por email');
 
 -- ============================================
 -- COTIZACIÓN 3 (Aprobada)
@@ -114,8 +114,8 @@ INSERT INTO DetalleCotizacionVersion (VersionId, ProductoId, Cantidad, PrecioUni
 -- Insertar historial de Versión 1 de Cotización 3
 INSERT INTO HistorialCotizacion (VersionId, TipoEvento, FechaEvento, UsuarioEvento, Comentario) VALUES
 (@VersionId3, 'Creada', DATEADD(DAY, -10, GETDATE()), 1, 'Cotización creada inicialmente'),
-(@VersionId3, 'Enviada', DATEADD(DAY, -8, GETDATE()), 1, 'Cotización enviada al cliente'),
-(@VersionId3, 'Aprobada', DATEADD(DAY, -6, GETDATE()), 1, 'Cliente aprobó la cotización');
+(@VersionId3, 'EnviadaCliente', DATEADD(DAY, -8, GETDATE()), 1, 'Cotización enviada al cliente'),
+(@VersionId3, 'AceptadaCliente', DATEADD(DAY, -6, GETDATE()), 1, 'Cliente aceptó la cotización');
 
 -- ============================================
 -- COTIZACIÓN 4 (Rechazada con archivo)
@@ -138,8 +138,8 @@ INSERT INTO DetalleCotizacionVersion (VersionId, ProductoId, Cantidad, PrecioUni
 -- Insertar historial de Versión 1 de Cotización 4
 INSERT INTO HistorialCotizacion (VersionId, TipoEvento, FechaEvento, UsuarioEvento, Comentario) VALUES
 (@VersionId4, 'Creada', DATEADD(DAY, -15, GETDATE()), 1, 'Cotización creada inicialmente'),
-(@VersionId4, 'Enviada', DATEADD(DAY, -12, GETDATE()), 1, 'Cotización enviada al cliente'),
-(@VersionId4, 'Rechazada', DATEADD(DAY, -9, GETDATE()), 1, 'Cliente rechazó la cotización - precio muy alto');
+(@VersionId4, 'EnviadaCliente', DATEADD(DAY, -12, GETDATE()), 1, 'Cotización enviada al cliente'),
+(@VersionId4, 'RechazadaCliente', DATEADD(DAY, -9, GETDATE()), 1, 'Cliente rechazó la cotización - precio muy alto');
 
 -- Insertar archivo de cotización rechazada (CON FK de usuarios)
 INSERT INTO ArchivoCotizacion (CotizacionId, VersionArchivada, FechaArchivado, UsuarioArchiva, TipoArchivo, MotivoArchivado, Comentario) 

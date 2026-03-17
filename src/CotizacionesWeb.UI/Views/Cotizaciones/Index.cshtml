@@ -494,11 +494,92 @@
     </div>
 </div>
 
+<!-- Modal para solicitar comentario al copiar versión -->
+@Html.Partial("_ComentarioCopiaModal")
+
 @Html.AntiForgeryToken()
 
 @section Scripts {
     <link rel="stylesheet" href="~/css/cotizaciones/index.css" asp-append-version="true">
     <script src="~/js/cotizaciones/index.js" asp-append-version="true"></script>
+    
+    <script>
+        $(document).ready(function() {
+            // ========================================
+            // MODAL DE COMENTARIO DE COPIA - JavaScript que estaba en _ComentarioCopiaModal.cshtml
+            // ========================================
+            
+            // Configurar modal de comentario de copia
+            $('#modalComentarioCopia').on('shown.bs.modal', function() {
+                $('#comentarioCopia').focus();
+            });
+            
+            // Limpiar modal al cerrar
+            $('#modalComentarioCopia').on('hidden.bs.modal', function() {
+                $('#formComentarioCopia')[0].reset();
+                $('#btnConfirmarCopia').prop('disabled', false).html('<i class="fas fa-copy"></i> Crear Nueva Versión');
+            });
+            
+            // Manejar confirmación de copia
+            $('#btnConfirmarCopia').on('click', function() {
+                const btn = $(this);
+                const comentario = $('#comentarioCopia').val().trim();
+                const cotizacionId = $('#cotizacionIdCopia').val();
+                const versionId = $('#versionIdCopia').val();
+                const esVersionAntigua = $('#esVersionAntiguaCopia').val() === 'true';
+                const tipoCopia = $('#tipoCopiaCopia').val();
+                
+                // Deshabilitar botón y mostrar loading
+                btn.prop('disabled', true).html('<span class="loading-spinner"></span> Procesando...');
+                
+                // Preparar datos para envío
+                const formData = {
+                    cotizacionId: cotizacionId,
+                    comentario: comentario,
+                    __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                };
+                
+                // Agregar campos específicos según tipo de copia
+                if (tipoCopia === 'especifica') {
+                    formData.versionId = parseInt(versionId);
+                    formData.esVersionAntigua = esVersionAntigua;
+                }
+                
+                // Determinar URL según tipo de copia
+                const url = tipoCopia === 'actual' 
+                    ? '/Cotizaciones/CopiarVersion' 
+                    : '/Cotizaciones/CopiarVersionEspecifica';
+                
+                // Enviar solicitud
+                $.ajax({
+                    url: url,
+                    type: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            $('#modalComentarioCopia').modal('hide');
+                            showNotification('success', response.message);
+                            
+                            // Cerrar modal de versiones si está abierta
+                            $('#modalVersiones').modal('hide');
+                            
+                            // Recargar página después de un momento
+                            setTimeout(function() {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            showNotification('error', response.message);
+                            btn.prop('disabled', false).html('<i class="fas fa-copy"></i> Crear Nueva Versión');
+                        }
+                    },
+                    error: function() {
+                        showNotification('error', 'Error al crear la nueva versión');
+                        btn.prop('disabled', false).html('<i class="fas fa-copy"></i> Crear Nueva Versión');
+                    }
+                });
+            });
+        });
+    </script>
     
     @if (TempData["Success"] != null)
     {

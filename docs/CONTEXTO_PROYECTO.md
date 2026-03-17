@@ -168,7 +168,18 @@ PendienteAprobacion ? Borrador (requiere nota obligatoria)
 
 | Acción | Estados Permitidos | Observaciones |
 |--------|--------------------|---------------|
-| **Copiar** | Cualquiera | Genera nueva versión |
+| Acción | Estados Permitidos | Observaciones |
+|--------|--------------------|---------------|
+| **Copiar** | **A, R** solamente | Genera nueva versión en estado B (NO disponible en B,P,E,T,X) |
+| **Duplicar** | Cualquiera | Nueva cotización en Borrador |
+| **Enviar a aprobación** | **B** solamente | B ? P |
+| **Aprobar** | **P** solamente | P ? A |
+| **Devolver a borrador** | **P** solamente | P ? B, requiere nota |
+| **Enviar al cliente** | **A** solamente | A ? E |
+| **Marcar como aceptada** | **E** solamente | E ? T |
+| **Marcar como rechazada** | **E** solamente | E ? R |
+| **Archivar** | **B, T, R** | ? X, requiere confirmación |
+| **?? Enviar al ERP** | **T** solamente | **REGLA ESTRICTA** |
 | **Duplicar** | Cualquiera | Nueva cotización en Borrador |
 | **Enviar a aprobación** | **B** solamente | B ? P |
 | **Aprobar** | **P** solamente | P ? A |
@@ -280,6 +291,162 @@ var query = from cot in _context.Cotizaciones
                 equals new { ver.CotizacionId, VersionId = ver.VersionActual }
             select new { Cotizacion = cot, Version = ver };
 ```
+
+---
+
+## ?? PROCESO DE COPIA DE VERSIONES
+
+### ?? Reglas de Negocio para Copia
+
+#### ?? **¿Cuándo se puede copiar?**
+- ? **Aprobada (A)**: Se puede copiar sin restricciones
+- ? **Rechazada (R)**: Se puede copiar para crear nueva propuesta
+- ? **Enviada (E)**: NO se puede copiar (esperando respuesta del cliente)
+- ? **Aceptada (T)**: NO se puede copiar (cotización en firme)
+- ? **Borrador (B)**: NO tiene sentido (se pueden hacer cambios directos)
+- ? **PendienteAprobacion (P)**: NO tiene sentido (se pueden hacer cambios directos)
+- ? **Archivada (X)**: NO se puede copiar (estado terminal)
+
+#### ?? **Estado Post-Copia (REGLA CRÍTICA)**
+**?? IMPORTANTE**: Cuando se crea una nueva versión mediante copia, **la cotización SIEMPRE vuelve al estado Borrador (B)**, independientemente de su estado original.
+
+**?? Justificación**:
+- Una nueva versión es un **nuevo ciclo de vida**
+- Debe pasar por **todas las aprobaciones** nuevamente
+- **Evita**: Versiones no revisadas con estado "Aprobada"
+- **Garantiza**: Control de calidad y revisión obligatoria
+
+**?? Flujo de Estado en Copia**:
+```
+Estado Original ? Nueva Versión Creada ? Estado Final
+A (Aprobada)    ? Copiar Versión      ? B (Borrador)
+R (Rechazada)   ? Copiar Versión      ? B (Borrador)
+```
+
+#### ?? **Lógica de Numeración (NumeroVersion)**
+
+**?? Incremento por versión mayor:**
+- Versión actual: `1.0` ? Nueva versión: `2.0`
+- Versión actual: `2.0` ? Nueva versión: `3.0`
+- Versión actual: `5.0` ? Nueva versión: `6.0`
+
+**?? Incremento por versión menor:**
+- Versión actual: `1.1` ? Nueva versión: `1.2`
+- Versión actual: `2.5` ? Nueva versión: `2.6`
+- Versión actual: `3.9` ? Nueva versión: `3.10`
+
+**?? Algoritmo de incremento:**
+```csharp
+decimal nuevaVersion;
+if (versionActual % 1 == 0) // Es versión mayor (ej: 1.0, 2.0)
+{
+    nuevaVersion = versionActual + 1.0m; // 1.0 ? 2.0
+}
+else // Es versión menor (ej: 1.1, 2.5)
+{
+    nuevaVersion = versionActual + 0.1m; // 1.1 ? 1.2
+}
+```
+
+### ?? **Proceso de Copia Técnico**
+
+#### **1. ?? Generar Nuevo VersionActual**
+```sql
+-- Obtener próximo VersionActual único
+DECLARE @NuevoVersionActual INT = (SELECT MAX(VersionActual) + 1 FROM CotizacionVersion)
+```
+
+#### **2. ?? Calcular Nuevo NumeroVersion**
+```csharp
+// Lógica descrita arriba
+var versionActual = versionOrigen.NumeroVersion;
+var nuevaVersion = (versionActual % 1 == 0) ? versionActual + 1.0m : versionActual + 0.1m;
+```
+
+#### **3. ?? Copiar Versión Completa**
+```sql
+-- Insertar nueva versión
+INSERT INTO CotizacionVersion (
+    CotizacionId, VersionActual, NumeroVersion, 
+    FechaVersion, NombreInteresado, EmailInteresado, /* ... todos los campos ... */
+) 
+SELECT 
+    CotizacionId, @NuevoVersionActual, @NuevaVersion,
+    GETDATE(), NombreInteresado, EmailInteresado, /* ... todos los campos menos fecha/version ... */
+FROM CotizacionVersion 
+WHERE VersionId = @VersionOrigenId;
+```
+
+#### **4. ?? Copiar Detalles de Versión**
+```sql
+-- Copiar todos los detalles de la versión origen
+INSERT INTO DetalleCotizacionVersion (
+    VersionId, ProductoId, Cantidad, PrecioUnitario, Descuento, TotalLinea, /* auditoría */
+)
+SELECT 
+    @NuevaVersionId, ProductoId, Cantidad, PrecioUnitario, Descuento, TotalLinea, /* campos auditoria nuevos */
+FROM DetalleCotizacionVersion
+WHERE VersionId = @VersionOrigenId;
+```
+
+#### **5. ?? Actualizar Puntero y Estado de Cotización**
+```sql
+-- Hacer que la cotización apunte a la nueva versión Y volver a estado Borrador
+UPDATE Cotizacion 
+SET VersionActual = @NuevoVersionActual,
+    EstadoActual = 'B',  -- ?? CRÍTICO: Siempre vuelve a Borrador
+    ModifiedAt = GETDATE(),
+    ModifiedBy = @UsuarioActual
+WHERE CotizacionId = @CotizacionId;
+```
+
+#### **6. ?? Registrar en Historial**
+```sql
+-- Crear evento en historial (NO copiar historial anterior)
+INSERT INTO HistorialCotizacion (VersionId, TipoEvento, FechaEvento, UsuarioEvento, Comentario)
+VALUES (@NuevaVersionId, 'VersionGenerada', GETDATE(), @UsuarioActual, 
+        'Nueva versión ' + CAST(@NuevaVersion AS VARCHAR(10)) + ' generada desde versión ' + CAST(@VersionOrigen AS VARCHAR(10)));
+```
+
+### ?? **Campos que NO se copian**
+- ? **HistorialCotizacion**: Cada versión inicia su historial con "VersionGenerada"
+- ? **FechaVersion**: Se usa fecha actual
+- ? **VersionActual**: Se genera nuevo consecutivo
+- ? **NumeroVersion**: Se calcula según regla de incremento
+- ? **Campos de auditoría**: CreatedAt, CreatedBy, ModifiedAt, ModifiedBy (nuevos)
+- ? **Estado de cotización**: Siempre vuelve a Borrador
+
+### ? **Campos que SÍ se copian**
+- ? **Todos los datos del cliente**: Nombre, Email, Empresa
+- ? **Todos los montos**: SubTotal, Impuesto, Descuento, Total
+- ? **Configuración**: Moneda, TipoCambio
+- ? **Notas de la versión anterior**
+- ? **Todos los detalles de productos**: ProductoId, Cantidad, Precio, etc.
+
+### ?? **Estado Final Post-Copia**
+- ?? **Cotización**: ?? **SIEMPRE en estado Borrador (B)** 
+- ?? **Nueva versión**: Se convierte en la versión vigente
+- ?? **Versión anterior**: Se vuelve histórica
+- ?? **Historial**: Solo tiene evento "VersionGenerada"
+- ?? **El usuario debe**: Revisar, aprobar y enviar la nueva versión por el ciclo completo
+
+### ?? **Flujo Completo Post-Copia**
+```
+1. Usuario copia versión de cotización A (Aprobada)
+   ?
+2. Se crea nueva versión (ej: 2.0) 
+   ?
+3. Cotización cambia automáticamente a B (Borrador)
+   ?
+4. Usuario debe seguir el flujo normal:
+   B ? P ? A ? E ? T/R
+```
+
+### ?? **Acciones Habilitadas Post-Copia**
+- ? **Editar**: Modificar datos de la nueva versión
+- ? **Enviar a Aprobación**: B ? P
+- ? **Enviar al Cliente**: Debe estar aprobada primero
+- ? **Copiar nuevamente**: Hasta que no esté en A o R
 
 ---
 
