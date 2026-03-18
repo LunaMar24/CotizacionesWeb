@@ -1475,3 +1475,5 @@ if (!esValida)
 [WARN] Error con parámetros, usando fallback
 [ERROR] Máscara inválida: COT--999 (separadores consecutivos)
 ```
+## 🛠️ **CONFIGURACIÓN DE PARÁMETROS DEL SISTEMA (AGREGADO)** 
+Se implementó un sistema completo de parámetros configurables para el manejo centralizado de configuraciones
