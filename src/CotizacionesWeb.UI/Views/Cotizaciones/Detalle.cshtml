@@ -1,0 +1,407 @@
+@model CotizacionesWeb.UI.Models.CotizacionDetalleViewModel
+@{
+    ViewData["Title"] = $"Detalle Cotización {Model.CotizacionId}";
+    var esVersionEspecifica = ViewBag.EsVersionEspecifica as bool? ?? false;
+}
+
+<!-- Header Principal -->
+<div class="content-header-custom">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1 class="header-title">
+                <i class="fas fa-file-invoice-dollar"></i> 
+                Detalle de Cotización @Model.CotizacionId
+                @if (esVersionEspecifica)
+                {
+                    <span class="badge badge-info ml-2">Versión @Model.NumeroVersion</span>
+                }
+            </h1>
+            <p class="header-subtitle">
+                Vista detallada de la cotización con toda la información y líneas de productos.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver al Listado
+            </a>
+            @if (!esVersionEspecifica)
+            {
+                <button type="button" class="btn btn-primary" onclick="window.print()">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+<section class="content">
+<div class="container-fluid">
+
+    <!-- Alert para versión específica -->
+    @if (esVersionEspecifica)
+    {
+        <div class="alert alert-info mb-4">
+            <i class="fas fa-info-circle"></i>
+            <strong>Versión Histórica:</strong> Está viendo la versión @Model.NumeroVersion de esta cotización, 
+            que no es la versión actual vigente.
+        </div>
+    }
+
+    <div class="row">
+        <!-- Información Principal -->
+        <div class="col-lg-8">
+            <!-- Card: Información General (Colapsable) -->
+            <div class="card card-primary card-outline mb-4">
+                <div class="card-header" data-card-widget="collapse" style="cursor: pointer;">
+                    <h3 class="card-title">
+                        <i class="fas fa-info-circle"></i> Información General
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <div class="d-flex">
+                                    <strong class="info-label">ID Cotización:</strong>
+                                    <span class="text-primary font-weight-bold">@Model.CotizacionId</span>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="d-flex">
+                                    <strong class="info-label">Estado Actual:</strong>
+                                    <span>
+                                        @switch (Model.EstadoActual)
+                                        {
+                                            case 'B':
+                                                <span class="badge badge-secondary-custom">@Model.EstadoActualTexto</span>
+                                                break;
+                                            case 'P':
+                                                <span class="badge badge-warning-custom">@Model.EstadoActualTexto</span>
+                                                break;
+                                            case 'A':
+                                                <span class="badge badge-success-custom">@Model.EstadoActualTexto</span>
+                                                break;
+                                            case 'E':
+                                                <span class="badge badge-info-custom">@Model.EstadoActualTexto</span>
+                                                break;
+                                            case 'T':
+                                                <span class="badge badge-primary-custom">@Model.EstadoActualTexto</span>
+                                                break;
+                                            case 'R':
+                                                <span class="badge badge-danger-custom">@Model.EstadoActualTexto</span>
+                                                break;
+                                            case 'X':
+                                                <span class="badge badge-dark-custom">@Model.EstadoActualTexto</span>
+                                                break;
+                                            default:
+                                                <span class="badge badge-light">@Model.EstadoActualTexto</span>
+                                                break;
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="d-flex">
+                                    <strong class="info-label">Versión:</strong>
+                                    <span>
+                                        <span class="badge badge-version">@FormatHelper.FormatVersion(Model.NumeroVersion)</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <div class="d-flex">
+                                    <strong class="info-label">Fecha Creación:</strong>
+                                    <span>@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</span>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="d-flex">
+                                    <strong class="info-label">Fecha Versión:</strong>
+                                    <span>@Model.FechaVersion.ToString("dd/MM/yyyy HH:mm")</span>
+                                </div>
+                            </div>
+                            @if (Model.FechaUltimaActualizacion.HasValue)
+                            {
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">Última Actualización:</strong>
+                                        <span>@Model.FechaUltimaActualizacion.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Información del Cliente (Colapsable) -->
+            <div class="card card-info card-outline mb-4">
+                <div class="card-header" data-card-widget="collapse" style="cursor: pointer;">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-tie"></i> Información del Cliente
+                    </h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <div class="d-flex">
+                                    <strong class="info-label">Nombre del Interesado:</strong>
+                                    <span>@(string.IsNullOrEmpty(Model.NombreInteresado) ? "No especificado" : Model.NombreInteresado)</span>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="d-flex">
+                                    <strong class="info-label">Email:</strong>
+                                    <span>
+                                        @if (!string.IsNullOrEmpty(Model.EmailInteresado))
+                                        {
+                                            <a href="mailto:@Model.EmailInteresado">@Model.EmailInteresado</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">No especificado</span>
+                                        }
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <div class="d-flex">
+                                    <strong class="info-label">Empresa:</strong>
+                                    <span>@(string.IsNullOrEmpty(Model.EmpresaInteresado) ? "No especificada" : Model.EmpresaInteresado)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Líneas de Detalle -->
+            <div class="card card-success card-outline">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-list"></i> Líneas de Detalle
+                    </h3>
+                    <div class="card-tools">
+                        <span class="badge badge-success">@Model.Detalles.Count item(s)</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    @if (Model.Detalles.Any())
+                    {
+                        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-sm table-striped mb-0">
+                                <thead class="thead-light sticky-top">
+                                    <tr>
+                                        <th style="background-color: #f8f9fa;">Producto ID</th>
+                                        <th style="background-color: #f8f9fa;">Descripción</th>
+                                        <th class="text-right" style="background-color: #f8f9fa;">Cantidad</th>
+                                        <th class="text-right" style="background-color: #f8f9fa;">Precio Unit.</th>
+                                        <th class="text-right" style="background-color: #f8f9fa;">Descuento</th>
+                                        <th class="text-right" style="background-color: #f8f9fa;">Total Línea</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var detalle in Model.Detalles)
+                                    {
+                                        <tr>
+                                            <td>
+                                                <strong class="text-primary">@detalle.ProductoId</strong>
+                                            </td>
+                                            <td>@detalle.ProductoNombre</td>
+                                            <td class="text-right">@FormatHelper.FormatNumber(detalle.Cantidad, 2)</td>
+                                            <td class="text-right">@FormatHelper.FormatCurrency(detalle.PrecioUnitario, Model.Moneda)</td>
+                                            <td class="text-right">
+                                                @if (detalle.Descuento > 0)
+                                                {
+                                                    <span class="text-danger">-@FormatHelper.FormatCurrency(detalle.Descuento, Model.Moneda)</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td class="text-right">
+                                                <strong>@FormatHelper.FormatCurrency(detalle.TotalLinea, Model.Moneda)</strong>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-4 text-center text-muted">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p>No hay líneas de detalle registradas</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar Derecha -->
+        <div class="col-lg-4">
+            <!-- Card: Resumen Financiero -->
+            <div class="card card-warning card-outline mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-calculator"></i> Resumen Financiero
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="financial-summary">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <strong>@FormatHelper.FormatCurrency(Model.SubTotal, Model.Moneda)</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Impuesto:</span>
+                            <strong class="text-info">@FormatHelper.FormatCurrency(Model.Impuesto, Model.Moneda)</strong>
+                        </div>
+                        @if (Model.Descuento > 0)
+                        {
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Descuento:</span>
+                                <strong class="text-danger">-@FormatHelper.FormatCurrency(Model.Descuento, Model.Moneda)</strong>
+                            </div>
+                        }
+                        <hr class="my-3">
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="h5">Total:</span>
+                            <strong class="h5 text-success">@FormatHelper.FormatCurrency(Model.Total, Model.Moneda)</strong>
+                        </div>
+                        <div class="text-center text-muted">
+                            <small>
+                                <strong>Moneda:</strong> @Model.Moneda
+                                @if (Model.TipoCambio.HasValue && Model.TipoCambio > 0)
+                                {
+                                    <br><strong>Tipo de Cambio:</strong> @Model.TipoCambio.Value.ToString("N4")
+                                }
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card: Fechas Importantes -->
+            <div class="card card-info card-outline mb-4">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-calendar-alt"></i> Fechas Importantes
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (Model.FechaEnvio.HasValue)
+                    {
+                        <div class="info-item">
+                            <div class="d-flex">
+                                <strong class="info-label">Fecha Envío:</strong>
+                                <span>@Model.FechaEnvio.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                        </div>
+                    }
+                    @if (Model.FechaAceptacion.HasValue)
+                    {
+                        <div class="info-item">
+                            <div class="d-flex">
+                                <strong class="info-label">Fecha Aceptación:</strong>
+                                <span class="text-success">@Model.FechaAceptacion.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                        </div>
+                    }
+                    @if (Model.FechaRechazo.HasValue)
+                    {
+                        <div class="info-item">
+                            <div class="d-flex">
+                                <strong class="info-label">Fecha Rechazo:</strong>
+                                <span class="text-danger">@Model.FechaRechazo.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                        </div>
+                    }
+                    @if (Model.EnviadoERP == 'S' && Model.FechaEnvioERP.HasValue)
+                    {
+                        <div class="info-item">
+                            <div class="d-flex">
+                                <strong class="info-label">Enviado al ERP:</strong>
+                                <span class="text-primary">@Model.FechaEnvioERP.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                        </div>
+                    }
+                    @if (!Model.FechaEnvio.HasValue && !Model.FechaAceptacion.HasValue && !Model.FechaRechazo.HasValue && Model.EnviadoERP != 'S')
+                    {
+                        <div class="text-center text-muted">
+                            <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                            <p>No hay fechas especiales registradas</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Card: Notas -->
+            @if (!string.IsNullOrWhiteSpace(Model.Notas))
+            {
+                <div class="card card-secondary card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-sticky-note"></i> Notas
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">@Html.Raw(Html.Encode(Model.Notas).Replace("\n", "<br>"))</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+</div>
+</section>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/cotizaciones/detalle.css" asp-append-version="true">
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Inicializar funcionalidad de colapso para las cards
+            $('[data-card-widget="collapse"]').CardWidget();
+            
+            // Mejorar la funcionalidad de colapso con animación suave
+            $('.card-header[data-card-widget="collapse"]').on('click', function(e) {
+                if (!$(e.target).closest('.btn').length) {
+                    $(this).find('.btn[data-card-widget="collapse"]').click();
+                }
+            });
+            
+            // Cambiar el icono cuando se colapsa/expande
+            $('[data-card-widget="collapse"]').on('expanded.lte.cardwidget', function() {
+                $(this).closest('.card').find('.btn[data-card-widget="collapse"] i')
+                    .removeClass('fa-plus')
+                    .addClass('fa-minus');
+            });
+            
+            $('[data-card-widget="collapse"]').on('collapsed.lte.cardwidget', function() {
+                $(this).closest('.card').find('.btn[data-card-widget="collapse"] i')
+                    .removeClass('fa-minus')
+                    .addClass('fa-plus');
+            });
+        });
+    </script>
+}

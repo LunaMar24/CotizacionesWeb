@@ -18,6 +18,9 @@ public class CotizacionViewModel
     public decimal MontoCotizacion { get; set; }
     public DateTime? FechaEnvio { get; set; }
     
+    // Información financiera
+    public string Moneda { get; set; } = "CRC"; // Moneda por defecto
+    
     // Nuevos campos según lineamientos funcionales
     public DateTime? FechaAceptacion { get; set; }
     public DateTime? FechaRechazo { get; set; }
@@ -78,4 +81,56 @@ public class HistorialViewModel
     public DateTime FechaEvento { get; set; }
     public string? NombreUsuario { get; set; }
     public string? Comentario { get; set; }
+}
+
+public class CotizacionDetalleViewModel
+{
+    // Información básica de la cotización
+    public string CotizacionId { get; set; } = string.Empty;
+    public char EstadoActual { get; set; }
+    public string EstadoActualTexto { get; set; } = string.Empty;
+    public DateTime FechaCreacion { get; set; }
+    public DateTime? FechaUltimaActualizacion { get; set; }
+    
+    // Información de la versión actual
+    public int VersionId { get; set; }
+    public decimal NumeroVersion { get; set; }
+    public DateTime FechaVersion { get; set; }
+    
+    // Información del cliente
+    public string NombreInteresado { get; set; } = string.Empty;
+    public string EmailInteresado { get; set; } = string.Empty;
+    public string EmpresaInteresado { get; set; } = string.Empty;
+    
+    // Información financiera
+    public decimal SubTotal { get; set; }
+    public decimal Impuesto { get; set; }
+    public decimal Descuento { get; set; }
+    public decimal Total { get; set; }
+    public string Moneda { get; set; } = string.Empty;
+    public decimal? TipoCambio { get; set; }
+    
+    // Fechas importantes según el estado
+    public DateTime? FechaEnvio { get; set; }
+    public DateTime? FechaAceptacion { get; set; }
+    public DateTime? FechaRechazo { get; set; }
+    public char EnviadoERP { get; set; } = 'N';
+    public DateTime? FechaEnvioERP { get; set; }
+    
+    // Notas
+    public string? Notas { get; set; }
+    
+    // Líneas de detalle
+    public List<DetalleCotizacionViewModel> Detalles { get; set; } = new();
+}
+
+public class DetalleCotizacionViewModel
+{
+    public int DetalleVersionId { get; set; }
+    public string ProductoId { get; set; } = string.Empty;
+    public string ProductoNombre { get; set; } = string.Empty;
+    public decimal Cantidad { get; set; }
+    public decimal PrecioUnitario { get; set; }
+    public decimal Descuento { get; set; }
+    public decimal TotalLinea { get; set; }
 }

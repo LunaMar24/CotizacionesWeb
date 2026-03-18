@@ -88,6 +88,14 @@ document.addEventListener('DOMContentLoaded', function() {
             );
         });
 
+        // Ver Detalle (navegar a página de detalle)
+        $('.btn-detalle').on('click', function () {
+            const cotizacionId = $(this).attr('data-id');
+            
+            // Navegar directamente a la vista de detalle
+            window.location.href = '/Cotizaciones/Detalle/' + cotizacionId;
+        });
+
         // ========================================
         // BOTONES DE TRANSICION DE ESTADOS
         // ========================================
@@ -270,6 +278,7 @@ function cambiarEstadoCotizacion(cotizacionId, accion, button) {
             if (response.success) {
                 showNotification('success', response.message);
                 setTimeout(function () {
+                    // Para cambios de estado, recargar normalmente ya que no cambia fechas
                     location.reload();
                 }, 1500);
             } else {
@@ -347,7 +356,7 @@ function inicializarEventosVersiones() {
         const versionId = $(this).attr('data-version-id');
         const cotizacionId = $(this).attr('data-cotizacion-id');
 
-        // Navegar a la vista de detalle de la versión
+        // Navegar a la vista de detalle de la versión específica
         window.location.href = '/Cotizaciones/Detalle/' + cotizacionId + '?versionId=' + versionId;
     });
 

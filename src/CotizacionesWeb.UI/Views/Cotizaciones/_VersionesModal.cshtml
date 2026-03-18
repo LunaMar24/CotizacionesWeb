@@ -28,12 +28,7 @@
                     {
                         <tr>
                             <td>
-                                @{
-                                    var versionText = version.NumeroVersion > 0 
-                                        ? $"v{version.NumeroVersion:0.0}" 
-                                        : "v0.0";
-                                }
-                                <span class="badge badge-version">@versionText</span>
+                                <span class="badge badge-version">@FormatHelper.FormatVersion(version.NumeroVersion)</span>
                             </td>
                             <td>
                                 <div>
@@ -53,7 +48,7 @@
                                 <span class="badge badge-info">@version.Moneda</span>
                             </td>
                             <td class="text-right">
-                                <strong class="text-dark">@version.Total.ToString("C2")</strong>
+                                <strong class="text-dark">@FormatHelper.FormatCurrency(version.Total, version.Moneda)</strong>
                             </td>
                             <td class="text-center">
                                 <div class="btn-group-actions">

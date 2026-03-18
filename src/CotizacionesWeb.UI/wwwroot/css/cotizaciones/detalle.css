@@ -1,0 +1,131 @@
+/* Estilos específicos para la vista de detalle de cotizaciones */
+
+.info-item {
+    margin-bottom: 1rem;
+}
+
+.info-item .d-flex {
+    align-items: flex-start;
+    min-height: 30px;
+}
+
+.info-label {
+    display: block;
+    min-width: 180px;
+    width: 180px;
+    color: #495057;
+    text-align: right;
+    margin-right: 15px;
+    flex-shrink: 0;
+    padding-top: 2px; /* Alineación con el contenido */
+    font-weight: 600;
+}
+
+.info-item .d-flex > span:last-child {
+    flex: 1;
+    word-wrap: break-word;
+}
+
+/* Backward compatibility para info-item sin d-flex */
+.info-item strong:not(.info-label) {
+    display: inline-block;
+    min-width: 150px;
+    color: #495057;
+}
+
+.financial-summary {
+    font-size: 1.05rem;
+}
+
+.card-outline.card-primary {
+    border-top: 3px solid #007bff;
+}
+
+.card-outline.card-info {
+    border-top: 3px solid #17a2b8;
+}
+
+.card-outline.card-success {
+    border-top: 3px solid #28a745;
+}
+
+.card-outline.card-warning {
+    border-top: 3px solid #ffc107;
+}
+
+.card-outline.card-secondary {
+    border-top: 3px solid #6c757d;
+}
+
+.badge-version {
+    background-color: #6f42c1;
+    color: white;
+    font-size: 0.8rem;
+}
+
+/* Clases de badges personalizados */
+.badge-secondary-custom { background-color: #6c757d; color: white; }
+.badge-warning-custom { background-color: #ffc107; color: #212529; }
+.badge-success-custom { background-color: #28a745; color: white; }
+.badge-info-custom { background-color: #17a2b8; color: white; }
+.badge-primary-custom { background-color: #007bff; color: white; }
+.badge-danger-custom { background-color: #dc3545; color: white; }
+.badge-dark-custom { background-color: #343a40; color: white; }
+
+/* Estilos para tabla scrolleable */
+.table-responsive {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+
+.table-responsive::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Header fijo en tabla scrolleable */
+.sticky-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Estilos de impresión */
+@media print {
+    .content-header-custom .btn,
+    .btn {
+        display: none !important;
+    }
+    
+    .card {
+        break-inside: avoid;
+        border: 1px solid #ddd !important;
+    }
+    
+    .alert {
+        display: none;
+    }
+    
+    body {
+        font-size: 12px;
+    }
+    
+    .card-header {
+        background-color: #f8f9fa !important;
+        print-color-adjust: exact;
+    }
+}

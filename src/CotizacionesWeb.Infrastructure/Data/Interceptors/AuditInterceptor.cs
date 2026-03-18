@@ -34,7 +34,7 @@ public class AuditInterceptor : SaveChangesInterceptor
     {
         if (context == null) return;
 
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now; // Usar hora local en lugar de UTC
         var currentUserId = _getCurrentUserId() ?? 0; // 0 para sistema/anonimo
 
         foreach (var entry in context.ChangeTracker.Entries<BaseEntity>())

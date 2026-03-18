@@ -72,6 +72,11 @@ try
     // Application services - Cotizaciones
     builder.Services.AddScoped<ICrearCotizacionService, CrearCotizacionService>();
     builder.Services.AddScoped<ICotizacionService, CotizacionesWeb.Infrastructure.Services.CotizacionService>();
+    
+    // Sistema de parámetros y consecutivos
+    builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.ConsecutivoGenerator>();
+    builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.IParametroSistemaService, CotizacionesWeb.Infrastructure.Services.ParametroSistemaService>();
+    builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.IConfiguracionService, CotizacionesWeb.Infrastructure.Services.ConfiguracionService>();
 
     // Integrations
     builder.Services.AddScoped<IErpService, ErpService>();

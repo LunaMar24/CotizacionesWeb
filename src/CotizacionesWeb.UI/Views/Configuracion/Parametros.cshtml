@@ -1,0 +1,247 @@
+@{
+    ViewData["Title"] = "Configuración de Parámetros del Sistema";
+    ViewData["PageHeader"] = "Configuración de Parámetros";
+    ViewData["PageDescription"] = "Gestión de parámetros de configuración del sistema";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/configuracion/parametros.css" asp-append-version="true" />
+}
+
+<!-- Alertas de validación de consecutivos -->
+@if (!(bool)ViewBag.ConsecutivosValidos)
+{
+    <div class="alert alert-warning alert-dismissible fade show mb-4" role="alert">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        <strong>?? Atención:</strong> La configuración de consecutivos no es válida. Revise los parámetros de la categoría "Consecutivos".
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
+    </div>
+}
+
+<!-- Mensajes de éxito/error -->
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+        <i class="fas fa-check-circle mr-2"></i>
+        @TempData["SuccessMessage"]
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        <i class="fas fa-exclamation-circle mr-2"></i>
+        @TempData["ErrorMessage"]
+        <button type="button" class="close" data-dismiss="alert">
+            <span>&times;</span>
+        </button>
+    </div>
+}
+
+<div class="card card-tabs configuracion-container">
+    <div class="card-header p-0 border-bottom-0">
+        <!-- Pestañas de categorías -->
+        <ul class="nav nav-tabs categorias-tabs" role="tablist">
+            @foreach (var categoria in (List<CotizacionesWeb.Application.Configuracion.CategoriaParametrosDto>)ViewBag.Categorias)
+            {
+                <li class="nav-item">
+                    <a href="@Url.Action("Parametros", "Configuracion", new { categoria = categoria.Categoria })" 
+                       class="nav-link categoria-tab @(ViewBag.CategoriaSeleccionada?.ToString() == categoria.Categoria ? "active" : "")">
+                        <i class="@categoria.IconoClass mr-2"></i>
+                        <span class="categoria-nombre">@categoria.Categoria</span>
+                        <span class="badge badge-secondary ml-1">@categoria.Parametros.Count</span>
+                    </a>
+                </li>
+            }
+        </ul>
+    </div>
+    
+    <div class="card-body configuracion-body">
+        @{
+            var categoriaActual = (CotizacionesWeb.Application.Configuracion.CategoriaParametrosDto?)ViewBag.CategoriaActual;
+        }
+        
+        @if (categoriaActual != null)
+        {
+            <!-- Cabecera de la categoría actual -->
+            <div class="categoria-header mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-1">
+                            <i class="@categoriaActual.IconoClass text-primary mr-2"></i>
+                            @categoriaActual.Categoria
+                        </h2>
+                        <p class="text-muted mb-0">@categoriaActual.Descripcion</p>
+                    </div>
+                    <div class="col-md-4 text-right">
+                        <span class="badge badge-info badge-lg">
+                            @categoriaActual.Parametros.Count parámetros configurados
+                        </span>
+                    </div>
+                </div>
+            </div>
+                    
+            @if (categoriaActual.Parametros.Any())
+            {
+                <!-- Grid de parámetros -->
+                <div class="parametros-grid">
+                    @foreach (var parametro in categoriaActual.Parametros)
+                    {
+                        <div class="parametro-card @(!parametro.EsModificable ? "parametro-readonly" : "")" 
+                             data-codigo="@parametro.Codigo">
+                            <div class="parametro-header">
+                                <div class="parametro-title">
+                                    <h5 class="mb-1">@parametro.Codigo</h5>
+                                    <div class="parametro-meta">
+                                        <span class="badge badge-outline-secondary mr-2">@parametro.TipoValor</span>
+                                        @if (!parametro.EsModificable)
+                                        {
+                                            <span class="badge badge-warning">Solo lectura</span>
+                                        }
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrEmpty(parametro.ValorPorDefecto))
+                                {
+                                    <div class="parametro-default">
+                                        <small class="text-muted">
+                                            <strong>Por defecto:</strong> @parametro.ValorPorDefecto
+                                        </small>
+                                    </div>
+                                }
+                            </div>
+                            
+                            <div class="parametro-description">
+                                <p class="text-muted mb-3">@parametro.Descripcion</p>
+                            </div>
+                            
+                            <div class="parametro-control">
+                                @if (parametro.EsModificable && (bool)ViewBag.PuedeEditar)
+                                {
+                                    <form asp-action="ActualizarParametro" asp-controller="Configuracion" method="post" class="parametro-form">
+                                        <input type="hidden" name="parametroId" value="@parametro.ParametroId" />
+                                        <input type="hidden" name="codigo" value="@parametro.Codigo" />
+                                        <input type="hidden" name="categoriaSeleccionada" value="@ViewBag.CategoriaSeleccionada" />
+                                        
+                                        <div class="input-group">
+                                            @if (parametro.TipoValor == "Booleano (S/N)")
+                                            {
+                                                <select name="valor" class="form-control parametro-input" data-tipo="@parametro.TipoValor">
+                                                    <option value="S" selected="@(parametro.Valor == "S")">? Sí (S)</option>
+                                                    <option value="N" selected="@(parametro.Valor == "N")">? No (N)</option>
+                                                </select>
+                                            }
+                                            else
+                                            {
+                                                <input type="text" 
+                                                       name="valor" 
+                                                       value="@parametro.Valor" 
+                                                       class="form-control parametro-input"
+                                                       data-tipo="@parametro.TipoValor"
+                                                       placeholder="@parametro.ValorPorDefecto" />
+                                            }
+                                            <div class="input-group-append">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-save"></i> Guardar
+                                                </button>
+                                                @if (!string.IsNullOrEmpty(parametro.ValorPorDefecto))
+                                                {
+                                                    <button type="button" 
+                                                            class="btn btn-outline-secondary btn-resetear"
+                                                            data-codigo="@parametro.Codigo"
+                                                            title="Resetear al valor por defecto">
+                                                        <i class="fas fa-undo"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </div>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <div class="parametro-readonly-value">
+                                        <div class="valor-actual">
+                                            <code class="parametro-value">@parametro.Valor</code>
+                                        </div>
+                                        <div class="readonly-badges mt-2">
+                                            @if (!parametro.EsModificable)
+                                            {
+                                                <span class="badge badge-warning">?? Solo lectura</span>
+                                            }
+                                            @if (!(bool)ViewBag.PuedeEditar)
+                                            {
+                                                <span class="badge badge-info">?? Sin permisos de edición</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                            
+                            @if (!string.IsNullOrEmpty(parametro.Notas))
+                            {
+                                <div class="parametro-notes mt-3">
+                                    <div class="alert alert-info alert-sm">
+                                        <i class="fas fa-info-circle mr-1"></i>
+                                        <small>@parametro.Notas</small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <!-- Estado vacío -->
+                <div class="empty-state">
+                    <i class="fas fa-info-circle fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">No hay parámetros configurados</h4>
+                    <p class="text-muted">Esta categoría no tiene parámetros disponibles actualmente.</p>
+                </div>
+            }
+        }
+        else
+        {
+            <!-- Estado inicial -->
+            <div class="empty-state">
+                <i class="fas fa-cogs fa-5x text-muted mb-4"></i>
+                <h3 class="text-muted">Gestión de Parámetros del Sistema</h3>
+                <p class="text-muted lead">Seleccione una categoría de las pestañas superiores para ver y gestionar los parámetros de configuración.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modal de confirmación para resetear -->
+<div class="modal fade" id="modalResetear" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Reseteo</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de que desea resetear el parámetro <strong id="parametroResetear"></strong> a su valor por defecto?</p>
+                <p class="text-muted">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <form asp-action="ResetearParametro" asp-controller="Configuracion" method="post" id="formResetear">
+                    <input type="hidden" name="codigo" id="codigoResetear" />
+                    <input type="hidden" name="categoriaSeleccionada" value="@ViewBag.CategoriaSeleccionada" />
+                    <button type="submit" class="btn btn-warning">Resetear</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/configuracion/parametros.js" asp-append-version="true"></script>
+}

@@ -4,6 +4,7 @@ using CotizacionesWeb.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CotizacionesWeb.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(DbContextCotizaciones))]
-    partial class DbContextCotizacionesModelSnapshot : ModelSnapshot
+    [Migration("20260317234136_ExpandirParametrosParaConsecutivos")]
+    partial class ExpandirParametrosParaConsecutivos
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -401,11 +404,12 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
-                    b.Property<char>("TipoValor")
+                    b.Property<string>("TipoValor")
+                        .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(1)
                         .HasColumnType("nvarchar(1)")
-                        .HasDefaultValue('S');
+                        .HasDefaultValue("S");
 
                     b.Property<string>("Valor")
                         .IsRequired()
@@ -433,7 +437,7 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
 
                     b.ToTable("Parametros", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Parametros_TipoValor", "[TipoValor] IN ('S', 'N', 'B', 'D', 'E')");
+                            t.HasCheckConstraint("CK_Parametros_TipoValor", "[TipoValor] IN ('S', 'N', 'B', 'D')");
                         });
                 });
 

@@ -247,15 +247,10 @@
                                     }
                                 </td>
                                 <td>
-                                    @{
-                                        var versionText = cotizacion.NumeroVersion > 0 
-                                            ? $"v{cotizacion.NumeroVersion:0.0}" 
-                                            : $"v{cotizacion.VersionActual}";
-                                    }
-                                    <span class="badge badge-version">@versionText</span>
+                                    <span class="badge badge-version">@FormatHelper.FormatVersion(cotizacion.NumeroVersion)</span>
                                 </td>
                                 <td>
-                                    <strong class="text-dark">@cotizacion.MontoCotizacion.ToString("C2")</strong>
+                                    <strong class="text-dark">@FormatHelper.FormatCurrency(cotizacion.MontoCotizacion, cotizacion.Moneda)</strong>
                                 </td>
                                 <td>
                                     <i class="far fa-calendar"></i> @cotizacion.FechaCreacion.ToString("dd/MM/yyyy")

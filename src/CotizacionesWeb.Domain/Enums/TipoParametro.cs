@@ -2,7 +2,9 @@ namespace CotizacionesWeb.Domain.Enums;
 
 public enum TipoParametro
 {
-    Numerico = 'N',
+    Decimal = 'N',
     Texto = 'S',
-    Booleano = 'B'
+    Booleano = 'B',
+    Fecha = 'D',
+    Entero = 'E',
 }

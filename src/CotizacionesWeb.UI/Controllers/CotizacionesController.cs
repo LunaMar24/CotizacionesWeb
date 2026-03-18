@@ -31,7 +31,7 @@ public class CotizacionesController : Controller
             if (!filtros.FechaDesde.HasValue && !filtros.FechaHasta.HasValue)
             {
                 filtros.FechaDesde = DateTime.Today.AddDays(-30);
-                filtros.FechaHasta = DateTime.Today;
+                filtros.FechaHasta = DateTime.Today.AddDays(1); // Incluir todo el día de hoy
             }
 
             var estadosSeleccionados = new List<char>();
@@ -75,6 +75,8 @@ public class CotizacionesController : Controller
                     FechaUltimaActualizacion = c.FechaUltimaActualizacion,
                     MontoCotizacion = c.MontoCotizacion,
                     FechaEnvio = c.FechaEnvio,
+                    // Información financiera
+                    Moneda = c.Moneda,
                     // Nuevos campos según lineamientos funcionales
                     FechaAceptacion = c.FechaAceptacion,
                     FechaRechazo = c.FechaRechazo,
@@ -241,7 +243,7 @@ public class CotizacionesController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    [RequierePermiso("COT_CREATE")]
+    [RequierePermiso("COT_DUPLICATE")]
     public async Task<IActionResult> Duplicar(string cotizacionId)
     {
         try
@@ -265,6 +267,105 @@ public class CotizacionesController : Controller
         {
             _logger.LogError(ex, "Error al duplicar cotización {CotizacionId}", cotizacionId);
             return Json(new { success = false, message = "Error al duplicar la cotización" });
+        }
+    }
+
+    [HttpGet("Cotizaciones/Detalle/{cotizacionId}")]
+    [RequierePermiso("COT_VIEW_DETAIL")]
+    public async Task<IActionResult> Detalle(string cotizacionId, int? versionId = null)
+    {
+        try
+        {
+            // Si se especifica una versión específica, usar esa; sino, usar la versión actual
+            CotizacionVersionDetalleDto? detalleDto;
+            
+            if (versionId.HasValue)
+            {
+                // Cargar versión específica
+                detalleDto = await _cotizacionService.GetCotizacionVersionDetailAsync(versionId.Value);
+            }
+            else
+            {
+                // Cargar la versión actual de la cotización
+                // Primero obtenemos la información básica para saber cuál es la versión actual
+                var cotizaciones = await _cotizacionService.GetCotizacionesListAsync(
+                    new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null));
+                
+                var cotizacion = cotizaciones.FirstOrDefault(c => c.CotizacionId == cotizacionId);
+                if (cotizacion == null)
+                {
+                    return NotFound($"Cotización {cotizacionId} no encontrada");
+                }
+
+                // Obtener el detalle de la versión actual
+                detalleDto = await _cotizacionService.GetCotizacionVersionDetailAsync(cotizacion.VersionActual);
+            }
+
+            if (detalleDto == null)
+            {
+                return NotFound($"Detalle de cotización {cotizacionId} no encontrado");
+            }
+
+            // Obtener información adicional de la cotización para campos que no están en la versión
+            var cotizacionInfo = await _cotizacionService.GetCotizacionesListAsync(
+                new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null));
+            
+            var cotizacionBase = cotizacionInfo.FirstOrDefault(c => c.CotizacionId == cotizacionId);
+
+            // Mapear a ViewModel
+            var viewModel = new CotizacionDetalleViewModel
+            {
+                CotizacionId = detalleDto.Version.CotizacionId,
+                EstadoActual = cotizacionBase?.EstadoActual ?? 'B',
+                EstadoActualTexto = ObtenerTextoEstado(cotizacionBase?.EstadoActual ?? 'B'),
+                FechaCreacion = cotizacionBase?.FechaCreacion ?? DateTime.Now,
+                FechaUltimaActualizacion = cotizacionBase?.FechaUltimaActualizacion,
+                
+                VersionId = detalleDto.Version.VersionId,
+                NumeroVersion = detalleDto.Version.NumeroVersion,
+                FechaVersion = detalleDto.Version.FechaVersion,
+                
+                NombreInteresado = detalleDto.Version.NombreInteresado,
+                EmailInteresado = detalleDto.Version.EmailInteresado,
+                EmpresaInteresado = detalleDto.Version.EmpresaInteresado,
+                
+                SubTotal = detalleDto.Version.SubTotal,
+                Impuesto = detalleDto.Version.Impuesto,
+                Descuento = detalleDto.Version.Descuento,
+                Total = detalleDto.Version.Total,
+                Moneda = detalleDto.Version.Moneda,
+                TipoCambio = detalleDto.Version.TipoCambio,
+                
+                FechaEnvio = cotizacionBase?.FechaEnvio,
+                FechaAceptacion = cotizacionBase?.FechaAceptacion,
+                FechaRechazo = cotizacionBase?.FechaRechazo,
+                EnviadoERP = cotizacionBase?.EnviadoERP ?? 'N',
+                FechaEnvioERP = cotizacionBase?.FechaEnvioERP,
+                
+                Notas = detalleDto.Version.Notas,
+                
+                Detalles = detalleDto.Detalles.Select(d => new DetalleCotizacionViewModel
+                {
+                    DetalleVersionId = d.DetalleVersionId,
+                    ProductoId = d.ProductoId,
+                    ProductoNombre = d.ProductoNombre,
+                    Cantidad = d.Cantidad,
+                    PrecioUnitario = d.PrecioUnitario,
+                    Descuento = d.Descuento,
+                    TotalLinea = d.TotalLinea
+                }).ToList()
+            };
+
+            ViewBag.EsVersionEspecifica = versionId.HasValue;
+            ViewBag.NumeroVersionMostrada = detalleDto.Version.NumeroVersion;
+            
+            return View(viewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener detalle de cotización {CotizacionId}", cotizacionId);
+            TempData["Error"] = "Error al cargar el detalle de la cotización";
+            return RedirectToAction(nameof(Index));
         }
     }
 
