@@ -22,6 +22,8 @@
     <link rel="stylesheet" href="~/css/components.css" asp-append-version="true">
     <!-- Custom Site CSS -->
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true">
+    
+    @await RenderSectionAsync("Styles", required: false)
 </head>
 <body class="hold-transition sidebar-mini layout-footer-fixed">
     <!-- Site wrapper -->
@@ -95,6 +97,10 @@
                         var tieneCotView = isAuthenticated && await PermisoChecker.TienePermisoAsync("COT_VIEW");
                         var tieneCotCreate = isAuthenticated && await PermisoChecker.TienePermisoAsync("COT_CREATE");
                         var tieneCotizacionesMenu = tieneCotView || tieneCotCreate;
+                        
+                        var tieneConfigView = isAuthenticated && await PermisoChecker.TienePermisoAsync("CFG_VIEW");
+                        var tieneConfigParams = isAuthenticated && await PermisoChecker.TienePermisoAsync("CFG_PARAMS_VIEW");
+                        var tieneConfigMenu = tieneConfigView || tieneConfigParams || esAdmin;
                     }
                     
                     <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
@@ -166,6 +172,30 @@
                                                 <a href="#" class="nav-link">
                                                     <i class="far fa-circle nav-icon"></i>
                                                     <p>Nueva Cotización</p>
+                                                </a>
+                                            </li>
+                                        }
+                                    </ul>
+                                </li>
+                            }
+                            
+                            @if (tieneConfigMenu)
+                            {
+                                <li class="nav-item">
+                                    <a href="#" class="nav-link">
+                                        <i class="nav-icon fas fa-cogs"></i>
+                                        <p>
+                                            Configuración
+                                            <i class="right fas fa-angle-left"></i>
+                                        </p>
+                                    </a>
+                                    <ul class="nav nav-treeview">
+                                        @if (tieneConfigParams || esAdmin)
+                                        {
+                                            <li class="nav-item">
+                                                <a asp-controller="Configuracion" asp-action="Parametros" class="nav-link">
+                                                    <i class="far fa-circle nav-icon"></i>
+                                                    <p>Parámetros del Sistema</p>
                                                 </a>
                                             </li>
                                         }

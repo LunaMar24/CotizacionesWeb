@@ -11,13 +11,16 @@ public class CotizacionService : ICotizacionService
 {
     private readonly DbContextCotizaciones _context;
     private readonly ILogger<CotizacionService> _logger;
+    private readonly IParametroSistemaService _parametroService;
 
     public CotizacionService(
         DbContextCotizaciones context,
-        ILogger<CotizacionService> logger)
+        ILogger<CotizacionService> logger,
+        IParametroSistemaService parametroService)
     {
         _context = context;
         _logger = logger;
+        _parametroService = parametroService;
     }
 
     public async Task<List<CotizacionListDto>> GetCotizacionesListAsync(GetCotizacionesListRequest request)
@@ -98,6 +101,8 @@ public class CotizacionService : ICotizacionService
                 c.ModifiedAt, // Using ModifiedAt instead of FechaUltimaActualizacion
                 c.MontoCotizacion,
                 c.FechaEnvio,
+                // Información financiera
+                versionVigente?.Moneda ?? "CRC", // Moneda de la versión vigente, CRC por defecto
                 // Nuevos campos según lineamientos funcionales
                 c.FechaAceptacion,
                 c.FechaRechazo,
@@ -474,6 +479,8 @@ public class CotizacionService : ICotizacionService
     {
         try
         {
+            _logger.LogInformation("Iniciando duplicación de cotización {CotizacionId}", request.CotizacionIdBase);
+
             // Buscar la cotización base y su versión vigente usando un JOIN explícito
             var cotizacionBaseConVersion = await (from cotizacion in _context.Cotizaciones
                                                   join version in _context.CotizacionesVersiones
@@ -485,131 +492,185 @@ public class CotizacionService : ICotizacionService
 
             if (cotizacionBaseConVersion == null)
             {
+                _logger.LogWarning("Cotización base {CotizacionId} no encontrada", request.CotizacionIdBase);
                 return new DuplicarCotizacionResult(false, "Cotización base no encontrada", null);
             }
 
             var cotizacionBase = cotizacionBaseConVersion.Cotizacion;
             var versionVigente = cotizacionBaseConVersion.Version;
 
+            _logger.LogInformation("Cotización base encontrada: {CotizacionId}, Versión: {VersionActual}", 
+                cotizacionBase.CotizacionId, cotizacionBase.VersionActual);
+
             // Obtener los detalles de la versión vigente
             var detalles = await _context.DetallesCotizacionVersion
-                .Where(d => d.VersionId == versionVigente.VersionId)  // CORREGIDO: Usar VersionId
+                .Where(d => d.VersionId == versionVigente.VersionId)
                 .ToListAsync();
 
-            // Generar nuevo ID de cotización
-            var nuevoCotizacionId = await GenerarNuevoCotizacionIdAsync();
-            
-            // Generar nuevo identificador único para la primera versión
-            var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
+            _logger.LogInformation("Encontrados {CantidadDetalles} detalles para copiar", detalles.Count);
 
-            // Crear nueva cotización
-            var nuevaCotizacion = new Cotizacion
+            // Usar transacción para garantizar integridad
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
             {
-                CotizacionId = nuevoCotizacionId,
-                InteresadoId = null, // Se limpia el interesado
-                EstadoActual = (char)EstadoCotizacion.Borrador,
-                VersionActual = nuevoVersionActual, // Apuntar a la nueva versión
-                MontoCotizacion = versionVigente.Total
-                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
-            };
+                // Generar nuevo ID de cotización
+                var nuevoCotizacionId = await GenerarNuevoCotizacionIdAsync();
+                _logger.LogInformation("Nuevo ID de cotización generado: {NuevoCotizacionId}", nuevoCotizacionId);
+                
+                // Generar nuevo identificador único para la primera versión
+                var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
+                _logger.LogInformation("Nuevo VersionActual generado: {NuevoVersionActual}", nuevoVersionActual);
 
-            _context.Cotizaciones.Add(nuevaCotizacion);
-            await _context.SaveChangesAsync();
+                // Crear nueva cotización
+                var nuevaCotizacion = new Cotizacion
+                {
+                    CotizacionId = nuevoCotizacionId,
+                    InteresadoId = null, // Se limpia el interesado
+                    EstadoActual = (char)EstadoCotizacion.Borrador,
+                    VersionActual = nuevoVersionActual, // Apuntar a la nueva versión
+                    MontoCotizacion = versionVigente.Total
+                };
 
-            // Crear primera versión
-            var nuevaVersion = new CotizacionVersion
-            {
-                CotizacionId = nuevoCotizacionId,
-                NumeroVersion = 1,
-                FechaVersion = DateTime.Now,
-                NombreInteresado = "", // Se limpia
-                EmailInteresado = "", // Se limpia
-                EmpresaInteresado = "", // Se limpia
-                SubTotal = versionVigente.SubTotal,
-                Impuesto = versionVigente.Impuesto,
-                Descuento = versionVigente.Descuento,
-                Total = versionVigente.Total,
-                Moneda = versionVigente.Moneda,
-                TipoCambio = versionVigente.TipoCambio,
-                VersionActual = nuevoVersionActual, // Usar el identificador único generado
-                Notas = null // Se limpian las notas
-                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
-            };
+                _context.Cotizaciones.Add(nuevaCotizacion);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Nueva cotización creada en BD");
 
-            _context.CotizacionesVersiones.Add(nuevaVersion);
-            await _context.SaveChangesAsync();
+                // Crear primera versión
+                var nuevaVersion = new CotizacionVersion
+                {
+                    CotizacionId = nuevoCotizacionId,
+                    NumeroVersion = 1.0m,
+                    FechaVersion = DateTime.Now,
+                    NombreInteresado = "", // Se limpia
+                    EmailInteresado = "", // Se limpia
+                    EmpresaInteresado = "", // Se limpia
+                    SubTotal = versionVigente.SubTotal,
+                    Impuesto = versionVigente.Impuesto,
+                    Descuento = versionVigente.Descuento,
+                    Total = versionVigente.Total,
+                    Moneda = versionVigente.Moneda ?? "CLP", // Valor por defecto si es null
+                    TipoCambio = versionVigente.TipoCambio,
+                    VersionActual = nuevoVersionActual,
+                    Notas = null // Se limpian las notas
+                };
 
-            // Copiar líneas de detalle
-            foreach (var detalle in detalles)
-            {
-                var nuevoDetalle = new DetalleCotizacionVersion
+                _context.CotizacionesVersiones.Add(nuevaVersion);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Nueva versión creada con VersionId: {VersionId}", nuevaVersion.VersionId);
+
+                // Copiar líneas de detalle
+                foreach (var detalle in detalles)
+                {
+                    var nuevoDetalle = new DetalleCotizacionVersion
+                    {
+                        VersionId = nuevaVersion.VersionId,
+                        ProductoId = detalle.ProductoId,
+                        Cantidad = detalle.Cantidad,
+                        PrecioUnitario = detalle.PrecioUnitario,
+                        Descuento = detalle.Descuento,
+                        TotalLinea = detalle.TotalLinea
+                    };
+                    _context.DetallesCotizacionVersion.Add(nuevoDetalle);
+                }
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Detalles copiados exitosamente");
+
+                // Registrar evento inicial en historial
+                var historial = new HistorialCotizacion
                 {
                     VersionId = nuevaVersion.VersionId,
-                    ProductoId = detalle.ProductoId,
-                    Cantidad = detalle.Cantidad,
-                    PrecioUnitario = detalle.PrecioUnitario,
-                    Descuento = detalle.Descuento,
-                    TotalLinea = detalle.TotalLinea
-                    // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
+                    TipoEvento = "Creada",
+                    FechaEvento = DateTime.Now,
+                    UsuarioEvento = userId ?? 0,
+                    Comentario = $"Cotización creada por duplicación de {request.CotizacionIdBase}"
                 };
-                _context.DetallesCotizacionVersion.Add(nuevoDetalle);
+                _context.HistorialesCotizacion.Add(historial);
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Historial registrado");
+
+                // Confirmar transacción
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Cotización {NuevoCotizacionId} duplicada exitosamente de {CotizacionIdBase}",
+                    nuevoCotizacionId, request.CotizacionIdBase);
+
+                return new DuplicarCotizacionResult(true, null, nuevoCotizacionId);
             }
-
-            // Registrar evento inicial en historial
-            var historial = new HistorialCotizacion
+            catch (Exception ex)
             {
-                VersionId = nuevaVersion.VersionId,
-                TipoEvento = "Creada",
-                FechaEvento = DateTime.Now,
-                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario dinámico, 0 si no se proporciona
-                Comentario = $"Cotización creada por duplicación de {request.CotizacionIdBase}"
-            };
-            _context.HistorialesCotizacion.Add(historial);
-
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("Cotización {NuevoCotizacionId} creada por duplicación de {CotizacionIdBase}",
-                nuevoCotizacionId, request.CotizacionIdBase);
-
-            return new DuplicarCotizacionResult(true, null, nuevoCotizacionId);
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error en transacción al duplicar cotización {CotizacionId}", request.CotizacionIdBase);
+                throw; // Re-lanzar para que sea capturado por el catch externo
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al duplicar cotización {CotizacionId}", request.CotizacionIdBase);
-            return new DuplicarCotizacionResult(false, "Error al duplicar cotización", null);
+            return new DuplicarCotizacionResult(false, $"Error al duplicar cotización: {ex.Message}", null);
         }
     }
 
     private async Task<string> GenerarNuevoCotizacionIdAsync()
     {
-        var ultimaCotizacion = await _context.Cotizaciones
-            .OrderByDescending(c => c.Id)
-            .FirstOrDefaultAsync();
-
-        if (ultimaCotizacion == null)
+        try
         {
-            return "COT-0001";
+            // ?? NUEVO: Usar el sistema de parámetros para generar consecutivos
+            _logger.LogInformation("Generando nuevo ID de cotización usando sistema de parámetros");
+            
+            var nuevoConsecutivo = await _parametroService.ObtenerSiguienteConsecutivoCotizacionAsync();
+            _logger.LogInformation("Nuevo ID de cotización generado: {NuevoConsecutivo}", nuevoConsecutivo);
+            
+            return nuevoConsecutivo;
         }
-
-        // Extraer número del ID (formato: COT-0001)
-        var partes = ultimaCotizacion.CotizacionId.Split('-');
-        if (partes.Length == 2 && int.TryParse(partes[1], out int numero))
+        catch (Exception ex)
         {
-            return $"COT-{(numero + 1):D4}";
-        }
+            _logger.LogError(ex, "Error crítico al generar ID usando parámetros, usando método fallback");
+            
+            // ?? FALLBACK: Método anterior como respaldo
+            try
+            {
+                var ultimoNumero = await _context.Cotizaciones
+                    .Where(c => c.CotizacionId.StartsWith("COT-"))
+                    .Select(c => c.CotizacionId.Substring(4))
+                    .Where(s => s.Length == 4)
+                    .Select(s => int.Parse(s))
+                    .DefaultIfEmpty(0)
+                    .MaxAsync();
 
-        // Fallback: contar cotizaciones y sumar 1
-        var count = await _context.Cotizaciones.CountAsync();
-        return $"COT-{(count + 1):D4}";
+                var nuevoNumero = ultimoNumero + 1;
+                var fallbackId = $"COT-{nuevoNumero:D4}";
+                
+                _logger.LogWarning("Usando ID fallback: {FallbackId}", fallbackId);
+                return fallbackId;
+            }
+            catch (Exception fallbackEx)
+            {
+                _logger.LogError(fallbackEx, "Error crítico: tanto el sistema de parámetros como el fallback fallaron");
+                throw new InvalidOperationException("No se pudo generar un ID de cotización válido", fallbackEx);
+            }
+        }
     }
 
     private async Task<int> GenerarNuevoVersionActualAsync()
     {
-        // Generar un identificador único para VersionActual
-        var maxVersionActual = await _context.CotizacionesVersiones
-            .MaxAsync(v => (int?)v.VersionActual) ?? 0;
-        
-        return maxVersionActual + 1;
+        try
+        {
+            // Usar una consulta más segura que maneje el caso cuando no hay versiones
+            var maxVersionActual = await _context.CotizacionesVersiones
+                .Select(v => (int?)v.VersionActual)
+                .DefaultIfEmpty(0) // Si no hay elementos, usar 0
+                .MaxAsync() ?? 0;
+            
+            return maxVersionActual + 1;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error al obtener máximo VersionActual, usando 1 como fallback");
+            return 1; // Fallback para el primer caso
+        }
     }
 
     private static decimal CalcularNuevaVersion(decimal versionActual)

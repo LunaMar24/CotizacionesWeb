@@ -14,6 +14,8 @@ public record CotizacionListDto(
     DateTime? FechaUltimaActualizacion,
     decimal MontoCotizacion,
     DateTime? FechaEnvio,
+    // Información financiera
+    string Moneda, // Moneda de la cotización
     // Nuevos campos según lineamientos funcionales
     DateTime? FechaAceptacion,
     DateTime? FechaRechazo,
