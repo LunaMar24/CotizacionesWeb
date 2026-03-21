@@ -31,6 +31,7 @@ public record CotizacionVersionDto(
     string NombreInteresado,
     string EmailInteresado,
     string EmpresaInteresado,
+    char TipoInteresado, // Nuevo campo para el tipo de interesado
     decimal SubTotal,
     decimal Impuesto,
     decimal Descuento,

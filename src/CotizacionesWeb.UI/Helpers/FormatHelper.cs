@@ -74,4 +74,20 @@ public static class FormatHelper
     {
         return value.ToString("N2", CultureInfo.InvariantCulture);
     }
+
+    /// <summary>
+    /// Obtiene el texto descriptivo del tipo de interesado
+    /// </summary>
+    /// <param name="tipoInteresado">Código del tipo de interesado (P, E, O)</param>
+    /// <returns>Texto descriptivo del tipo</returns>
+    public static string GetTipoInteresadoTexto(char tipoInteresado)
+    {
+        return tipoInteresado switch
+        {
+            'P' => "Persona",
+            'E' => "Empresa", 
+            'O' => "Otro",
+            _ => "No especificado"
+        };
+    }
 }

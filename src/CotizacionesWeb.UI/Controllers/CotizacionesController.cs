@@ -328,6 +328,7 @@ public class CotizacionesController : Controller
                 NombreInteresado = detalleDto.Version.NombreInteresado,
                 EmailInteresado = detalleDto.Version.EmailInteresado,
                 EmpresaInteresado = detalleDto.Version.EmpresaInteresado,
+                TipoInteresado = detalleDto.Version.TipoInteresado, // Nuevo campo
                 
                 SubTotal = detalleDto.Version.SubTotal,
                 Impuesto = detalleDto.Version.Impuesto,
@@ -365,6 +366,97 @@ public class CotizacionesController : Controller
         {
             _logger.LogError(ex, "Error al obtener detalle de cotización {CotizacionId}", cotizacionId);
             TempData["Error"] = "Error al cargar el detalle de la cotización";
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpGet("Cotizaciones/Editar/{cotizacionId}")]
+    [RequierePermiso("COT_EDIT")]
+    public async Task<IActionResult> Editar(string cotizacionId)
+    {
+        try
+        {
+            // Cargar la versión actual de la cotización
+            var cotizaciones = await _cotizacionService.GetCotizacionesListAsync(
+                new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null));
+            
+            var cotizacion = cotizaciones.FirstOrDefault(c => c.CotizacionId == cotizacionId);
+            if (cotizacion == null)
+            {
+                return NotFound($"Cotización {cotizacionId} no encontrada");
+            }
+
+            // VALIDACIÓN CRÍTICA: Solo se puede editar en estado Borrador
+            if (cotizacion.EstadoActual != 'B')
+            {
+                TempData["Error"] = $"No se puede editar la cotización {cotizacionId}. Solo las cotizaciones en estado Borrador pueden ser editadas.";
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Obtener el detalle de la versión actual
+            var detalleDto = await _cotizacionService.GetCotizacionVersionDetailAsync(cotizacion.VersionActual);
+            if (detalleDto == null)
+            {
+                return NotFound($"Detalle de cotización {cotizacionId} no encontrado");
+            }
+
+            // Mapear a ViewModel de edición
+            var viewModel = new CotizacionEditarViewModel
+            {
+                CotizacionId = detalleDto.Version.CotizacionId,
+                EstadoActual = cotizacion.EstadoActual,
+                EstadoActualTexto = ObtenerTextoEstado(cotizacion.EstadoActual),
+                FechaCreacion = cotizacion.FechaCreacion,
+                FechaUltimaActualizacion = cotizacion.FechaUltimaActualizacion,
+                
+                VersionId = detalleDto.Version.VersionId,
+                NumeroVersion = detalleDto.Version.NumeroVersion,
+                FechaVersion = detalleDto.Version.FechaVersion,
+                
+                // Información del interesado (editable)
+                InteresadoId = cotizacion.InteresadoId,
+                NombreInteresado = detalleDto.Version.NombreInteresado,
+                EmailInteresado = detalleDto.Version.EmailInteresado,
+                EmpresaInteresado = detalleDto.Version.EmpresaInteresado,
+                TipoInteresado = detalleDto.Version.TipoInteresado,
+                
+                // Información financiera
+                SubTotal = detalleDto.Version.SubTotal,
+                Impuesto = detalleDto.Version.Impuesto,
+                Descuento = detalleDto.Version.Descuento,
+                Total = detalleDto.Version.Total,
+                Moneda = detalleDto.Version.Moneda,
+                TipoCambio = detalleDto.Version.TipoCambio,
+                
+                // Fechas importantes
+                FechaEnvio = cotizacion.FechaEnvio,
+                FechaAceptacion = cotizacion.FechaAceptacion,
+                FechaRechazo = cotizacion.FechaRechazo,
+                EnviadoERP = cotizacion.EnviadoERP,
+                FechaEnvioERP = cotizacion.FechaEnvioERP,
+                
+                // Notas (editable)
+                Notas = detalleDto.Version.Notas,
+                
+                // Líneas de detalle
+                Detalles = detalleDto.Detalles.Select(d => new DetalleEditarViewModel
+                {
+                    DetalleVersionId = d.DetalleVersionId,
+                    ProductoId = d.ProductoId,
+                    ProductoNombre = d.ProductoNombre,
+                    Cantidad = d.Cantidad,
+                    PrecioUnitario = d.PrecioUnitario,
+                    Descuento = d.Descuento,
+                    TotalLinea = d.TotalLinea
+                }).ToList()
+            };
+            
+            return View(viewModel);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al cargar cotización para editar {CotizacionId}", cotizacionId);
+            TempData["Error"] = "Error al cargar la cotización para edición";
             return RedirectToAction(nameof(Index));
         }
     }

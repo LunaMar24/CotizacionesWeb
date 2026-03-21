@@ -101,6 +101,7 @@ public class CotizacionDetalleViewModel
     public string NombreInteresado { get; set; } = string.Empty;
     public string EmailInteresado { get; set; } = string.Empty;
     public string EmpresaInteresado { get; set; } = string.Empty;
+    public char TipoInteresado { get; set; } = 'P'; // Nuevo campo para el tipo de interesado
     
     // Información financiera
     public decimal SubTotal { get; set; }
@@ -133,4 +134,68 @@ public class DetalleCotizacionViewModel
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }
     public decimal TotalLinea { get; set; }
+}
+
+public class CotizacionEditarViewModel
+{
+    // Información básica de la cotización (solo lectura)
+    public string CotizacionId { get; set; } = string.Empty;
+    public char EstadoActual { get; set; }
+    public string EstadoActualTexto { get; set; } = string.Empty;
+    public DateTime FechaCreacion { get; set; }
+    public DateTime? FechaUltimaActualizacion { get; set; }
+    
+    // Información de la versión actual (solo lectura)
+    public int VersionId { get; set; }
+    public decimal NumeroVersion { get; set; }
+    public DateTime FechaVersion { get; set; }
+    
+    // Información del interesado (EDITABLE)
+    public int? InteresadoId { get; set; }
+    public string NombreInteresado { get; set; } = string.Empty;
+    public string EmailInteresado { get; set; } = string.Empty;
+    public string EmpresaInteresado { get; set; } = string.Empty;
+    public char TipoInteresado { get; set; } = 'P';
+    
+    // Información financiera (calculada automáticamente)
+    public decimal SubTotal { get; set; }
+    public decimal Impuesto { get; set; }
+    public decimal Descuento { get; set; }
+    public decimal Total { get; set; }
+    public string Moneda { get; set; } = string.Empty;
+    public decimal? TipoCambio { get; set; }
+    
+    // Fechas importantes (solo lectura)
+    public DateTime? FechaEnvio { get; set; }
+    public DateTime? FechaAceptacion { get; set; }
+    public DateTime? FechaRechazo { get; set; }
+    public char EnviadoERP { get; set; } = 'N';
+    public DateTime? FechaEnvioERP { get; set; }
+    
+    // Notas (EDITABLE)
+    public string? Notas { get; set; }
+    
+    // Líneas de detalle (EDITABLE)
+    public List<DetalleEditarViewModel> Detalles { get; set; } = new();
+}
+
+public class DetalleEditarViewModel
+{
+    public int DetalleVersionId { get; set; }
+    public string ProductoId { get; set; } = string.Empty;
+    public string ProductoNombre { get; set; } = string.Empty;
+    public decimal Cantidad { get; set; }
+    public decimal PrecioUnitario { get; set; }
+    public decimal Descuento { get; set; }
+    public decimal TotalLinea { get; set; }
+}
+
+public class InteresadoViewModel
+{
+    public int InteresadoId { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Empresa { get; set; } = string.Empty;
+    public char TipoInteresado { get; set; }
+    public string TipoInteresadoTexto { get; set; } = string.Empty;
 }
