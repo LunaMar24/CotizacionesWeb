@@ -1,0 +1,227 @@
+/* Estilos específicos para la vista de edición de cotizaciones */
+
+/* Formularios editables */
+.form-group label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 5px;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Campos de solo lectura (no editables) */
+.form-control[readonly],
+.form-control[disabled],
+.readonly-field {
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
+}
+
+.form-control[readonly]:focus,
+.readonly-field:focus {
+    border-color: #dee2e6 !important;
+    box-shadow: none !important;
+}
+
+/* Select deshabilitado */
+select.form-control[disabled] {
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+}
+
+/* Advertencia para estados no editables */
+.alert-warning {
+    border-left: 4px solid #ffc107;
+}
+
+/* Tabla de detalles editable */
+#tablaDetalles tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.btn-xs {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    border-radius: 0.2rem;
+}
+
+/* Resaltado de campos editables */
+.editable-field {
+    border: 2px dashed #28a745;
+    border-radius: 4px;
+    padding: 8px;
+    background-color: #f8fff9;
+}
+
+/* Select2 personalizado para búsquedas */
+.select2-container--default .select2-selection--single {
+    height: 38px;
+    border: 1px solid #ced4da;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    padding-top: 6px;
+    padding-left: 12px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
+
+/* Indicador de campo obligatorio */
+.form-group label[for]:after {
+    content: '';
+}
+
+.form-group label.required:after {
+    content: ' *';
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* Modal de detalle */
+#modalEditarDetalle .modal-dialog {
+    max-width: 600px;
+}
+
+#modalEditarDetalle .modal-header.bg-primary {
+    background-color: var(--color-primary) !important;
+    border-bottom: 1px solid var(--color-primary-light);
+}
+
+#modalEditarDetalle .modal-header.bg-primary .modal-title,
+#modalEditarDetalle .modal-header.bg-primary .close {
+    color: #ffffff !important;
+}
+
+#modalEditarDetalle .modal-header.bg-primary .close:hover {
+    color: #e6f3ff !important;
+}
+
+#modalEditarDetalle .form-control[readonly] {
+    background-color: #f8f9fa;
+}
+
+/* Cálculo automático en tiempo real */
+#modalTotalLinea {
+    font-size: 1.2em;
+    color: #28a745 !important;
+}
+
+/* Contador de caracteres para textarea */
+.char-counter {
+    font-size: 0.8em;
+    color: #6c757d;
+    text-align: right;
+}
+
+.char-counter.warning {
+    color: #ffc107;
+}
+
+.char-counter.danger {
+    color: #dc3545;
+}
+
+/* Botones de acción en tabla */
+.btn-editar-detalle {
+    background-color: #ffc107;
+    border-color: #ffc107;
+    color: #212529;
+}
+
+.btn-editar-detalle:hover {
+    background-color: #e0a800;
+    border-color: #d39e00;
+    color: #212529;
+}
+
+.btn-eliminar-detalle {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-eliminar-detalle:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+/* Estados de validación */
+.is-invalid {
+    border-color: #dc3545;
+}
+
+.is-valid {
+    border-color: #28a745;
+}
+
+.invalid-feedback {
+    display: block;
+    color: #dc3545;
+    font-size: 0.875em;
+    margin-top: 0.25rem;
+}
+
+/* Loading states */
+.loading-row {
+    background-color: #f8f9fa;
+    opacity: 0.7;
+}
+
+.loading-row td {
+    pointer-events: none;
+}
+
+/* Resumen financiero dinámico */
+.financial-summary .calculating {
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+
+/* Animaciones para cambios */
+.financial-summary .updated {
+    animation: highlight 0.5s ease-in-out;
+}
+
+@keyframes highlight {
+    0% { background-color: #fff3cd; }
+    100% { background-color: transparent; }
+}
+
+/* Responsividad mejorada */
+@media (max-width: 768px) {
+    .info-label {
+        min-width: 120px;
+        width: 120px;
+        text-align: left;
+        margin-bottom: 5px;
+    }
+    
+    .info-item .d-flex {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    #tablaDetalles th,
+    #tablaDetalles td {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* Estilos para imprimir (heredados de detalle.css) */
+@media print {
+    .btn, .card-tools, .modal {
+        display: none !important;
+    }
+    
+    .card-body {
+        padding: 0.5rem !important;
+    }
+}

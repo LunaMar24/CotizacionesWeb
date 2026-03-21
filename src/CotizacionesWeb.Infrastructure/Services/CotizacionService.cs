@@ -184,6 +184,7 @@ public class CotizacionService : ICotizacionService
             v.NombreInteresado,
             v.EmailInteresado,
             v.EmpresaInteresado,
+            'P', // Temporal: usar 'P' como default hasta obtener la relación con Interesado
             v.SubTotal,
             v.Impuesto,
             v.Descuento,
@@ -197,14 +198,28 @@ public class CotizacionService : ICotizacionService
 
     public async Task<CotizacionVersionDetalleDto?> GetCotizacionVersionDetailAsync(int versionId)
     {
-        var version = await _context.CotizacionesVersiones
-            .Include(v => v.Detalles)
-            .FirstOrDefaultAsync(v => v.VersionId == versionId);  // CORREGIDO: Usar VersionId
+        var versionConInteresado = await (from ver in _context.CotizacionesVersiones
+                                          join cot in _context.Cotizaciones
+                                              on ver.CotizacionId equals cot.CotizacionId
+                                          join inter in _context.Interesados
+                                              on cot.InteresadoId equals inter.InteresadoId into interesadosGroup
+                                          from inter in interesadosGroup.DefaultIfEmpty()
+                                          where ver.VersionId == versionId
+                                          select new { Version = ver, Interesado = inter })
+                                         .FirstOrDefaultAsync();
 
-        if (version == null)
+        if (versionConInteresado == null)
         {
             return null;
         }
+
+        var version = versionConInteresado.Version;
+        var interesado = versionConInteresado.Interesado;
+
+        // Obtener detalles de la versión
+        var detalles = await _context.DetallesCotizacionVersion
+            .Where(d => d.VersionId == versionId)
+            .ToListAsync();
 
         var versionDto = new CotizacionVersionDto(
             version.VersionId,  // CORREGIDO: Usar VersionId
@@ -214,6 +229,7 @@ public class CotizacionService : ICotizacionService
             version.NombreInteresado,
             version.EmailInteresado,
             version.EmpresaInteresado,
+            interesado?.TipoInteresado ?? 'P', // Nuevo campo - usar 'P' como default
             version.SubTotal,
             version.Impuesto,
             version.Descuento,
@@ -224,7 +240,7 @@ public class CotizacionService : ICotizacionService
             version.Notas
         );
 
-        var detalles = version.Detalles.Select(d => new DetalleCotizacionDto(
+        var detallesDto = detalles.Select(d => new DetalleCotizacionDto(
             d.DetalleVersionId,  // CORREGIDO: Usar DetalleVersionId
             d.VersionId,
             d.ProductoId,
@@ -235,7 +251,7 @@ public class CotizacionService : ICotizacionService
             d.TotalLinea
         )).ToList();
 
-        return new CotizacionVersionDetalleDto(versionDto, detalles);
+        return new CotizacionVersionDetalleDto(versionDto, detallesDto);
     }
 
     public async Task<List<HistorialCotizacionDto>> GetCotizacionVersionHistoryAsync(int versionId)

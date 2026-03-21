@@ -1089,15 +1089,449 @@ builder.Services.AddDbContext<DbContextCotizaciones>((serviceProvider, options) 
 
 ---
 
-**Versión**: 4.1
+**Versión**: 4.2
 **Última actualización**: 17 de marzo de 2026  
-**Estado**: ✅ Sistema completo con vista de detalle y formateo de números implementados  
-**Cambios recientes**: Vista de detalle, helper de formateo, configuración de cultura  
+**Estado**: ✅ Sistema completo con vista de detalle, edición controlada por estados y configuración centralizada de formateo
+**Cambios recientes**: Vista de edición, reglas de estados estrictas, configuración JavaScript centralizada
 **Autor**: Marcela Jiménez (con GitHub Copilot)
 
 ---
 
-## 📋 **CAMBIOS IMPLEMENTADOS HOY (17/03/2026)**
+## 📋 **CAMBIOS CRÍTICOS IMPLEMENTADOS (17/03/2026 - SESIÓN 2)**
+
+### 🔒 **1. SISTEMA DE EDICIÓN RESTRINGIDO POR ESTADOS**
+
+Se implementó un sistema estricto donde **SOLO las cotizaciones en estado BORRADOR (B) pueden ser editadas**:
+
+#### **🚨 Regla de Negocio Crítica:**
+```
+REGLA: Solo cotizaciones en estado "Borrador" (B) son editables.
+RAZÓN: Los demás estados representan flujos en proceso o estados terminales.
+```
+
+#### **Comportamiento por Estado:**
+| Estado | Texto | Editable | Comportamiento |
+|--------|-------|----------|----------------|
+| **B** | Borrador | ✅ **SÍ** | **Completamente editable** |
+| **P** | Pendiente Aprobación | ❌ **NO** | Solo lectura + aviso |
+| **A** | Aprobada | ❌ **NO** | Solo lectura + aviso |
+| **E** | Enviada | ❌ **NO** | Solo lectura + aviso |
+| **T** | Aceptada | ❌ **NO** | Solo lectura + aviso |
+| **R** | Rechazada | ❌ **NO** | Solo lectura + aviso |
+| **X** | Archivada | ❌ **NO** | Solo lectura + aviso |
+
+#### **Implementación Multi-Capa:**
+
+##### **1. Vista Index - Botones Condicionales:**
+```razor
+<!-- Editar - SOLO para estado Borrador -->
+@if (cotizacion.EstadoActual == 'B')
+{
+    <button class="btn-action btn-action-warning btn-editar" 
+            requiere-permiso="COT_EDIT">
+        <i class="fas fa-edit"></i>
+    </button>
+}
+
+<!-- Ver Detalle - Para todos los estados -->
+<button class="btn-action btn-action-edit btn-detalle" 
+        requiere-permiso="COT_VIEW_DETAIL">
+    <i class="fas fa-eye"></i>
+</button>
+```
+
+##### **2. Controller - Validación Estricta:**
+```csharp
+[HttpGet("Cotizaciones/Editar/{cotizacionId}")]
+public async Task<IActionResult> Editar(string cotizacionId)
+{
+    // VALIDACIÓN CRÍTICA: Solo se puede editar en estado Borrador
+    if (cotizacion.EstadoActual != 'B')
+    {
+        TempData["Error"] = "Solo las cotizaciones en estado Borrador pueden ser editadas.";
+        return RedirectToAction(nameof(Index));
+    }
+    // ... resto del código
+}
+```
+
+##### **3. Vista Editar - Campos Dinámicos:**
+```razor
+<!-- Header con estado dinámico -->
+<h1>
+    Editar Cotización @Model.CotizacionId
+    <span class="badge badge-secondary-custom">@Model.EstadoActualTexto</span>
+</h1>
+
+<!-- Alerta si no es editable -->
+@if (Model.EstadoActual != 'B')
+{
+    <div class="alert alert-warning">
+        <strong>Atención:</strong> Esta cotización está en estado @Model.EstadoActualTexto 
+        y no puede ser editada.
+    </div>
+}
+
+<!-- Campos deshabilitados si no es Borrador -->
+<input type="text" @(Model.EstadoActual != 'B' ? "readonly" : "") />
+<button @(Model.EstadoActual == 'B' ? "" : "disabled")>Guardar</button>
+```
+
+##### **4. JavaScript - Protección del Cliente:**
+```javascript
+const esEditable = FormatUtils.isEditable(estadoActual);
+
+if (esEditable) {
+    // Configurar todos los eventos de edición
+} else {
+    // Mostrar avisos si intenta editar
+    $('.form-control').on('click', function(e) {
+        showNotification('warning', 'Esta cotización no puede ser editada.');
+        e.preventDefault();
+    });
+}
+```
+
+### 🧭 **2. CONFIGURACIÓN CENTRALIZADA DE ESTADOS Y FORMATEO**
+
+Se creó un archivo JavaScript centralizado (`format-config.js`) para evitar duplicación de lógica:
+
+#### **Archivo: `~/js/shared/format-config.js`**
+```javascript
+window.FormatConfig = {
+    // Configuración de monedas (sincronizada con FormatHelper.cs)
+    currencies: {
+        'CRC': '₡',     // Colón costarricense
+        'USD': '$',     // Dólar estadounidense 
+        'EUR': '€',     // Euro
+        'GBP': '£',     // Libra esterlina
+        'JPY': '¥',     // Yen japonés
+        // ... mismo diccionario que C#
+    },
+    
+    // Estados de cotización con reglas de negocio
+    estados: {
+        'B': { texto: 'Borrador', editable: true, class: 'badge-secondary-custom' },
+        'P': { texto: 'Pendiente Aprobación', editable: false, class: 'badge-warning-custom' },
+        'A': { texto: 'Aprobada', editable: false, class: 'badge-success-custom' },
+        'E': { texto: 'Enviada', editable: false, class: 'badge-info-custom' },
+        'T': { texto: 'Aceptada', editable: false, class: 'badge-primary-custom' },
+        'R': { texto: 'Rechazada', editable: false, class: 'badge-danger-custom' },
+        'X': { texto: 'Archivada', editable: false, class: 'badge-dark-custom' }
+    },
+    
+    // Reglas de transiciones válidas
+    transicionesPermitidas: {
+        'B': ['P', 'X'], // Borrador → Pendiente, Archivada
+        'P': ['A', 'B'], // Pendiente → Aprobada, Borrador  
+        'A': ['E'],      // Aprobada → Enviada
+        'E': ['T', 'R'], // Enviada → Aceptada, Rechazada
+        'T': ['X'],      // Aceptada → Archivada
+        'R': ['X'],      // Rechazada → Archivada
+        'X': []          // Archivada → Sin transiciones
+    }
+};
+
+window.FormatUtils = {
+    formatCurrency: function(value, currency) { /* ... */ },
+    getCurrencySymbol: function(currency) { /* ... */ },
+    isEditable: function(estado) { return FormatConfig.estados[estado]?.editable || false; },
+    getEstadoTexto: function(estado) { /* ... */ },
+    isTransicionPermitida: function(estadoActual, estadoDestino) { /* ... */ }
+};
+```
+
+#### **Integración en Layout:**
+```html
+<!-- Cargar ANTES que otros scripts -->
+<script src="~/js/shared/format-config.js" asp-append-version="true"></script>
+```
+
+#### **Uso en Scripts Específicos:**
+```javascript
+// En editar.js
+const esEditable = FormatUtils.isEditable(estadoActual); // Usa configuración central
+const montoFormateado = FormatUtils.formatCurrency(1250.50, 'USD'); // $1,250.50
+```
+
+### 🎨 **3. VISTA DE EDICIÓN COMPLETA CON MODAL AVANZADO**
+
+Se implementó una vista de edición completa con las siguientes características:
+
+#### **Funcionalidades Implementadas:**
+- ✅ **Modal con header azul** (matching con otras agrupaciones)
+- ✅ **Edición de información del interesado** con búsqueda Select2
+- ✅ **Edición de notas** con contador de caracteres dinámico
+- ✅ **Modal para editar/agregar líneas de detalle**
+- ✅ **Cálculos automáticos** de totales en tiempo real
+- ✅ **Recálculo de resumen financiero** al cambiar líneas
+
+#### **Modal de Edición de Líneas:**
+```
+┌─────────────────────────────────────────────────┐
+│ [🔵 Header Azul] Editar Detalle            [X] │
+├─────────────────────────────────────────────────┤
+│ Producto: [PROD001 - Laptop Dell] [Descripción]│
+│ Cantidad: [25.00]                              │  
+│ Precio:   [₡5000.00]  Descuento: [₡0.00]      │
+│                                                │
+│ Total de Línea: ₡125,000.00                   │
+│                     [Cancelar] [Guardar]       │
+└─────────────────────────────────────────────────┘
+```
+
+#### **Características Técnicas:**
+- **🔵 Header azul**: `bg-primary text-white` matching con otras agrupaciones
+- **💰 Formato correcto**: `₡125,000.00` usando FormatHelper consistente
+- **📝 Producto pre-seleccionado**: Al editar, muestra el código actual
+- **🔢 Cálculo en tiempo real**: Se actualiza al cambiar cantidad/precio/descuento
+- **✅ Validación**: Campos obligatorios y valores mínimos
+
+#### **Datos Temporales para Desarrollo:**
+```javascript
+// Productos temporales (simulando ERP)
+const PRODUCTOS_TEMP = [
+    { id: 'PROD001', nombre: 'Laptop Dell Inspiron 15', precio: 450000 },
+    { id: 'PROD002', nombre: 'Monitor Samsung 24"', precio: 125000 },
+    // ... más productos
+];
+
+// Interesados temporales (simulando HubSpot)
+const INTERESADOS_TEMP = [
+    { id: 1, nombre: 'Juan Carlos Rodríguez', email: 'juan@email.com', empresa: 'Tech S.A.' },
+    // ... más interesados
+];
+```
+
+### 🔗 **4. SINCRONIZACIÓN SERVIDOR-CLIENTE MEJORADA**
+
+Se mejoró la forma en que el servidor pasa configuración al cliente:
+
+#### **En la Vista Razor:**
+```razor
+@section Scripts {
+    <!-- Exponer configuración del FormatHelper a JavaScript -->
+    <script>
+        window.FormatConfig = {
+            moneda: '@Model.Moneda',
+            simboloMoneda: '@FormatHelper.GetCurrencySymbol(Model.Moneda)',
+            estado: '@Model.EstadoActual'
+        };
+    </script>
+    <script src="~/js/cotizaciones/editar.js"></script>
+}
+```
+
+#### **En el JavaScript:**
+```javascript
+function inicializarVista() {
+    // Usar configuración del servidor si está disponible
+    if (window.FormatConfig) {
+        monedaActual = window.FormatConfig.moneda;
+        estadoActual = window.FormatConfig.estado;
+    } else {
+        // Fallback al método de detección por DOM
+        monedaActual = detectarMonedaDelFormulario();
+        estadoActual = detectarEstadoDelBadge();
+    }
+    
+    // Continuar inicialización...
+}
+```
+
+### 🎯 **5. REGLAS DE NEGOCIO DOCUMENTADAS EN CÓDIGO**
+
+Todas las reglas de negocio están ahora centralizadas y documentadas:
+
+#### **Estados Editables (JavaScript):**
+```javascript
+window.FormatConfig = {
+    estados: {
+        'B': { editable: true },   // ÚNICO estado editable
+        'P': { editable: false },  // En proceso de aprobación
+        'A': { editable: false },  // Ya aprobada
+        'E': { editable: false },  // Enviada al cliente
+        'T': { editable: false },  // Aceptada por cliente
+        'R': { editable: false },  // Rechazada por cliente
+        'X': { editable: false }   // Archivada (terminal)
+    }
+};
+```
+
+#### **Transiciones Válidas (JavaScript):**
+```javascript
+transicionesPermitidas: {
+    'B': ['P', 'X'], // Borrador puede ir a Pendiente o Archivada
+    'P': ['A', 'B'], // Pendiente puede ir a Aprobada o volver a Borrador
+    'A': ['E'],      // Aprobada solo puede ir a Enviada
+    'E': ['T', 'R'], // Enviada puede ser Aceptada o Rechazada
+    'T': ['X'],      // Aceptada solo puede archivarse
+    'R': ['X'],      // Rechazada solo puede archivarse  
+    'X': []          // Archivada es estado terminal
+}
+```
+
+### 📋 **6. CSS ESPECÍFICO PARA ESTADOS NO EDITABLES**
+
+Se agregaron estilos específicos para campos de solo lectura:
+
+```css
+/* Campos de solo lectura (no editables) */
+.form-control[readonly],
+.form-control[disabled],
+.readonly-field {
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+    color: #6c757d !important;
+    cursor: not-allowed;
+}
+
+/* Select deshabilitado */
+select.form-control[disabled] {
+    background-color: #f8f9fa !important;
+    color: #6c757d !important;
+}
+
+/* Modal con header azul */
+#modalEditarDetalle .modal-header.bg-primary {
+    background-color: #007bff !important;
+    border-bottom: 1px solid #0056b3;
+}
+
+/* Advertencia para estados no editables */
+.alert-warning {
+    border-left: 4px solid #ffc107;
+}
+```
+
+### 🚀 **7. FLUJO DE USUARIO FINAL**
+
+#### **Escenario 1: Cotización Editable (Borrador)**
+```
+Usuario ve tabla → Botón "Editar" visible → Clic editar → Vista completamente funcional
+→ Puede modificar todo → Guardado exitoso
+```
+
+#### **Escenario 2: Cotización No Editable (Cualquier otro estado)**
+```
+Usuario ve tabla → Solo botón "Ver Detalle" → Si accede a /Editar/ directamente 
+→ Redirección + error → Si de alguna manera accede → Vista solo lectura + avisos
+```
+
+#### **Protecciones Implementadas:**
+- 🔒 **UI Level**: Botones ocultos/deshabilitados según estado
+- 🔒 **Controller Level**: Validación y redirección automática  
+- 🔒 **Frontend Level**: JavaScript preventivo con avisos
+- 🔒 **Visual Level**: Estilos que indican campos de solo lectura
+
+### ⚠️ **REGLAS CRÍTICAS A SEGUIR:**
+
+1. **🚨 NUNCA permitir edición** en estados diferentes a 'B' (Borrador)
+2. **📋 SIEMPRE usar FormatConfig.js** en lugar de duplicar lógica de estados
+3. **💰 USAR FormatHelper de C#** como fuente de verdad para formateo
+4. **🔄 SINCRONIZAR** cambios en estados/formatos entre C# y JavaScript
+5. **⚡ CARGAR format-config.js ANTES** que scripts específicos de página
+
+### 🔮 **Próximos Pasos Implementación:**
+
+1. **💾 Implementar guardado real** en lugar de simulación
+2. **🔗 Conectar con servicios reales** de HubSpot y ERP  
+3. **📱 Optimización móvil** adicional para la vista de edición
+4. **⚡ Validaciones del lado del servidor** para los formularios
+5. **🧪 Tests unitarios** para las reglas de estado
+
+---
+
+## 🆕 **ADENDUM: CONFIGURACIÓN CENTRALIZADA Y FORMATEO (17/03/2026)**
+
+### 📁 **Nuevos Archivos Críticos Agregados:**
+
+#### **1. JavaScript Centralizado:**
+- **📄 `~/js/shared/format-config.js`** - Configuración global de estados, monedas y reglas de negocio
+- **🎯 Propósito**: Evitar duplicación de lógica entre módulos de JavaScript
+- **⚡ Carga**: OBLIGATORIO cargar en `_Layout.cshtml` ANTES que otros scripts
+- **🔄 Sincronización**: Mantiene consistencia con `FormatHelper.cs`
+
+#### **2. Archivos de Edición:**
+- **📄 `~/Views/Cotizaciones/Editar.cshtml`** - Vista completa de edición
+- **🎨 `~/css/cotizaciones/editar.css`** - Estilos específicos para edición
+- **🖱️ `~/js/cotizaciones/editar.js`** - Lógica de edición y modal de líneas
+
+### ⚡ **Funciones JavaScript Globales Disponibles:**
+
+```javascript
+// Formateo (consistente con C# FormatHelper)
+FormatUtils.formatCurrency(1250.50, 'USD')     → "$1,250.50"
+FormatUtils.getCurrencySymbol('EUR')           → "€"
+
+// Estados y validaciones
+FormatUtils.isEditable('B')                    → true
+FormatUtils.isEditable('P')                    → false
+FormatUtils.getEstadoTexto('A')               → "Aprobada"
+FormatUtils.isTransicionPermitida('B', 'P')   → true
+```
+
+### 🔒 **Reglas de Negocio Centralizadas:**
+
+#### **Estados Editables:**
+```javascript
+const ESTADOS_EDITABLES = ['B']; // SOLO Borrador
+const ESTADOS_COPIABLES = ['A', 'R']; // Solo Aprobada y Rechazada
+const ESTADOS_ERP = ['T']; // Solo Aceptada puede ir al ERP
+```
+
+#### **Monedas Soportadas (Sincronizado con C#):**
+```javascript
+const MONEDAS = {
+    'CRC': '₡', 'USD': '$', 'EUR': '€', 'GBP': '£', 
+    'JPY': '¥', 'MXN': '$', 'CAD': '$', 'CNY': '¥'
+};
+```
+
+### 🎯 **Lineamientos de Desarrollo:**
+
+#### **✅ HACER:**
+1. **Usar `FormatUtils.js`** para cualquier lógica de estados/formateo
+2. **Cargar `format-config.js`** PRIMERO en cualquier página que use estados
+3. **Consultar `FormatConfig.estados[codigo].editable`** antes de habilitar edición
+4. **Usar `FormatHelper.cs`** como fuente de verdad para formateo del servidor
+
+#### **❌ NO HACER:**
+1. **Duplicar lógica** de estados en scripts individuales  
+2. **Hardcodear** símbolos de moneda o reglas de estado
+3. **Asumir** que cualquier estado diferente a 'B' es editable
+4. **Crear** funciones de formateo personalizadas (usar centralizadas)
+
+### 🔧 **Configuración de Servidor a Cliente:**
+
+```razor
+@section Scripts {
+    <!-- Exponer configuración específica de la vista -->
+    <script>
+        window.FormatConfig = {
+            moneda: '@Model.Moneda',
+            simboloMoneda: '@FormatHelper.GetCurrencySymbol(Model.Moneda)',
+            estado: '@Model.EstadoActual'
+        };
+    </script>
+    <!-- Scripts que usan la configuración -->
+    <script src="~/js/cotizaciones/editar.js"></script>
+}
+```
+
+### 📋 **Checklist para Futuras Implementaciones:**
+
+- [ ] ¿Está usando `FormatUtils` en lugar de lógica duplicada?
+- [ ] ¿Está validando estado editable antes de mostrar campos de edición?
+- [ ] ¿Está usando `FormatHelper.cs` para formateo del servidor?
+- [ ] ¿Está cargando `format-config.js` antes que scripts específicos?
+- [ ] ¿Las reglas de transición están centralizadas?
+
+---
+
+**💡 Recuerda**: Esta documentación debe ser la **primera referencia** para cualquier nueva funcionalidad relacionada con cotizaciones, estados o formateo. **Mantén la consistencia** con los patrones establecidos.
+
+---
 
 ### 🎯 **1. Vista de Detalle de Cotización (NUEVA FUNCIONALIDAD)**
 

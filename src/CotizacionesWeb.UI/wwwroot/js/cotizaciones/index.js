@@ -88,6 +88,14 @@ document.addEventListener('DOMContentLoaded', function() {
             );
         });
 
+        // Editar Cotización (navegar a página de edición)
+        $('.btn-editar').on('click', function () {
+            const cotizacionId = $(this).attr('data-id');
+            
+            // Navegar directamente a la vista de edición
+            window.location.href = '/Cotizaciones/Editar/' + cotizacionId;
+        });
+
         // Ver Detalle (navegar a página de detalle)
         $('.btn-detalle').on('click', function () {
             const cotizacionId = $(this).attr('data-id');
