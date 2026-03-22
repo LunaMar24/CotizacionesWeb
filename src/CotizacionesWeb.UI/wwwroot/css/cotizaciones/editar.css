@@ -152,6 +152,49 @@ select.form-control[disabled] {
     border-color: #bd2130;
 }
 
+/* Asegurar que los botones estén en la misma línea */
+.table td .btn {
+    display: inline-block !important;
+    margin-bottom: 0 !important;
+    vertical-align: top !important;
+}
+
+.table td .btn + .btn {
+    margin-left: 3px !important;
+}
+
+/* Columna de acciones específica */
+.table td:last-child {
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+    text-align: center !important;
+}
+
+/* Contenedor de botones de acción en tabla */
+.btn-actions-group {
+    white-space: nowrap !important;
+    display: inline-block !important;
+}
+
+.btn-actions-group .btn {
+    display: inline-block !important;
+    margin-right: 4px;
+    vertical-align: top !important;
+}
+
+.btn-actions-group .btn:last-child {
+    margin-right: 0;
+}
+
+/* Forzar botones en línea horizontal para tabla de detalles */
+#tablaDetalles tbody td .btn-editar-detalle,
+#tablaDetalles tbody td .btn-eliminar-detalle {
+    display: inline-block !important;
+    vertical-align: middle !important;
+    margin: 0 2px !important;
+    float: none !important;
+}
+
 /* Estados de validación */
 .is-invalid {
     border-color: #dc3545;
