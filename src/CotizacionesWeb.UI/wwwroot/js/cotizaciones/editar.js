@@ -62,16 +62,6 @@ const INTERESADOS_TEMP = [
 ];
 
 $(document).ready(function() {
-    console.log('=== INICIALIZACIÓN EDITAR.JS ===');
-    console.log('jQuery disponible:', typeof $ !== 'undefined');
-    console.log('FormatConfig disponible:', typeof window.FormatConfig !== 'undefined');
-    console.log('FormatUtils disponible:', typeof window.FormatUtils !== 'undefined');
-    
-    if (window.FormatConfig) {
-        console.log('FormatConfig.estados:', window.FormatConfig.estados);
-        console.log('FormatConfig.defaults:', window.FormatConfig.defaults);
-    }
-    
     // Esperar a que jQuery y otros componentes estén listos
     if (typeof $ === 'undefined') {
         console.error('jQuery no está disponible');
@@ -83,12 +73,37 @@ $(document).ready(function() {
         console.warn('AdminLTE CardWidget no está disponible');
     }
     
+    // DEBUGGING: Verificar que FormatConfig esté disponible
+    console.log('=== VERIFICACIÓN INICIAL ===');
+    console.log('FormatConfig disponible:', typeof window.FormatConfig !== 'undefined');
+    console.log('FormatUtils disponible:', typeof window.FormatUtils !== 'undefined');
+    if (window.FormatConfig) {
+        console.log('Estados configurados:', window.FormatConfig.estados);
+        console.log('Configuración del servidor disponible:', window.FormatConfig.moneda, window.FormatConfig.estado);
+    }
+    console.log('============================');
+    
     inicializarVista();
     configurarEventos();
     cargarDatosTemporales();
     
+    // DEBUGGING ADICIONAL: Verificar estado después de la inicialización
+    setTimeout(function() {
+        console.log('=== VERIFICACIÓN POST-INICIALIZACIÓN ===');
+        console.log('Estado actual variable global:', estadoActual);
+        console.log('¿Es editable según FormatUtils?:', window.FormatUtils?.isEditable(estadoActual));
+        console.log('¿Es editable según lógica directa?:', estadoActual === 'B');
+        console.log('Configuración completa del estado:', window.FormatConfig?.estados?.[estadoActual]);
+        
+        // Verificar si los botones están habilitados/deshabilitados
+        const btnGuardar = $('#btnGuardar');
+        const btnAgregarLinea = $('#btnAgregarLinea');
+        console.log('Botón guardar deshabilitado:', btnGuardar.prop('disabled'));
+        console.log('Botón agregar línea longitud:', btnAgregarLinea.length);
+        console.log('=========================================');
+    }, 1000);
+    
     console.log('Editar.js cargado correctamente');
-    console.log('=== FIN INICIALIZACIÓN EDITAR.JS ===');
 });
 
 function inicializarVista() {
@@ -99,26 +114,26 @@ if (window.FormatConfig) {
 } else {
     // Fallback al método anterior
     monedaActual = $('#formEditarCotizacion').find('input[name="Moneda"]').val() || 'CRC';
-        
+            
     // Obtener estado actual de la cotización desde el badge en el header
     const estadoBadge = $('.header-title .badge').text().trim();
     estadoActual = detectarEstadoDeTexto(estadoBadge);
 }
+        
+// Verificar si es editable usando la configuración centralizada
+const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
+    window.FormatUtils.isEditable(estadoActual) : 
+    (estadoActual === 'B'); // Fallback
     
-    // Verificar si es editable usando la configuración centralizada
-    const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
-        window.FormatUtils.isEditable(estadoActual) : 
-        (estadoActual === 'B'); // Fallback
-    
-    // DEBUG: Log detallado para depuración
-    console.log('=== DEBUG ESTADO EDITABLE ===');
-    console.log('estadoActual:', estadoActual);
-    console.log('window.FormatUtils disponible:', typeof window.FormatUtils !== 'undefined');
-    if (window.FormatUtils) {
-        console.log('FormatUtils.isEditable(estadoActual):', window.FormatUtils.isEditable(estadoActual));
-    }
-    console.log('esEditable (resultado final):', esEditable);
-    console.log('================================');
+console.log('=== DETECCIÓN DE ESTADO ===');
+console.log('Estado detectado:', estadoActual);
+console.log('¿Es editable?:', esEditable);
+console.log('FormatUtils disponible:', typeof window.FormatUtils !== 'undefined');
+console.log('FormatConfig disponible:', typeof window.FormatConfig !== 'undefined');
+if (window.FormatConfig && window.FormatConfig.estados) {
+    console.log('Configuración de estados:', window.FormatConfig.estados[estadoActual]);
+}
+console.log('===========================');
     
     // Inicializar componentes AdminLTE solo si están disponibles
     if (typeof $.fn.CardWidget !== 'undefined') {
@@ -136,13 +151,17 @@ if (window.FormatConfig) {
         }
     });
     
-    // Contador de caracteres para notas (solo si es editable)
-    if (esEditable) {
+    // Contador de caracteres para notas (siempre mostrar correctamente)
+    // Ejecutar con un pequeño retraso para asegurar que el DOM esté listo
+    setTimeout(function() {
         configurarContadorCaracteres();
-    }
+    }, 100);
     
-    // Mostrar aviso si no es editable
-    if (!esEditable) {
+    // Solo habilitar edición si es editable
+    if (esEditable) {
+        // Ya se configuró el contador arriba
+    } else {
+        // Mostrar aviso si no es editable
         mostrarAvisoNoEditable();
     }
     
@@ -187,16 +206,15 @@ function detectarEstadoDeTexto(texto) {
 }
 
 function configurarEventos() {
-    // Solo configurar eventos de edición si está en estado editable
-    const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
-        window.FormatUtils.isEditable(estadoActual) : 
-        (estadoActual === 'B'); // Fallback
+// Verificar nuevamente si es editable en configurarEventos
+const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
+    window.FormatUtils.isEditable(estadoActual) : 
+    (estadoActual === 'B'); // Fallback
     
-    // DEBUG: Log para configurarEventos
-    console.log('=== DEBUG CONFIGURAR EVENTOS ===');
-    console.log('estadoActual en configurarEventos:', estadoActual);
-    console.log('esEditable en configurarEventos:', esEditable);
-    console.log('=================================');
+console.log('=== CONFIGURAR EVENTOS ===');
+console.log('Estado actual:', estadoActual);
+console.log('Es editable:', esEditable);
+console.log('==========================');
     
     if (esEditable) {
         // Guardar cambios
@@ -277,11 +295,21 @@ function configurarEventos() {
 }
 
 function cargarDatosTemporales() {
-    productosDisponibles = PRODUCTOS_TEMP;
-    interesadosDisponibles = INTERESADOS_TEMP;
+productosDisponibles = PRODUCTOS_TEMP;
+interesadosDisponibles = INTERESADOS_TEMP;
     
-    // Solo cargar datos en selects si es editable
-    if (estadoActual === 'B') {
+// Verificar si es editable usando la configuración centralizada
+const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
+    window.FormatUtils.isEditable(estadoActual) : 
+    (estadoActual === 'B'); // Fallback
+    
+console.log('=== CARGAR DATOS TEMPORALES ===');
+console.log('Estado actual:', estadoActual);
+console.log('Es editable:', esEditable);
+console.log('===============================');
+    
+// Solo cargar datos en selects si es editable
+if (esEditable) {
         // Cargar productos en select
         const $selectProducto = $('#modalProductoId');
         $selectProducto.empty().append('<option value="">Seleccione un producto...</option>');
@@ -329,7 +357,7 @@ function cargarDatosTemporales() {
     console.log('Datos temporales cargados:', {
         productos: productosDisponibles.length,
         interesados: interesadosDisponibles.length,
-        editable: estadoActual === 'B'
+        editable: esEditable
     });
 }
 
@@ -489,14 +517,16 @@ function agregarNuevaFilaDetalle(datos) {
                 <input type="hidden" name="Detalles[${nuevoIndex}].TotalLinea" value="${datos.totalLinea.toString()}" />
             </td>
             <td class="text-center">
-                <button type="button" class="btn btn-warning btn-xs btn-editar-detalle" 
-                        data-index="${nuevoIndex}" title="Editar">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button type="button" class="btn btn-danger btn-xs ml-1 btn-eliminar-detalle" 
-                        data-index="${nuevoIndex}" title="Eliminar">
-                    <i class="fas fa-trash"></i>
-                </button>
+                <div class="btn-actions-group">
+                    <button type="button" class="btn btn-warning btn-xs btn-editar-detalle" 
+                            data-index="${nuevoIndex}" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="btn btn-danger btn-xs btn-eliminar-detalle" 
+                            data-index="${nuevoIndex}" title="Eliminar">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             </td>
         </tr>
     `;
@@ -651,26 +681,41 @@ function configurarContadorCaracteres() {
     const textarea = $('textarea[name="Notas"]');
     const maxLength = parseInt(textarea.attr('maxlength')) || 2000;
     
-    textarea.on('input', function() {
-        const current = $(this).val().length;
+    // Función para actualizar el contador
+    function actualizarContador() {
+        const current = textarea.val().length;
         const remaining = maxLength - current;
-        const small = $(this).siblings('small');
+        let small = textarea.siblings('small');
+        
+        // Si no existe el elemento small, crearlo
+        if (small.length === 0) {
+            small = $('<small class="text-muted"></small>');
+            textarea.after(small);
+        }
         
         let mensaje = `${remaining} caracteres restantes`;
-        let clase = '';
+        let clase = 'text-muted';
         
         if (remaining < 100) {
-            clase = 'warning';
+            clase = 'text-warning';
             mensaje = `⚠️ ${mensaje}`;
         }
         if (remaining < 50) {
-            clase = 'danger';
+            clase = 'text-danger';
             mensaje = `🚨 ${mensaje}`;
         }
         
-        small.removeClass('text-muted warning danger').addClass(clase || 'text-muted');
+        small.removeClass('text-muted text-warning text-danger warning danger').addClass(clase);
         small.text(mensaje);
-    });
+        
+        console.log(`Contador actualizado: ${current}/${maxLength} caracteres (${remaining} restantes)`);
+    }
+    
+    // Actualizar contador al cargar la página (estado inicial)
+    actualizarContador();
+    
+    // Configurar evento para actualizaciones en tiempo real
+    textarea.on('input', actualizarContador);
 }
 
 function guardarCotizacion() {
@@ -777,20 +822,20 @@ function getCurrencySymbol(currency) {
         return window.FormatUtils.getCurrencySymbol(currency);
     }
     
-    // Fallback local - Usar el mismo diccionario que el FormatHelper de C#
+    // Fallback local - Usar códigos Unicode para evitar problemas de encoding
     const symbols = {
-        'CRC': '¢',     // Colón costarricense
-        'USD': '$',     // Dólar estadounidense 
-        'DOL': '$',     // Dólar (alias)
-        'EUR': '€',     // Euro
-        'MXN': '$',     // Peso mexicano
-        'CAD': '$',     // Dólar canadiense
-        'GBP': '£',     // Libra esterlina
-        'JPY': '¥',     // Yen japonés
-        'CNY': '¥'      // Yuan chino
+        'CRC': '\u00A2',    // Colón costarricense (¢ - Unicode: U+00A2)
+        'USD': '$',         // Dólar estadounidense 
+        'DOL': '$',         // Dólar (alias)
+        'EUR': '\u20AC',    // Euro (Unicode: U+20AC)
+        'MXN': '$',         // Peso mexicano
+        'CAD': '$',         // Dólar canadiense
+        'GBP': '\u00A3',    // Libra esterlina (Unicode: U+00A3)
+        'JPY': '\u00A5',    // Yen japonés (Unicode: U+00A5)
+        'CNY': '\u00A5'     // Yuan chino (Unicode: U+00A5)
     };
     
-    if (!currency) return '₡'; // Default a colón costarricense
+    if (!currency) return '\u00A2'; // Default a colón costarricense (¢)
     
     const upperCurrency = currency.toUpperCase().trim();
     return symbols[upperCurrency] || upperCurrency;
@@ -852,3 +897,171 @@ function showNotification(type, message) {
         }
     }
 }
+
+// FUNCIÓN DE DIAGNÓSTICO - Llamar desde consola si hay problemas
+window.diagnosticarEstado = function() {
+    console.group('🔍 DIAGNÓSTICO COMPLETO DEL ESTADO');
+    
+    console.log('📊 Variables Globales:');
+    console.log('  - estadoActual:', estadoActual);
+    console.log('  - monedaActual:', monedaActual);
+    
+    console.log('🔧 Configuraciones Disponibles:');
+    console.log('  - FormatConfig:', typeof window.FormatConfig !== 'undefined');
+    console.log('  - FormatUtils:', typeof window.FormatUtils !== 'undefined');
+    
+    if (window.FormatConfig) {
+        console.log('📋 FormatConfig.estados:');
+        console.table(window.FormatConfig.estados);
+        console.log('📋 Configuración del servidor:');
+        console.log('  - moneda:', window.FormatConfig.moneda);
+        console.log('  - estado:', window.FormatConfig.estado);
+    }
+    
+    console.log('✅ Verificaciones de Estado:');
+    const esEditableUtils = window.FormatUtils?.isEditable(estadoActual);
+    const esEditableDirecto = estadoActual === 'B';
+    console.log('  - Es editable (FormatUtils):', esEditableUtils);
+    console.log('  - Es editable (directo):', esEditableDirecto);
+    console.log('  - Configuración del estado:', window.FormatConfig?.estados?.[estadoActual]);
+    
+    console.log('🎛️ Estado de Botones:');
+    console.log('  - #btnGuardar disabled:', $('#btnGuardar').prop('disabled'));
+    console.log('  - #btnAgregarLinea exists:', $('#btnAgregarLinea').length > 0);
+    console.log('  - .form-control readonly count:', $('.form-control[readonly]').length);
+    
+    console.log('📄 Estado desde DOM:');
+    const badgeTexto = $('.header-title .badge').text().trim();
+    console.log('  - Badge texto:', badgeTexto);
+    console.log('  - Estado detectado desde badge:', detectarEstadoDeTexto(badgeTexto));
+    
+    console.groupEnd();
+    
+    // Sugerir soluciones
+    if (!esEditableUtils && estadoActual === 'B') {
+        console.warn('⚠️ PROBLEMA DETECTADO: Estado es "B" pero FormatUtils.isEditable devuelve false');
+        console.log('💡 Posibles soluciones:');
+        console.log('   1. Verificar que FormatConfig.estados["B"].editable sea true');
+        console.log('   2. Recargar la página');
+        console.log('   3. Llamar a inicializarVista() manualmente');
+    }
+};
+
+// FUNCIÓN DE CORRECCIÓN RÁPIDA - Forzar estado editable si es Borrador
+window.forzarEstadoEditable = function() {
+    console.log('🔧 Forzando estado editable...');
+    
+    if (estadoActual === 'B' || window.FormatConfig?.estado === 'B') {
+        // Forzar configuración
+        if (window.FormatConfig && window.FormatConfig.estados && window.FormatConfig.estados['B']) {
+            window.FormatConfig.estados['B'].editable = true;
+        }
+        
+        // Habilitar botones manualmente
+        $('#btnGuardar').prop('disabled', false);
+        $('.form-control[readonly]').prop('readonly', false);
+        $('.btn-success, .btn-warning, .btn-danger').prop('disabled', false);
+        
+        // Remover clases de solo lectura
+        $('.form-control').removeClass('readonly-field');
+        
+        console.log('✅ Estado forzado a editable. Recargue eventos si es necesario.');
+        console.log('💡 Si aún hay problemas, ejecute: configurarEventos();');
+    } else {
+        console.warn('⚠️ No se puede forzar editable. Estado actual no es Borrador:', estadoActual);
+    }
+};
+
+// FUNCIÓN DE DIAGNÓSTICO DE SÍMBOLOS DE MONEDA
+window.diagnosticarSimbolos = function() {
+    console.group('💰 DIAGNÓSTICO DE SÍMBOLOS DE MONEDA');
+    
+    console.log('📋 Configuración JavaScript:');
+    if (window.FormatConfig?.currencies) {
+        Object.entries(window.FormatConfig.currencies).forEach(([code, symbol]) => {
+            console.log(`  ${code}: "${symbol}" (Unicode: \\u${symbol.charCodeAt(0).toString(16).toUpperCase()})`);
+        });
+    }
+    
+    console.log('🧪 Pruebas de formateo:');
+    const valorPrueba = 125000;
+    
+    if (typeof window.FormatUtils !== 'undefined') {
+        const formatoCentralizado = window.FormatUtils.formatCurrency(valorPrueba, 'CRC');
+        console.log(`  FormatUtils.formatCurrency(${valorPrueba}, 'CRC'):`, formatoCentralizado);
+    }
+    
+    const formatoLocal = formatCurrency(valorPrueba);
+    console.log(`  formatCurrency local (${valorPrueba}):`, formatoLocal);
+    
+    console.log('🔍 Símbolo del DOM actual:');
+    const simboloModal = $('#modalTotalLinea').text();
+    console.log(`  Modal total línea actual:`, simboloModal);
+    
+    console.log('💡 Corrección si es necesario:');
+    console.log('  Para corregir símbolos, ejecute: corregirSimbolos()');
+    
+    console.groupEnd();
+};
+
+// FUNCIÓN PARA CORREGIR SÍMBOLOS EN EL DOM
+window.corregirSimbolos = function() {
+    console.log('🔧 Corrigiendo símbolos en el DOM...');
+    
+    // Corregir el modal
+    const textoModal = $('#modalTotalLinea').text();
+    if (textoModal.includes('¿') || textoModal.includes('?')) {
+        const valorCorregido = textoModal.replace(/[¿?]/g, '¢');
+        $('#modalTotalLinea').text(valorCorregido);
+        console.log('✅ Modal corregido:', valorCorregido);
+    }
+    
+    // Corregir tabla si es necesario
+    $('.precio-display, .total-linea-display').each(function() {
+        const texto = $(this).text();
+        if (texto.includes('¿') || texto.includes('?')) {
+            const valorCorregido = texto.replace(/[¿?]/g, '¢');
+            $(this).text(valorCorregido);
+            console.log('✅ Celda corregida:', valorCorregido);
+        }
+    });
+    
+    console.log('✅ Corrección de símbolos completada');
+};
+
+// FUNCIÓN DE DIAGNÓSTICO PARA CONTADOR DE CARACTERES
+window.diagnosticarContadorNotas = function() {
+    console.group('📝 DIAGNÓSTICO CONTADOR DE NOTAS');
+    
+    const textarea = $('textarea[name="Notas"]');
+    const small = textarea.siblings('small');
+    const maxLength = parseInt(textarea.attr('maxlength')) || 2000;
+    const currentLength = textarea.val().length;
+    const remaining = maxLength - currentLength;
+    
+    console.log('📋 Estado del campo Notas:');
+    console.log('  - Textarea encontrado:', textarea.length > 0);
+    console.log('  - Contenido actual:', `"${textarea.val()}"`);
+    console.log('  - Caracteres actuales:', currentLength);
+    console.log('  - Máximo permitido:', maxLength);
+    console.log('  - Caracteres restantes (calculado):', remaining);
+    
+    console.log('📋 Estado del contador:');
+    console.log('  - Elemento small encontrado:', small.length > 0);
+    if (small.length > 0) {
+        console.log('  - Texto del contador:', `"${small.text()}"`);
+        console.log('  - Clases CSS:', small.attr('class'));
+    }
+    
+    console.log('💡 Acciones disponibles:');
+    console.log('  - Para actualizar: configurarContadorCaracteres()');
+    
+    console.groupEnd();
+    
+    // Ofrecer corrección automática
+    if (small.length === 0) {
+        console.warn('⚠️ PROBLEMA: No se encontró elemento contador');
+        console.log('🔧 Ejecutando corrección...');
+        configurarContadorCaracteres();
+    }
+};

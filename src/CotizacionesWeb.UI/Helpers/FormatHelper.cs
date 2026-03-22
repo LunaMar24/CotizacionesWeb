@@ -8,19 +8,19 @@ namespace CotizacionesWeb.UI.Helpers;
 public static class FormatHelper
 {
     /// <summary>
-    /// Diccionario de símbolos de moneda
+    /// Diccionario de símbolos de moneda con códigos Unicode correctos
     /// </summary>
     private static readonly Dictionary<string, string> CurrencySymbols = new()
     {
-        { "CRC", "¢" },     // Colón costarricense
+        { "CRC", "¢" },     // Colón costarricense (Alt+189)
         { "USD", "$" },     // Dólar estadounidense 
         { "DOL", "$" },     // Dólar (alias)
-        { "EUR", "€" },     // Euro
+        { "EUR", "€" },     // Euro (Unicode: U+20AC)
         { "MXN", "$" },     // Peso mexicano
         { "CAD", "$" },     // Dólar canadiense
-        { "GBP", "£" },     // Libra esterlina
-        { "JPY", "¥" },     // Yen japonés
-        { "CNY", "¥" },     // Yuan chino
+        { "GBP", "£" },     // Libra esterlina (Unicode: U+00A3)
+        { "JPY", "¥" },     // Yen japonés (Unicode: U+00A5)
+        { "CNY", "¥" },     // Yuan chino (Unicode: U+00A5)
     };
 
     /// <summary>
@@ -61,7 +61,7 @@ public static class FormatHelper
     public static string GetCurrencySymbol(string currency)
     {
         if (string.IsNullOrEmpty(currency))
-            return "?"; // Default a colón costarricense
+            return "¢"; // Default a colón costarricense (Alt+189)
 
         var upperCurrency = currency.ToUpper().Trim();
         return CurrencySymbols.TryGetValue(upperCurrency, out string? symbol) ? symbol : upperCurrency;

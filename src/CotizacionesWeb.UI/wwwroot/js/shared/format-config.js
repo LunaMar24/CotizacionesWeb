@@ -9,15 +9,15 @@
 window.FormatConfig = window.FormatConfig || {
     // Configuración de monedas (debe coincidir con FormatHelper.cs)
     currencies: {
-        'CRC': '?',     // Colón costarricense
-        'USD': '$',     // Dólar estadounidense 
-        'DOL': '$',     // Dólar (alias)
-        'EUR': '€',     // Euro
-        'MXN': '$',     // Peso mexicano
-        'CAD': '$',     // Dólar canadiense
-        'GBP': '£',     // Libra esterlina
-        'JPY': '¥',     // Yen japonés
-        'CNY': '¥'      // Yuan chino
+        'CRC': '\u00A2',    // Colón costarricense (¢ - Unicode: U+00A2)
+        'USD': '$',         // Dólar estadounidense 
+        'DOL': '$',         // Dólar (alias)
+        'EUR': '\u20AC',    // Euro (Unicode: U+20AC)
+        'MXN': '$',         // Peso mexicano
+        'CAD': '$',         // Dólar canadiense
+        'GBP': '\u00A3',    // Libra esterlina (Unicode: U+00A3)
+        'JPY': '\u00A5',    // Yen japonés (Unicode: U+00A5)
+        'CNY': '\u00A5'     // Yuan chino (Unicode: U+00A5)
     },
     
     // Estados de cotización

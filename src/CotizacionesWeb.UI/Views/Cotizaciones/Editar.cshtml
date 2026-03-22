@@ -276,25 +276,27 @@
                                                 <strong class="total-linea-display">@FormatHelper.FormatCurrency(Model.Detalles[i].TotalLinea, Model.Moneda)</strong>
                                                 <input type="hidden" name="Detalles[@i].TotalLinea" value="@Model.Detalles[i].TotalLinea" />
                                             </td>
-                                            <td class="text-center">
-                                                @if (Model.EstadoActual == 'B')
-                                                {
-                                                    <button type="button" class="btn btn-warning btn-xs btn-editar-detalle" 
-                                                            data-index="@i" title="Editar">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-danger btn-xs ml-1 btn-eliminar-detalle" 
-                                                            data-index="@i" title="Eliminar">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                }
-                                                else
-                                                {
-                                                    <span class="text-muted">
-                                                        <i class="fas fa-lock"></i>
-                                                    </span>
-                                                }
-                                            </td>
+                            <td class="text-center">
+                                @if (Model.EstadoActual == 'B')
+                                {
+                                    <div class="btn-actions-group">
+                                        <button type="button" class="btn btn-warning btn-xs btn-editar-detalle" 
+                                                data-index="@i" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-xs btn-eliminar-detalle" 
+                                                data-index="@i" title="Eliminar">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">
+                                        <i class="fas fa-lock"></i>
+                                    </span>
+                                }
+                            </td>
                                         </tr>
                                     }
                                 </tbody>
@@ -490,7 +492,7 @@
                             <div class="form-group">
                                 <label>Total de Línea:</label>
                                 <div class="form-control-plaintext font-weight-bold text-success" 
-                                     id="modalTotalLinea">?0.00</div>
+                                     id="modalTotalLinea">¢0.00</div>
                             </div>
                         </div>
                     </div>
@@ -514,13 +516,29 @@
 }
 
 @section Scripts {
-    <!-- Exponer configuración del FormatHelper a JavaScript -->
+    <!-- Configuración específica del servidor para esta vista -->
     <script>
-        window.FormatConfig = {
-            moneda: '@Model.Moneda',
-            simboloMoneda: '@FormatHelper.GetCurrencySymbol(Model.Moneda)',
-            estado: '@Model.EstadoActual'
-        };
+        // Extender FormatConfig con datos específicos del servidor
+        if (window.FormatConfig) {
+            window.FormatConfig.moneda = '@Model.Moneda';
+            window.FormatConfig.simboloMoneda = '@FormatHelper.GetCurrencySymbol(Model.Moneda)';
+            window.FormatConfig.estado = '@Model.EstadoActual';
+        } else {
+            // Fallback si FormatConfig no está disponible
+            window.FormatConfig = {
+                moneda: '@Model.Moneda',
+                simboloMoneda: '@FormatHelper.GetCurrencySymbol(Model.Moneda)',
+                estado: '@Model.EstadoActual'
+            };
+        }
+        
+        console.log('=== CONFIGURACIÓN DESDE SERVIDOR ===');
+        console.log('Moneda:', '@Model.Moneda');
+        console.log('Estado:', '@Model.EstadoActual');
+        console.log('Estado Texto:', '@Model.EstadoActualTexto');
+        console.log('Estado es editable?:', '@Model.EstadoActual' === 'B');
+        console.log('FormatConfig después:', window.FormatConfig);
+        console.log('====================================');
     </script>
     <script src="~/js/cotizaciones/editar.js" asp-append-version="true"></script>
 }
