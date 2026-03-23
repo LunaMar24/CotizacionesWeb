@@ -90,4 +90,36 @@ public static class FormatHelper
             _ => "No especificado"
         };
     }
+
+    /// <summary>
+    /// Obtiene la lista de monedas disponibles con sus símbolos y nombres descriptivos
+    /// </summary>
+    /// <returns>Lista de tuplas con (código, símbolo, nombre)</returns>
+    public static List<(string codigo, string simbolo, string nombre)> GetMonedasDisponibles()
+    {
+        return new List<(string codigo, string simbolo, string nombre)>
+        {
+            ("CRC", GetCurrencySymbol("CRC"), "Colón Costarricense"),
+            ("USD", GetCurrencySymbol("USD"), "Dólar Estadounidense"),
+            ("EUR", GetCurrencySymbol("EUR"), "Euro"),
+            ("GBP", GetCurrencySymbol("GBP"), "Libra Esterlina"),
+            ("JPY", GetCurrencySymbol("JPY"), "Yen Japonés"),
+            ("MXN", GetCurrencySymbol("MXN"), "Peso Mexicano"),
+            ("CAD", GetCurrencySymbol("CAD"), "Dólar Canadiense"),
+            ("CNY", GetCurrencySymbol("CNY"), "Yuan Chino")
+        };
+    }
+
+    /// <summary>
+    /// Verifica si un código de moneda está soportado
+    /// </summary>
+    /// <param name="currency">Código de moneda a verificar</param>
+    /// <returns>True si la moneda está soportada</returns>
+    public static bool IsSupportedCurrency(string currency)
+    {
+        if (string.IsNullOrWhiteSpace(currency))
+            return false;
+            
+        return CurrencySymbols.ContainsKey(currency.ToUpper().Trim());
+    }
 }

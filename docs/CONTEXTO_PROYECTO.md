@@ -2,6 +2,266 @@
 
 **Para nuevo chat de GitHub Copilot**: Este documento contiene toda la información importante sobre el proyecto, lineamientos, reglas de negocio y patrones establecidos.
 
+---
+
+## 🏛️ **PRINCIPIOS FUNDAMENTALES DE DESARROLLO**
+
+### 🔄 **PRINCIPIO DRY (Don't Repeat Yourself) - CRÍTICO**
+
+**📜 REGLA FUNDAMENTAL**: Antes de crear nuevas implementaciones, SIEMPRE revisar si ya existe funcionalidad similar que pueda ser reutilizada.
+
+#### **✅ IMPLEMENTACIONES EXITOSAS DE DRY:**
+
+##### **💰 FormatHelper - Formateo de Monedas:**
+```csharp
+// ❌ MAL - Duplicación en controlador
+private List<(string codigo, string simbolo, string nombre)> ObtenerMonedasDisponibles()
+{
+    return new List<(string codigo, string simbolo, string nombre)>
+    {
+        ("CRC", "₡", "Colón Costarricense"), // Duplicado del FormatHelper
+        ("USD", "$", "Dólar Estadounidense"),
+        // ...
+    };
+}
+
+// ✅ BIEN - Reutilización del helper existente
+ViewBag.MonedasDisponibles = FormatHelper.GetMonedasDisponibles(); // Usa fuente única
+```
+
+##### **🎨 CSS y Estilos:**
+```css
+/* ❌ MAL - Duplicar estilos de badges en cada archivo CSS */
+.badge-custom-moneda { ... }  /* En index.css */
+.badge-custom-currency { ... }  /* En detalle.css - DUPLICADO */
+
+/* ✅ BIEN - Definir una vez, reutilizar en todo el sistema */
+.badge-moneda { ... }  /* En components.css - ÚNICO */
+```
+
+##### **📊 Estados de Cotización:**
+```javascript
+// ❌ MAL - Duplicar lógica de estados en cada script
+const estados = { 'B': 'Borrador', 'P': 'Pendiente' }; // En index.js
+const estadosBorrador = { 'B': 'Borrador' }; // En editar.js - DUPLICADO
+
+// ✅ BIEN - Configuración centralizada
+FormatUtils.getEstadoTexto('B'); // Usa FormatConfig centralizado
+```
+
+#### **🛠️ COMPONENTES REUTILIZABLES EXISTENTES:**
+
+##### **1. FormatHelper (C# - Servidor):**
+- **Propósito**: Formateo consistente de monedas, versiones y números
+- **Ubicación**: `CotizacionesWeb.UI.Helpers.FormatHelper`
+- **Uso**: `@FormatHelper.FormatCurrency(valor, moneda)`
+- **Funciones disponibles**:
+  ```csharp
+  FormatHelper.FormatCurrency(decimal, string)     // Monedas con símbolo
+  FormatHelper.GetCurrencySymbol(string)           // Solo símbolo
+  FormatHelper.FormatVersion(decimal)              // Versiones (v2.0)
+  FormatHelper.GetMonedasDisponibles()             // Lista completa
+  FormatHelper.IsSupportedCurrency(string)         // Validación
+  ```
+
+##### **2. FormatUtils (JavaScript - Cliente):**
+- **Propósito**: Lógica de estados, transiciones y formateo del lado cliente
+- **Ubicación**: `~/js/shared/format-config.js`
+- **Uso**: `FormatUtils.isEditable(estado)`
+- **Funciones disponibles**:
+  ```javascript
+  FormatUtils.formatCurrency(value, currency)     // Formateo moneda
+  FormatUtils.isEditable(estado)                  // Validación edición
+  FormatUtils.getEstadoTexto(estado)             // Texto de estado
+  FormatUtils.isTransicionPermitida(origen, destino) // Flujo estados
+  ```
+
+##### **3. Estilos CSS Centralizados:**
+- **Ubicación**: `~/css/components.css` (global), archivos específicos por módulo
+- **Componentes reutilizables**:
+  ```css
+  .badge-moneda          /* Badges de moneda */
+  .badge-version         /* Badges de versión */
+  .badge-status          /* Estados de cotización */
+  .btn-action           /* Botones de acciones */
+  .btn-state            /* Botones de transición de estado */
+  ```
+
+##### **4. Modal de Confirmación:**
+- **Ubicación**: Incluido en `_Layout.cshtml`
+- **Uso**: `mostrarModalConfirmacion(titulo, mensaje, tipo, callback)`
+- **Ventaja**: Consistencia visual y funcional en toda la aplicación
+
+#### **⚠️ REGLAS CRÍTICAS PARA MANTENER DRY:**
+
+##### **🔍 ANTES DE CREAR, VERIFICAR:**
+1. **¿Existe un helper para esto?** Revisar `FormatHelper.cs` y `FormatUtils.js`
+2. **¿Hay CSS similar?** Buscar en `components.css` y archivos de módulo
+3. **¿Ya se implementó esta lógica?** Revisar servicios y controladores existentes
+4. **¿Existe un modal para esto?** Usar modal de confirmación genérico
+
+##### **🚫 NUNCA DUPLICAR:**
+1. **Diccionarios de monedas** - Usar `FormatHelper.CurrencySymbols`
+2. **Lógica de estados** - Usar `FormatConfig.estados`
+3. **Validaciones de permisos** - Usar `RequierePermiso` attribute
+4. **Formateo de números** - Usar `FormatHelper` methods
+5. **Estilos de badges** - Extender clases existentes
+
+##### **🔄 AL ENCONTRAR DUPLICACIÓN:**
+1. **Identificar el original** y el duplicado
+2. **Centralizar en el componente principal**
+3. **Actualizar todas las referencias** al componente centralizado
+4. **Eliminar el código duplicado**
+5. **Documentar en este archivo** para futuras referencias
+
+#### **📝 EJEMPLOS DE REFACTORIZACIÓN DRY:**
+
+##### **Caso Real - Monedas (Sesión 3):**
+```
+ANTES:
+├── FormatHelper.cs (CurrencySymbols)     ← Original
+└── CotizacionesController.cs (ObtenerMonedasDisponibles) ← Duplicado
+
+PROBLEMA:
+- Mantenimiento en dos lugares
+- Posible inconsistencia de datos
+- Violación DRY
+
+DESPUÉS:
+├── FormatHelper.cs (única fuente)
+│   ├── CurrencySymbols (privado)
+│   └── GetMonedasDisponibles() (público)
+└── CotizacionesController.cs → FormatHelper.GetMonedasDisponibles()
+
+RESULTADO:
+✅ Mantenimiento en un solo lugar
+✅ Consistencia garantizada  
+✅ Principio DRY cumplido
+```
+
+#### **🎯 CHECKLIST PARA NUEVAS FUNCIONALIDADES:**
+
+```
+□ ¿Revise FormatHelper para funciones de formateo?
+□ ¿Verifique FormatUtils para lógica de estados?
+□ ¿Busque en components.css estilos similares?
+□ ¿Existe un servicio que haga algo parecido?
+□ ¿Hay un modal genérico que pueda usar?
+□ ¿La nueva función puede ser útil para otros módulos?
+□ Si es reutilizable, ¿la ubique en el lugar correcto?
+□ ¿Actualice esta documentación con la nueva función?
+```
+
+#### **💡 BENEFICIOS DE MANTENER DRY:**
+
+1. **🚀 Mantenimiento Simplificado**: Un solo lugar para cambios
+2. **🛡️ Consistencia Garantizada**: Comportamiento uniforme
+3. **📈 Performance Mejorada**: Menos código duplicado
+4. **🐛 Menos Bugs**: Una implementación bien probada
+5. **👥 Colaboración Eficiente**: Desarrolladores saben dónde buscar funcionalidad
+
+---
+
+## 📋 **CAMBIOS ESTRUCTURALES CRÍTICOS (22/03/2026 - SESIÓN 3)**
+
+### 🔄 **MIGRACIÓN DE MONEDA: CotizacionVersion → Cotizacion**
+
+Se realizó un cambio estructural importante en la base de datos para optimizar la gestión de monedas:
+
+#### **🎯 Justificación del Cambio:**
+```
+PROBLEMA: La moneda estaba almacenada en CotizacionVersion, lo que permitía
+          cambios de moneda entre versiones de una misma cotización.
+          
+SOLUCIÓN: Mover la moneda a la tabla Cotizacion para que sea consistente
+          en todas las versiones de una cotización.
+          
+REGLA DE NEGOCIO: Si se requiere cambio de moneda, se debe duplicar 
+                  la cotización o crear una nueva.
+```
+
+#### **📊 Cambios en el Esquema:**
+
+##### **Tabla Cotizacion (AGREGADO):**
+```sql
+ALTER TABLE Cotizacion 
+ADD Moneda NVARCHAR(10) NOT NULL DEFAULT 'CRC'
+```
+
+##### **Tabla CotizacionVersion (REMOVIDO/MANTENIDO):**
+```sql
+-- REMOVIDO: Moneda (movida a Cotizacion)
+ALTER TABLE CotizacionVersion 
+DROP COLUMN Moneda
+
+-- MANTENIDO: TipoCambio (puede cambiar en el tiempo)
+-- TipoCambio DECIMAL(18,6) NULL -- Se mantiene aquí
+```
+
+#### **🔧 Cambios en el Código:**
+
+##### **Entidades Actualizadas:**
+```csharp
+// Cotizacion.cs
+public class Cotizacion : BaseEntity
+{
+    // ... campos existentes ...
+    public string Moneda { get; set; } = "CRC"; // ← AGREGADO
+    // NOTA: TipoCambio NO se agrega aquí (se mantiene en CotizacionVersion)
+}
+
+// CotizacionVersion.cs  
+public class CotizacionVersion : BaseEntity
+{
+    // ... campos existentes ...
+    // REMOVIDO: public string Moneda { get; set; }
+    public decimal? TipoCambio { get; set; } // ← SE MANTIENE (puede cambiar en versiones)
+}
+```
+
+##### **Servicios Actualizados:**
+```csharp
+// CotizacionService - GetCotizacionesListAsync()
+return new CotizacionListDto(
+    // ... otros campos ...
+    c.Moneda, // ← Ahora desde Cotizacion en lugar de Version
+    // ... resto de campos ...
+);
+
+// CotizacionService - Al copiar versiones
+var nuevaVersion = new CotizacionVersion
+{
+    // ... campos de versión ...
+    TipoCambio = versionVigente.TipoCambio, // ← Se mantiene y copia desde version anterior
+    // Moneda ya NO se copia (está en Cotizacion y es inmutable)
+};
+```
+
+#### **⚠️ Consideraciones Importantes:**
+
+1. **🔒 Moneda Inmutable**: Una vez establecida la moneda de una cotización, NO puede cambiar entre versiones
+2. **💱 TipoCambio Variable**: El tipo de cambio SÍ puede variar entre versiones (fluctuaciones del mercado)
+3. **🔄 Migración de Datos**: Los datos existentes mantienen su moneda original
+4. **📋 Compatibilidad**: Los DTOs mantienen compatibilidad temporal marcando campos como obsoletos
+
+#### **🛠️ Estado de Implementación:**
+- ✅ **Entidades**: Actualizadas
+- ✅ **Configuraciones EF**: Actualizadas  
+- ✅ **Servicios**: Actualizados
+- ✅ **DTOs**: Actualizados con compatibilidad
+- ✅ **Migraciones**: Creadas (aplicadas en servidor Azure)
+- ✅ **ViewModels**: Compatible (ya usaban moneda desde nivel superior)
+- ⚠️ **Base de Datos Local**: Inconsistencias en migraciones (servidor Azure correcto)
+
+#### **📈 Beneficios del Cambio:**
+- **🎯 Consistencia**: Moneda uniforme en todas las versiones de una cotización
+- **🔒 Integridad**: Evita confusiones por cambios de moneda accidentales
+- **⚡ Performance**: Menos JOINs para obtener la moneda (está en tabla principal)
+- **📊 Reporting**: Reportes más simples (moneda a nivel de cotización)
+- **🔄 Lógica Simplificada**: Reglas de negocio más claras
+
+---
+
 ### 🎨 **5. Mejoras de UX y Estilos en Vista de Detalle**
 
 #### **Cards Colapsables Implementadas:**

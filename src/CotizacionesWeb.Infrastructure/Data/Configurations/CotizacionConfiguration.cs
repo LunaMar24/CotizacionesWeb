@@ -31,6 +31,12 @@ public class CotizacionConfiguration : IEntityTypeConfiguration<Cotizacion>
             .HasColumnType("decimal(18,2)")
             .IsRequired();
         
+        // Configuración de moneda (movida desde CotizacionVersion)
+        builder.Property(c => c.Moneda)
+            .HasMaxLength(3)
+            .IsRequired()
+            .HasDefaultValue("CRC");
+        
         // CORREGIDO: Fechas como datetime (no datetime2)
         builder.Property(c => c.FechaEnvio)
             .HasColumnType("datetime");

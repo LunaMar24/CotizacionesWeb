@@ -67,12 +67,9 @@ public class CotizacionVersionConfiguration : IEntityTypeConfiguration<Cotizacio
             .HasColumnType("decimal(18,2)")
             .IsRequired();
         
-        builder.Property(cv => cv.Moneda)
-            .HasMaxLength(3)
-            .IsRequired();
-        
+        // REMOVIDO: Solo Moneda movida a tabla Cotizacion, TipoCambio se mantiene aquí
         builder.Property(cv => cv.TipoCambio)
-            .HasColumnType("decimal(18,2)");
+            .HasColumnType("decimal(18,6)");
         
         builder.Property(cv => cv.VersionActual)
             .IsRequired();
