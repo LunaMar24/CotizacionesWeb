@@ -41,6 +41,9 @@ public class CotizacionFiltrosViewModel
     // Filtro específico para versión
     public decimal? Version { get; set; }
 
+    // Filtro específico para moneda
+    public string? Moneda { get; set; }
+
     // Estados seleccionados para filtrar (según nuevos lineamientos)
     public bool FiltroBorrador { get; set; }
     public bool FiltroPendienteAprobacion { get; set; }

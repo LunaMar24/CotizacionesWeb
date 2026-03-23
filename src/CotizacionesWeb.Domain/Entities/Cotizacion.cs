@@ -11,6 +11,9 @@ public class Cotizacion : BaseEntity
     public decimal MontoCotizacion { get; set; }
     public DateTime? FechaEnvio { get; set; }
     
+    // Campo de moneda movido desde CotizacionVersion
+    public string Moneda { get; set; } = "CRC"; // Default a Colón Costarricense
+    
     // Nuevos campos según lineamientos funcionales
     public DateTime? FechaAceptacion { get; set; }
     public DateTime? FechaRechazo { get; set; }

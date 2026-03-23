@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using CotizacionesWeb.Application.Cotizaciones;
 using CotizacionesWeb.UI.Models;
 using CotizacionesWeb.UI.Filters;
+using CotizacionesWeb.UI.Helpers;
 using System.Security.Claims;
 
 namespace CotizacionesWeb.UI.Controllers;
@@ -46,6 +47,14 @@ public class CotizacionesController : Controller
             if (filtros.FiltroCancelada) estadosSeleccionados.Add('C');
             // Nota: Archivada (X) NO se incluye en filtros según lineamientos
 
+            // Validar que la moneda sea válida si se proporciona
+            if (!string.IsNullOrWhiteSpace(filtros.Moneda) && !FormatHelper.IsSupportedCurrency(filtros.Moneda))
+            {
+                _logger.LogWarning("Filtro de moneda inválida: {Moneda}", filtros.Moneda);
+                filtros.Moneda = null; // Limpiar filtro inválido
+                TempData["Warning"] = "Moneda no soportada. Se muestran todas las monedas.";
+            }
+
             var request = new GetCotizacionesListRequest(
                 estadosSeleccionados.Any() ? estadosSeleccionados : null,
                 filtros.Busqueda,
@@ -53,7 +62,8 @@ public class CotizacionesController : Controller
                 filtros.FechaHasta,
                 filtros.MontoDesde,
                 filtros.MontoHasta,
-                filtros.Version
+                filtros.Version,
+                filtros.Moneda
             );
 
             var cotizaciones = await _cotizacionService.GetCotizacionesListAsync(request);
@@ -85,6 +95,9 @@ public class CotizacionesController : Controller
                 }).ToList(),
                 Filtros = filtros
             };
+
+            // Agregar monedas disponibles para el filtro (reutilizando FormatHelper)
+            ViewBag.MonedasDisponibles = FormatHelper.GetMonedasDisponibles();
 
             return View(viewModel);
         }
@@ -289,7 +302,7 @@ public class CotizacionesController : Controller
                 // Cargar la versión actual de la cotización
                 // Primero obtenemos la información básica para saber cuál es la versión actual
                 var cotizaciones = await _cotizacionService.GetCotizacionesListAsync(
-                    new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null));
+                    new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null, null));
                 
                 var cotizacion = cotizaciones.FirstOrDefault(c => c.CotizacionId == cotizacionId);
                 if (cotizacion == null)
@@ -308,7 +321,7 @@ public class CotizacionesController : Controller
 
             // Obtener información adicional de la cotización para campos que no están en la versión
             var cotizacionInfo = await _cotizacionService.GetCotizacionesListAsync(
-                new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null));
+                new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null, null));
             
             var cotizacionBase = cotizacionInfo.FirstOrDefault(c => c.CotizacionId == cotizacionId);
 
@@ -334,7 +347,7 @@ public class CotizacionesController : Controller
                 Impuesto = detalleDto.Version.Impuesto,
                 Descuento = detalleDto.Version.Descuento,
                 Total = detalleDto.Version.Total,
-                Moneda = detalleDto.Version.Moneda,
+                Moneda = cotizacionBase?.Moneda ?? "CRC", // ? CORREGIDO: Moneda desde Cotizacion
                 TipoCambio = detalleDto.Version.TipoCambio,
                 
                 FechaEnvio = cotizacionBase?.FechaEnvio,
@@ -378,7 +391,7 @@ public class CotizacionesController : Controller
         {
             // Cargar la versión actual de la cotización
             var cotizaciones = await _cotizacionService.GetCotizacionesListAsync(
-                new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null));
+                new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null, null));
             
             var cotizacion = cotizaciones.FirstOrDefault(c => c.CotizacionId == cotizacionId);
             if (cotizacion == null)
@@ -425,7 +438,7 @@ public class CotizacionesController : Controller
                 Impuesto = detalleDto.Version.Impuesto,
                 Descuento = detalleDto.Version.Descuento,
                 Total = detalleDto.Version.Total,
-                Moneda = detalleDto.Version.Moneda,
+                Moneda = cotizacion.Moneda, // ? CORREGIDO: Moneda desde Cotizacion
                 TipoCambio = detalleDto.Version.TipoCambio,
                 
                 // Fechas importantes

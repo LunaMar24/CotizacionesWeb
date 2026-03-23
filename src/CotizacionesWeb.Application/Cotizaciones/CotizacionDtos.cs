@@ -36,8 +36,8 @@ public record CotizacionVersionDto(
     decimal Impuesto,
     decimal Descuento,
     decimal Total,
-    string Moneda,
-    decimal? TipoCambio,
+    string Moneda, // OBSOLETO: Ahora está en Cotización, se mantiene por compatibilidad
+    decimal? TipoCambio, // OBSOLETO: Ahora está en Cotización, se mantiene por compatibilidad
     int VersionActual, // Cambiado de char a int
     string? Notas
 );
@@ -76,7 +76,8 @@ public record GetCotizacionesListRequest(
     DateTime? FechaHasta,
     decimal? MontoDesde,
     decimal? MontoHasta,
-    decimal? Version
+    decimal? Version,
+    string? Moneda
 );
 
 public record CopiarVersionRequest(

@@ -15,7 +15,7 @@ public class CotizacionVersion : BaseEntity
     public decimal Impuesto { get; set; }
     public decimal Descuento { get; set; }
     public decimal Total { get; set; }
-    public string Moneda { get; set; } = string.Empty;
+    // REMOVIDO: Solo Moneda movida a tabla Cotizacion, TipoCambio se mantiene aquí
     public decimal? TipoCambio { get; set; }
     public int VersionActual { get; set; } // Cambiado de char a int
     public string? Notas { get; set; }

@@ -4,6 +4,7 @@ using CotizacionesWeb.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CotizacionesWeb.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(DbContextCotizaciones))]
-    partial class DbContextCotizacionesModelSnapshot : ModelSnapshot
+    [Migration("20260322213301_MoverMonedaACotizacion")]
+    partial class MoverMonedaACotizacion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -125,12 +128,15 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                     b.Property<string>("Moneda")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(3)
-                        .HasColumnType("nvarchar(3)")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)")
                         .HasDefaultValue("CRC");
 
                     b.Property<decimal>("MontoCotizacion")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("TipoCambio")
+                        .HasColumnType("decimal(18,6)");
 
                     b.Property<int>("VersionActual")
                         .HasColumnType("int");
@@ -207,9 +213,6 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
 
                     b.Property<decimal>("SubTotal")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal?>("TipoCambio")
-                        .HasColumnType("decimal(18,6)");
 
                     b.Property<decimal>("Total")
                         .HasColumnType("decimal(18,2)");

@@ -79,6 +79,15 @@ public class CotizacionService : ICotizacionService
             query = query.Where(x => x.Version.NumeroVersion == request.Version.Value);
         }
 
+        // Filtrar por moneda específica (eficiente en SQL)
+        if (!string.IsNullOrWhiteSpace(request.Moneda))
+        {
+            var moneda = request.Moneda.Trim().ToUpper();
+            // Validación opcional: verificar que la moneda es válida según FormatHelper
+            // Si se necesita acceso al helper desde Infrastructure, se podría inyectar o crear una interfaz
+            query = query.Where(x => x.Cotizacion.Moneda.ToUpper() == moneda);
+        }
+
         var resultados = await query
             .OrderByDescending(x => x.Cotizacion.CreatedAt)
             .ToListAsync();
@@ -102,7 +111,7 @@ public class CotizacionService : ICotizacionService
                 c.MontoCotizacion,
                 c.FechaEnvio,
                 // Información financiera
-                versionVigente?.Moneda ?? "CRC", // Moneda de la versión vigente, CRC por defecto
+                c.Moneda, // Moneda de la cotización (movida desde version)
                 // Nuevos campos según lineamientos funcionales
                 c.FechaAceptacion,
                 c.FechaRechazo,
@@ -159,7 +168,7 @@ public class CotizacionService : ICotizacionService
 
     public async Task<List<CotizacionVersionDto>> GetCotizacionVersionsAsync(string cotizacionId)
     {
-        // Obtener la cotización para saber cuál es la versión actual vigente
+        // Obtener la cotización para saber cuál es la versión actual vigente y obtener la moneda
         var cotizacion = await _context.Cotizaciones
             .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
 
@@ -189,8 +198,8 @@ public class CotizacionService : ICotizacionService
             v.Impuesto,
             v.Descuento,
             v.Total,
-            v.Moneda,
-            v.TipoCambio,
+            cotizacion.Moneda, // ? CORREGIDO: Moneda desde Cotizacion
+            v.TipoCambio, // TipoCambio se mantiene en version
             0, // Siempre 0 porque son versiones históricas (no actuales)
             v.Notas
         )).ToList();
@@ -198,23 +207,24 @@ public class CotizacionService : ICotizacionService
 
     public async Task<CotizacionVersionDetalleDto?> GetCotizacionVersionDetailAsync(int versionId)
     {
-        var versionConInteresado = await (from ver in _context.CotizacionesVersiones
+        var versionConInteresadoYCotizacion = await (from ver in _context.CotizacionesVersiones
                                           join cot in _context.Cotizaciones
                                               on ver.CotizacionId equals cot.CotizacionId
                                           join inter in _context.Interesados
                                               on cot.InteresadoId equals inter.InteresadoId into interesadosGroup
                                           from inter in interesadosGroup.DefaultIfEmpty()
                                           where ver.VersionId == versionId
-                                          select new { Version = ver, Interesado = inter })
+                                          select new { Version = ver, Cotizacion = cot, Interesado = inter })
                                          .FirstOrDefaultAsync();
 
-        if (versionConInteresado == null)
+        if (versionConInteresadoYCotizacion == null)
         {
             return null;
         }
 
-        var version = versionConInteresado.Version;
-        var interesado = versionConInteresado.Interesado;
+        var version = versionConInteresadoYCotizacion.Version;
+        var cotizacion = versionConInteresadoYCotizacion.Cotizacion;
+        var interesado = versionConInteresadoYCotizacion.Interesado;
 
         // Obtener detalles de la versión
         var detalles = await _context.DetallesCotizacionVersion
@@ -234,8 +244,8 @@ public class CotizacionService : ICotizacionService
             version.Impuesto,
             version.Descuento,
             version.Total,
-            version.Moneda,
-            version.TipoCambio,
+            cotizacion.Moneda, // ? CORREGIDO: Moneda desde Cotizacion
+            version.TipoCambio, // TipoCambio se mantiene en version
             version.VersionActual,
             version.Notas
         );
@@ -327,8 +337,7 @@ public class CotizacionService : ICotizacionService
                 Impuesto = versionVigente.Impuesto,
                 Descuento = versionVigente.Descuento,
                 Total = versionVigente.Total,
-                Moneda = versionVigente.Moneda,
-                TipoCambio = versionVigente.TipoCambio,
+                TipoCambio = versionVigente.TipoCambio, // TipoCambio se mantiene en version
                 VersionActual = nuevoVersionActual,
                 Notas = versionVigente.Notas
                 // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
@@ -428,8 +437,7 @@ public class CotizacionService : ICotizacionService
                 Impuesto = versionBase.Impuesto,
                 Descuento = versionBase.Descuento,
                 Total = versionBase.Total,
-                Moneda = versionBase.Moneda,
-                TipoCambio = versionBase.TipoCambio,
+                TipoCambio = versionBase.TipoCambio, // TipoCambio se mantiene en version
                 VersionActual = nuevoVersionActual,
                 Notas = versionBase.Notas
                 // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor automáticamente
@@ -545,7 +553,8 @@ public class CotizacionService : ICotizacionService
                     InteresadoId = null, // Se limpia el interesado
                     EstadoActual = (char)EstadoCotizacion.Borrador,
                     VersionActual = nuevoVersionActual, // Apuntar a la nueva versión
-                    MontoCotizacion = versionVigente.Total
+                    MontoCotizacion = versionVigente.Total,
+                    Moneda = cotizacionBase.Moneda, // Copiar moneda desde la cotización base
                 };
 
                 _context.Cotizaciones.Add(nuevaCotizacion);
@@ -565,8 +574,8 @@ public class CotizacionService : ICotizacionService
                     Impuesto = versionVigente.Impuesto,
                     Descuento = versionVigente.Descuento,
                     Total = versionVigente.Total,
-                    Moneda = versionVigente.Moneda ?? "CLP", // Valor por defecto si es null
-                    TipoCambio = versionVigente.TipoCambio,
+                    TipoCambio = versionVigente.TipoCambio, // TipoCambio se mantiene en version
+                    // Moneda ya no se guarda en version (está en Cotizacion)
                     VersionActual = nuevoVersionActual,
                     Notas = null // Se limpian las notas
                 };
