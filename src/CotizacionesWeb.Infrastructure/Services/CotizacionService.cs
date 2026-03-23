@@ -715,4 +715,404 @@ public class CotizacionService : ICotizacionService
             return versionActual + 0.1m;
         }
     }
+
+    /// <summary>
+    /// Actualiza los detalles de una versión de forma inteligente preservando la auditoría.
+    /// UPDATE para existentes, INSERT para nuevos, DELETE solo para eliminados.
+    /// </summary>
+    private async Task ActualizarDetallesVersionAsync(int versionId, List<ActualizarDetalleRequest> nuevosDetalles)
+    {
+        // Obtener detalles existentes
+        var detallesExistentes = await _context.DetallesCotizacionVersion
+            .Where(d => d.VersionId == versionId)
+            .ToListAsync();
+
+        var detallesExistentesDict = detallesExistentes.ToDictionary(d => d.DetalleVersionId);
+        var idsEnRequest = nuevosDetalles.Where(d => d.DetalleVersionId > 0).Select(d => d.DetalleVersionId).ToHashSet();
+        
+        _logger.LogInformation("Actualizando detalles de versión {VersionId}. Existentes: {Existentes}, Nuevos en request: {Request}", 
+            versionId, detallesExistentes.Count, nuevosDetalles.Count);
+
+        // 1. ACTUALIZAR detalles existentes que siguen en el request
+        foreach (var detalleRequest in nuevosDetalles.Where(d => d.DetalleVersionId > 0))
+        {
+            if (detallesExistentesDict.TryGetValue(detalleRequest.DetalleVersionId, out var detalleExistente))
+            {
+                // Actualizar registro existente (preserva CreatedAt y CreatedBy)
+                detalleExistente.ProductoId = detalleRequest.ProductoId;
+                detalleExistente.Cantidad = detalleRequest.Cantidad;
+                detalleExistente.PrecioUnitario = detalleRequest.PrecioUnitario;
+                detalleExistente.Descuento = detalleRequest.Descuento;
+                detalleExistente.TotalLinea = detalleRequest.TotalLinea;
+                
+                // ModifiedAt y ModifiedBy se actualizan automáticamente por AuditInterceptor
+                _logger.LogDebug("Detalle {DetalleId} actualizado: {Producto} x{Cantidad}", 
+                    detalleRequest.DetalleVersionId, detalleRequest.ProductoId, detalleRequest.Cantidad);
+            }
+        }
+
+        // 2. INSERTAR nuevos detalles (DetalleVersionId = 0)
+        foreach (var detalleRequest in nuevosDetalles.Where(d => d.DetalleVersionId == 0))
+        {
+            var nuevoDetalle = new DetalleCotizacionVersion
+            {
+                VersionId = versionId,
+                ProductoId = detalleRequest.ProductoId,
+                Cantidad = detalleRequest.Cantidad,
+                PrecioUnitario = detalleRequest.PrecioUnitario,
+                Descuento = detalleRequest.Descuento,
+                TotalLinea = detalleRequest.TotalLinea
+                // CreatedAt, CreatedBy, ModifiedAt, ModifiedBy ? AuditInterceptor
+            };
+
+            _context.DetallesCotizacionVersion.Add(nuevoDetalle);
+            
+            _logger.LogDebug("Nuevo detalle agregado: {Producto} x{Cantidad}", 
+                detalleRequest.ProductoId, detalleRequest.Cantidad);
+        }
+
+        // 3. ELIMINAR detalles que ya no están en el request
+        var detallesAEliminar = detallesExistentes.Where(d => !idsEnRequest.Contains(d.DetalleVersionId)).ToList();
+        if (detallesAEliminar.Any())
+        {
+            _context.DetallesCotizacionVersion.RemoveRange(detallesAEliminar);
+            
+            _logger.LogDebug("Detalles eliminados: {Count} ({Ids})", 
+                detallesAEliminar.Count, 
+                string.Join(", ", detallesAEliminar.Select(d => d.DetalleVersionId)));
+        }
+
+        _logger.LogInformation("Gestión de detalles completada para versión {VersionId}", versionId);
+    }
+
+    /// <summary>
+    /// Calcula los totales de una versión basándose en sus detalles actuales en la base de datos.
+    /// </summary>
+    private async Task<(decimal subtotal, decimal totalDescuentos, decimal impuesto, decimal total)> CalcularTotalesVersionAsync(int versionId)
+    {
+        // Obtener detalles actuales después de las modificaciones
+        var detalles = await _context.DetallesCotizacionVersion
+            .Where(d => d.VersionId == versionId)
+            .ToListAsync();
+
+        decimal subtotal = 0;
+        decimal totalDescuentos = 0;
+
+        foreach (var detalle in detalles)
+        {
+            // Subtotal = suma de (cantidad × precio unitario) sin descuentos
+            var subtotalLinea = detalle.Cantidad * detalle.PrecioUnitario;
+            subtotal += subtotalLinea;
+            
+            // Acumular descuentos
+            totalDescuentos += detalle.Descuento;
+        }
+
+        // Subtotal después de descuentos
+        var subtotalConDescuentos = subtotal - totalDescuentos;
+        
+        // Calcular impuesto sobre el subtotal con descuentos (13%)
+        var impuesto = subtotalConDescuentos * 0.13m;
+        
+        // Total final
+        var total = subtotalConDescuentos + impuesto;
+
+        _logger.LogDebug("Totales calculados para versión {VersionId}: Subtotal={Subtotal}, Descuentos={Descuentos}, Impuesto={Impuesto}, Total={Total}",
+            versionId, subtotal, totalDescuentos, impuesto, total);
+
+        return (subtotal, totalDescuentos, impuesto, total);
+    }
+
+    public async Task<ActualizarCotizacionResult> ActualizarCotizacionAsync(ActualizarCotizacionRequest request, int? userId = null)
+    {
+        try
+        {
+            _logger.LogInformation("Iniciando actualización de cotización {CotizacionId}, VersionId: {VersionId}", 
+                request.CotizacionId, request.VersionId);
+
+            // Buscar la cotización y verificar estado
+            var cotizacion = await _context.Cotizaciones
+                .FirstOrDefaultAsync(c => c.CotizacionId == request.CotizacionId);
+
+            if (cotizacion == null)
+            {
+                _logger.LogWarning("Cotización {CotizacionId} no encontrada", request.CotizacionId);
+                return new ActualizarCotizacionResult(false, "Cotización no encontrada");
+            }
+
+            _logger.LogInformation("Cotización encontrada: {CotizacionId}, Estado actual: '{EstadoActual}' (char: {EstadoChar}), VersionActual: {VersionActual}",
+                cotizacion.CotizacionId, cotizacion.EstadoActual, (int)cotizacion.EstadoActual, cotizacion.VersionActual);
+
+            // Validar que esté en estado Borrador
+            // WORKAROUND TEMPORAL: Permitir también si aparece visualmente como Borrador pero hay problemas de estado
+            var estadoEsBorrador = cotizacion.EstadoActual == 'B';
+            var estadoEsProbablementeBorrador = (int)cotizacion.EstadoActual == 66; // ASCII de 'B'
+            
+            if (!estadoEsBorrador && !estadoEsProbablementeBorrador)
+            {
+                _logger.LogWarning("VALIDACIÓN FALLIDA - Intento de editar cotización {CotizacionId} en estado '{Estado}' (char: {EstadoChar}). Solo se permite estado 'B' (char: {EstadoBChar})", 
+                    request.CotizacionId, cotizacion.EstadoActual, (int)cotizacion.EstadoActual, (int)'B');
+                return new ActualizarCotizacionResult(false, "Solo se pueden editar cotizaciones en estado Borrador");
+            }
+
+            if (!estadoEsBorrador && estadoEsProbablementeBorrador)
+            {
+                _logger.LogWarning("WORKAROUND APLICADO - Cotización {CotizacionId} tiene problemas de comparación de estado pero ASCII es correcto. Continuando...", request.CotizacionId);
+            }
+            else
+            {
+                _logger.LogInformation("VALIDACIÓN EXITOSA - Cotización {CotizacionId} está en estado Borrador, continuando...", request.CotizacionId);
+            }
+
+            // Buscar la versión a actualizar
+            var version = await _context.CotizacionesVersiones
+                .Include(v => v.Detalles)
+                .FirstOrDefaultAsync(v => v.VersionId == request.VersionId);
+
+            if (version == null || version.CotizacionId != request.CotizacionId)
+            {
+                _logger.LogWarning("Versión {VersionId} no encontrada para cotización {CotizacionId}", 
+                    request.VersionId, request.CotizacionId);
+                return new ActualizarCotizacionResult(false, "Versión no encontrada");
+            }
+
+            _logger.LogInformation("Versión encontrada: VersionId {VersionId}, NumeroVersion {NumeroVersion}", 
+                version.VersionId, version.NumeroVersion);
+
+            if (version == null || version.CotizacionId != request.CotizacionId)
+            {
+                _logger.LogWarning("Versión {VersionId} no encontrada para cotización {CotizacionId}", 
+                    request.VersionId, request.CotizacionId);
+                return new ActualizarCotizacionResult(false, "Versión no encontrada");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Verificar si se puede cambiar la moneda
+                bool puedeActualizarMoneda = false;
+                if (!string.IsNullOrEmpty(request.Moneda) && request.Moneda != cotizacion.Moneda)
+                {
+                    _logger.LogInformation("Solicitud de cambio de moneda: {MonedaAnterior} -> {MonedaNueva}", 
+                        cotizacion.Moneda, request.Moneda);
+
+                    // Verificar reglas de negocio para cambio de moneda
+                    if (version.NumeroVersion == 1.0m && cotizacion.EstadoActual == 'B')
+                    {
+                        var tieneDetalles = await _context.DetallesCotizacionVersion
+                            .AnyAsync(d => d.VersionId == version.VersionId);
+
+                        if (!tieneDetalles)
+                        {
+                            puedeActualizarMoneda = true;
+                            _logger.LogInformation("Cambio de moneda autorizado: versión 1.0, estado Borrador, sin detalles");
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Cambio de moneda rechazado: ya tiene líneas de detalle");
+                            return new ActualizarCotizacionResult(false, "No se puede cambiar la moneda cuando ya hay líneas de detalle");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Cambio de moneda rechazado: NumeroVersion={NumeroVersion}, Estado={Estado}", 
+                            version.NumeroVersion, cotizacion.EstadoActual);
+                        return new ActualizarCotizacionResult(false, "Solo se puede cambiar la moneda en versión 1.0 y estado Borrador");
+                    }
+                }
+
+                // Actualizar datos de la versión
+                version.NombreInteresado = request.NombreInteresado;
+                version.EmailInteresado = request.EmailInteresado;
+                version.EmpresaInteresado = request.EmpresaInteresado;
+                version.Notas = request.Notas;
+
+                // Actualizar tipo de cambio si se proporciona
+                if (request.TipoCambio.HasValue)
+                {
+                    version.TipoCambio = request.TipoCambio.Value;
+                    _logger.LogInformation("Tipo de cambio actualizado a: {TipoCambio}", request.TipoCambio.Value);
+                }
+
+                // Actualizar moneda de la cotización si es necesario
+                if (puedeActualizarMoneda)
+                {
+                    cotizacion.Moneda = request.Moneda!;
+                    _logger.LogInformation("Moneda de cotización actualizada a: {NuevaMoneda}", request.Moneda);
+                }
+
+                // GESTIÓN INTELIGENTE DE DETALLES - Preservar auditoría
+                await ActualizarDetallesVersionAsync(version.VersionId, request.Detalles);
+
+                // Calcular totales después de la actualización de detalles
+                var (subtotal, totalDescuentos, impuesto, total) = await CalcularTotalesVersionAsync(version.VersionId);
+
+                // Actualizar totales en la versión
+                version.SubTotal = subtotal;
+                version.Descuento = totalDescuentos;
+                version.Impuesto = impuesto;
+                version.Total = total;
+
+                // Actualizar monto de la cotización
+                cotizacion.MontoCotizacion = total;
+
+                await _context.SaveChangesAsync();
+
+                // Registrar en historial
+                var historial = new HistorialCotizacion
+                {
+                    VersionId = version.VersionId,
+                    TipoEvento = "Actualizada",
+                    FechaEvento = DateTime.Now,
+                    UsuarioEvento = userId ?? 0,
+                    Comentario = "Cotización actualizada desde la vista de edición"
+                };
+
+                _context.HistorialesCotizacion.Add(historial);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Cotización {CotizacionId} actualizada exitosamente. Total: {Total}",
+                    request.CotizacionId, total);
+
+                return new ActualizarCotizacionResult(true, null);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error en transacción al actualizar cotización {CotizacionId}", request.CotizacionId);
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al actualizar cotización {CotizacionId}", request.CotizacionId);
+            return new ActualizarCotizacionResult(false, $"Error interno: {ex.Message}");
+        }
+    }
+
+    public async Task<CotizacionDebugInfoDto> GetCotizacionDebugInfoAsync(string cotizacionId)
+    {
+        try
+        {
+            _logger.LogInformation("=== DEBUGGING INFORMACIÓN DE COTIZACIÓN {CotizacionId} ===", cotizacionId);
+            
+            // Consultar cotización directamente
+            var cotizacion = await _context.Cotizaciones
+                .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
+
+            if (cotizacion == null)
+            {
+                _logger.LogWarning("Cotización {CotizacionId} no encontrada en base de datos", cotizacionId);
+                return new CotizacionDebugInfoDto(
+                    cotizacionId, 
+                    'X', 
+                    "NO ENCONTRADA", 
+                    0, 
+                    null, 
+                    null, 
+                    null, 
+                    false);
+            }
+
+            _logger.LogInformation("Cotización encontrada: Estado='{Estado}' (char: {EstadoChar}, ASCII: {EstadoAscii}), VersionActual={VersionActual}", 
+                cotizacion.EstadoActual, cotizacion.EstadoActual, (int)cotizacion.EstadoActual, cotizacion.VersionActual);
+
+            // Verificar comparación con 'B'
+            var esBorrador = cotizacion.EstadoActual == 'B';
+            _logger.LogInformation("Comparación Estado == 'B': {EsBorrador} (Estado: '{Estado}', B: '{B}', EstadoAscii: {EstadoAscii}, BAscii: {BAscii})",
+                esBorrador, cotizacion.EstadoActual, 'B', (int)cotizacion.EstadoActual, (int)'B');
+
+            // Obtener información de la versión actual
+            var version = await _context.CotizacionesVersiones
+                .FirstOrDefaultAsync(v => v.VersionId == cotizacion.VersionActual);
+
+            var versionInfo = version != null ? 
+                $"VersionId={version.VersionId}, NumeroVersion={version.NumeroVersion}" : 
+                "Versión no encontrada";
+
+            _logger.LogInformation("Información de versión: {VersionInfo}", versionInfo);
+
+            var estadoTexto = cotizacion.EstadoActual switch
+            {
+                'B' => "Borrador",
+                'P' => "Pendiente Aprobación", 
+                'A' => "Aprobada",
+                'E' => "Enviada",
+                'T' => "Aceptada",
+                'R' => "Rechazada",
+                'C' => "Cancelada",
+                'X' => "Archivada",
+                _ => $"Desconocido (char: {(int)cotizacion.EstadoActual})"
+            };
+
+            return new CotizacionDebugInfoDto(
+                cotizacion.CotizacionId,
+                cotizacion.EstadoActual,
+                estadoTexto,
+                cotizacion.VersionActual,
+                cotizacion.CreatedAt,
+                cotizacion.ModifiedAt,
+                versionInfo,
+                true
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener información de debugging para cotización {CotizacionId}", cotizacionId);
+            return new CotizacionDebugInfoDto(
+                cotizacionId, 
+                'X', 
+                "ERROR EN CONSULTA", 
+                0, 
+                null, 
+                null, 
+                ex.Message, 
+                false);
+        }
+    }
+
+    public async Task<CotizacionVersionDetalleDto?> GetCotizacionCurrentVersionDetailAsync(string cotizacionId)
+    {
+        try
+        {
+            _logger.LogInformation("Obteniendo detalle de versión actual para cotización {CotizacionId}", cotizacionId);
+            
+            // Buscar la cotización para obtener el VersionActual
+            var cotizacion = await _context.Cotizaciones
+                .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
+
+            if (cotizacion == null)
+            {
+                _logger.LogWarning("Cotización {CotizacionId} no encontrada", cotizacionId);
+                return null;
+            }
+
+            _logger.LogInformation("Cotización encontrada: VersionActual={VersionActual}", cotizacion.VersionActual);
+
+            // Buscar la versión específica usando CotizacionId y VersionActual
+            var version = await _context.CotizacionesVersiones
+                .FirstOrDefaultAsync(v => v.CotizacionId == cotizacionId && v.VersionActual == cotizacion.VersionActual);
+
+            if (version == null)
+            {
+                _logger.LogWarning("Versión actual {VersionActual} no encontrada para cotización {CotizacionId}", 
+                    cotizacion.VersionActual, cotizacionId);
+                return null;
+            }
+
+            _logger.LogInformation("Versión actual encontrada: VersionId={VersionId}, NumeroVersion={NumeroVersion}", 
+                version.VersionId, version.NumeroVersion);
+
+            // Ahora usar el método existente con el VersionId correcto
+            return await GetCotizacionVersionDetailAsync(version.VersionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener detalle de versión actual para cotización {CotizacionId}", cotizacionId);
+            return null;
+        }
+    }
 }

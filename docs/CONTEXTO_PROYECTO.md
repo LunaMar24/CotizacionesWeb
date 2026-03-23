@@ -162,6 +162,1252 @@ RESULTADO:
 
 ---
 
+## 🏗️ **PRINCIPIOS DE ARQUITECTURA Y DATOS**
+
+### 📊 **PRINCIPIO: PRESERVACIÓN DE AUDITORÍA EN ACTUALIZACIONES**
+
+**📜 REGLA FUNDAMENTAL**: NUNCA eliminar y recrear registros cuando se pueden actualizar. Esto preserva la integridad de la auditoría (`CreatedAt`, `CreatedBy`, `ModifiedAt`, `ModifiedBy`).
+
+#### **✅ PATRÓN IMPLEMENTADO: UPDATE/INSERT/DELETE SELECTIVO**
+
+##### **🔧 Estrategia para Actualización de Detalles:**
+```csharp
+// ❌ MAL - Rompe auditoría
+_context.DetallesCotizacionVersion.RemoveRange(detallesExistentes); // Pierde CreatedAt
+foreach (var detalle in nuevosDetalles) {
+    _context.Add(new DetalleCotizacionVersion { ... }); // Nuevos CreatedAt incorrectos
+}
+
+// ✅ BIEN - Preserva auditoría
+private async Task ActualizarDetallesVersionAsync(int versionId, List<ActualizarDetalleRequest> nuevosDetalles)
+{
+    // 1. UPDATE: Actualizar registros existentes (preserva CreatedAt/CreatedBy)
+    // 2. INSERT: Agregar nuevos registros (DetalleVersionId = 0)  
+    // 3. DELETE: Eliminar solo los que realmente se eliminaron
+}
+```
+
+#### **🛠️ IMPLEMENTACIÓN EN CotizacionService:**
+
+##### **Método ActualizarDetallesVersionAsync:**
+```csharp
+// 1. OBTENER detalles existentes
+var detallesExistentes = await _context.DetallesCotizacionVersion
+    .Where(d => d.VersionId == versionId).ToListAsync();
+
+// 2. ACTUALIZAR existentes que siguen en el request
+foreach (var detalleRequest in nuevosDetalles.Where(d => d.DetalleVersionId > 0))
+{
+    if (detallesExistentesDict.TryGetValue(detalleRequest.DetalleVersionId, out var existente))
+    {
+        // Preserva CreatedAt y CreatedBy originales
+        existente.ProductoId = detalleRequest.ProductoId;
+        existente.Cantidad = detalleRequest.Cantidad;
+        // ModifiedAt y ModifiedBy → AuditInterceptor automático
+    }
+}
+
+// 3. INSERTAR nuevos (DetalleVersionId = 0)
+foreach (var detalleRequest in nuevosDetalles.Where(d => d.DetalleVersionId == 0))
+{
+    var nuevoDetalle = new DetalleCotizacionVersion { ... };
+    _context.Add(nuevoDetalle); // CreatedAt y CreatedBy → AuditInterceptor
+}
+
+// 4. ELIMINAR solo los que no están en el request
+var detallesAEliminar = detallesExistentes
+    .Where(d => !idsEnRequest.Contains(d.DetalleVersionId)).ToList();
+_context.RemoveRange(detallesAEliminar); // Solo elimina lo necesario
+```
+
+#### **📋 DTO con Estrategia Clara:**
+```csharp
+public record ActualizarDetalleRequest
+{
+    public int DetalleVersionId { get; set; } // 0 = nuevo, >0 = actualizar existente
+    public string ProductoId { get; set; }
+    public decimal Cantidad { get; set; }
+    // ... otros campos
+}
+```
+
+#### **⚡ BENEFICIOS DE ESTA ESTRATEGIA:**
+
+##### **🛡️ Auditoría Preservada:**
+- ✅ **CreatedAt original**: Mantiene fecha/hora real de creación
+- ✅ **CreatedBy original**: Preserva quién creó realmente el registro
+- ✅ **ModifiedAt actualizado**: Refleja cuándo fue la última modificación
+- ✅ **ModifiedBy actualizado**: Muestra quién hizo el cambio
+
+##### **📈 Performance Optimizada:**
+- ✅ **Menos operaciones de BD**: Solo actualiza lo que cambió
+- ✅ **Transacciones más eficientes**: Menos inserts/deletes innecesarios
+- ✅ **Índices preservados**: No rompe claves primarias existentes
+
+##### **🔍 Trazabilidad Completa:**
+- ✅ **Historial real**: Auditoría muestra evolución real de los datos
+- ✅ **Investigación**: Posible determinar cuándo se creó vs cuándo se modificó cada línea
+- ✅ **Compliance**: Cumple requisitos de auditoría empresarial
+
+#### **⚠️ REGLAS CRÍTICAS A SEGUIR:**
+
+##### **🔍 IDENTIFICACIÓN DE ESTRATEGIA:**
+1. **DetalleVersionId = 0**: Es un registro nuevo → INSERT
+2. **DetalleVersionId > 0 y en request**: Existe y se mantiene → UPDATE  
+3. **DetalleVersionId > 0 y NO en request**: Existe pero se eliminó → DELETE
+4. **Nunca hacer**: DELETE de todos + INSERT de todos
+
+##### **🚫 NUNCA HACER:**
+```csharp
+// ❌ ANTI-PATRÓN: Eliminar todo y recrear
+context.RemoveRange(entity.Children);
+foreach(var item in newItems) {
+    context.Add(new Child(item)); // ¡Pierde auditoría!
+}
+```
+
+##### **🔄 APLICAR PATRÓN EN:**
+- **✅ Detalles de cotización** (ya implementado)
+- **✅ Líneas de facturas** (futuro)
+- **✅ Items de órdenes** (futuro)  
+- **✅ Elementos de listas dinámicas** (futuro)
+
+#### **📝 EJEMPLO DE AUDITORÍA PRESERVADA:**
+
+##### **Escenario Real:**
+```
+Usuario crea línea: PROD001 x 10 unidades
+├─ CreatedAt: 2026-03-15 10:30:00
+├─ CreatedBy: usuario@empresa.com
+├─ ModifiedAt: 2026-03-15 10:30:00  
+└─ ModifiedBy: usuario@empresa.com
+
+Usuario modifica cantidad: PROD001 x 15 unidades  
+├─ CreatedAt: 2026-03-15 10:30:00    ← PRESERVADO
+├─ CreatedBy: usuario@empresa.com    ← PRESERVADO
+├─ ModifiedAt: 2026-03-15 14:45:00   ← ACTUALIZADO
+└─ ModifiedBy: supervisor@empresa.com ← ACTUALIZADO
+
+RESULTADO: ✅ Se puede saber cuándo se creó Y cuándo se modificó
+```
+
+##### **Con Anti-Patrón (eliminar/recrear):**
+```
+Usuario modifica cantidad: PROD001 x 15 unidades
+├─ CreatedAt: 2026-03-15 14:45:00    ← ¡INCORRECTO! (debería ser 10:30)
+├─ CreatedBy: supervisor@empresa.com ← ¡INCORRECTO! (debería ser usuario@empresa.com)
+├─ ModifiedAt: 2026-03-15 14:45:00
+└─ ModifiedBy: supervisor@empresa.com
+
+RESULTADO: ❌ Se perdió la información de cuándo/quién creó originalmente
+```
+
+#### **💡 IMPLEMENTACIONES FUTURAS:**
+Este patrón debe aplicarse a:
+- **Edición de facturas** 
+- **Modificación de órdenes de compra**
+- **Actualización de inventarios**
+- **Cualquier entidad con relaciones uno-a-muchos editables**
+
+### 🔄 **REGLAS DE NEGOCIO PARA CAMBIO DE MONEDA**
+
+**📜 REGLA FUNDAMENTAL**: El cambio de moneda en cotizaciones está estrictamente controlado por reglas de negocio para evitar inconsistencias en la información financiera.
+
+#### **✅ CONDICIONES PARA PERMITIR CAMBIO DE MONEDA:**
+
+La moneda de una cotización **SOLO** se puede cambiar cuando se cumplen **TODAS** estas condiciones:
+
+1. **🎯 Versión 1.0 únicamente**: La cotización debe estar en su primera versión (`NumeroVersion == 1.0m`)
+2. **📝 Estado Borrador**: La cotización debe estar en estado 'B' (Borrador)
+3. **📋 Sin líneas de detalle**: No debe tener ninguna línea de productos/servicios agregada
+
+#### **❌ ESCENARIOS DONDE NO SE PERMITE:**
+
+##### **🚫 Versiones Superiores a 1.0:**
+```csharp
+// ❌ NO PERMITIDO
+if (version.NumeroVersion > 1.0m) {
+    return Error("No se puede cambiar la moneda en versiones superiores a 1.0");
+}
+```
+**Justificación**: Las versiones superiores representan evoluciones de la cotización que ya han sido procesadas, aprobadas o enviadas.
+
+##### **🚫 Estados Diferentes a Borrador:**
+```csharp
+// ❌ NO PERMITIDO  
+if (cotizacion.EstadoActual != 'B') {
+    return Error("Solo se puede cambiar la moneda en estado Borrador");
+}
+```
+**Justificación**: Cotizaciones en otros estados han pasado por procesos de aprobación o envío que no deben alterarse.
+
+##### **🚫 Con Líneas de Detalle Existentes:**
+```csharp
+// ❌ NO PERMITIDO
+var tieneDetalles = await _context.DetallesCotizacionVersion
+    .AnyAsync(d => d.VersionId == version.VersionId);
+    
+if (tieneDetalles) {
+    return Error("No se puede cambiar la moneda cuando hay líneas de detalle");
+}
+```
+**Justificación**: Los precios de productos están expresados en la moneda original; cambiar la moneda haría que los precios no correspondan.
+
+#### **🔧 IMPLEMENTACIÓN TÉCNICA:**
+
+##### **Backend (Servicio):**
+```csharp
+// En CotizacionService.cs - Método ActualizarCotizacionAsync
+bool puedeActualizarMoneda = false;
+if (!string.IsNullOrEmpty(request.Moneda) && request.Moneda != cotizacion.Moneda)
+{
+    // Verificar reglas de negocio para cambio de moneda
+    if (version.NumeroVersion == 1.0m && cotizacion.EstadoActual == 'B')
+    {
+        var tieneDetalles = await _context.DetallesCotizacionVersion
+            .AnyAsync(d => d.VersionId == version.VersionId);
+
+        if (!tieneDetalles)
+        {
+            puedeActualizarMoneda = true;
+            // Cambio autorizado
+        }
+        else
+        {
+            return new ActualizarCotizacionResult(false, 
+                "No se puede cambiar la moneda cuando ya hay líneas de detalle");
+        }
+    }
+    else
+    {
+        return new ActualizarCotizacionResult(false, 
+            "Solo se puede cambiar la moneda en versión 1.0 y estado Borrador");
+    }
+}
+```
+
+##### **Frontend (Vista):**
+```csharp
+// En CotizacionEditarViewModel
+public bool PuedeCambiarMoneda => 
+    NumeroVersion == 1.0m && 
+    EstadoActual == 'B' && 
+    (Detalles == null || !Detalles.Any());
+```
+
+##### **JavaScript (Validación Adicional):**
+```javascript
+// En editar.js
+$('#MonedaSelect').on('change', function() {
+    const totalLineas = $('#tablaDetalles tbody tr').length;
+    
+    if (totalLineas > 0) {
+        showNotification('warning', 
+            'No se puede cambiar la moneda cuando hay líneas de detalle agregadas.');
+        $(this).val(monedaAnterior); // Revertir
+        return;
+    }
+    
+    // Proceder con confirmación...
+});
+```
+
+#### **🎯 FLUJOS DE USUARIO DOCUMENTADOS:**
+
+##### **✅ Flujo Exitoso:**
+1. **Usuario crea nueva cotización** → Estado: Borrador, Versión: 1.0
+2. **Sin agregar productos** → Sin líneas de detalle
+3. **Accede a edición** → Ve combo de monedas habilitado
+4. **Selecciona nueva moneda** → Sistema solicita confirmación
+5. **Confirma cambio** → Moneda actualizada exitosamente
+
+##### **❌ Flujo Restringido - Con Detalles:**
+1. **Usuario tiene cotización v1.0** → Estado: Borrador 
+2. **Agrega líneas de productos** → Ya tiene detalles
+3. **Intenta cambiar moneda** → Campo de moneda bloqueado
+4. **Ve explicación** → "No se puede cambiar cuando hay líneas de detalle"
+
+##### **❌ Flujo Restringido - Versión Superior:**
+1. **Usuario tiene cotización v2.0** → Versión superior a 1.0
+2. **Accede a edición** → Campo de moneda bloqueado
+3. **Ve explicación** → "No se puede cambiar en versiones superiores a 1.0"
+
+##### **❌ Flujo Restringido - Estado Diferente:**
+1. **Usuario tiene cotización Enviada** → Estado 'E'
+2. **Accede a vista** → Solo lectura (no hay edición)
+3. **Ve información** → "La moneda no se puede cambiar fuera del estado Borrador"
+
+#### **📊 IMPACTO EN OTROS COMPONENTES:**
+
+##### **🔄 Recálculos Automáticos:**
+- **Displays financieros** se actualizan con nueva simbología
+- **Totales** se recalculan (aunque estén en 0 sin detalles)
+- **Configuración global** se actualiza para futuras operaciones
+
+##### **💾 Persistencia:**
+```csharp
+// Se actualiza la tabla Cotizaciones, campo Moneda
+cotizacion.Moneda = request.Moneda;
+
+// Se registra en historial (futuro)
+var historial = new HistorialCotizacion {
+    TipoEvento = "CambioMoneda",
+    Comentario = $"Moneda cambiada de {monedaAnterior} a {nuevaMoneda}"
+};
+```
+
+#### **🎯 CONSIDERACIONES DE DISEÑO:**
+
+##### **💡 Principios Aplicados:**
+- **🛡️ Validación en múltiples capas**: Frontend, Backend, Base de datos
+- **📢 Feedback inmediato**: Usuario sabe por qué no puede cambiar
+- **🔄 Reversibilidad**: Cambios se pueden confirmar o cancelar
+- **🚨 Prevención de errores**: No se permite llegar a estados inconsistentes
+
+##### **🎨 Experiencia de Usuario:**
+- **✅ Clara indicación visual** de cuándo se puede/no se puede cambiar
+- **✅ Explicaciones específicas** para cada restricción
+- **✅ Confirmación requerida** para cambios importantes
+- **✅ Notificaciones informativas** sobre el resultado
+
+#### **📋 TESTING DE REGLAS DE NEGOCIO:**
+
+##### **🧪 Casos de Prueba Críticos:**
+```csharp
+[Test]
+public void CambioMoneda_Version1_EstadoBorrador_SinDetalles_Permitido()
+{
+    // Arrange: v1.0, Estado B, sin detalles
+    // Act: Cambiar moneda CRC -> USD  
+    // Assert: Cambio exitoso
+}
+
+[Test] 
+public void CambioMoneda_ConDetalles_Rechazado()
+{
+    // Arrange: v1.0, Estado B, CON detalles
+    // Act: Intentar cambiar moneda
+    // Assert: Error específico sobre líneas de detalle
+}
+
+[Test]
+public void CambioMoneda_VersionSuperior_Rechazado()
+{
+    // Arrange: v2.0, Estado B, sin detalles  
+    // Act: Intentar cambiar moneda
+    // Assert: Error específico sobre versión
+}
+```
+
+##### **🔍 Verificaciones Automáticas:**
+- **Backend**: Validación en `CotizacionService.ActualizarCotizacionAsync`
+- **Frontend**: Validación en Vue/JavaScript antes de envío
+- **UI**: Habilitación/deshabilitación de controles según estado
+
+#### **🚨 ALERTAS Y MONITOREO:**
+
+##### **📊 Métricas Recomendadas:**
+- **Intentos de cambio exitosos** vs **rechazados**
+- **Razones de rechazo** más comunes
+- **Uso por moneda** (CRC, USD, EUR)
+
+##### **🚨 Alertas de Sistema:**
+```csharp
+// En caso de error de lógica de negocio
+_logger.LogWarning("Intento de cambio de moneda violó reglas de negocio: {Razon}", 
+                razonRechazo);
+```
+
+---
+
+## 💰 **GESTIÓN DE MONEDAS Y FORMATO FINANCIERO**
+
+### 🌍 **MONEDAS SOPORTADAS**
+
+El sistema maneja múltiples monedas con soporte completo para simbología, formato y conversión:
+
+#### **💱 Monedas Disponibles:**
+
+| Código | Símbolo | Nombre Completo | Uso Principal |
+|--------|---------|-----------------|---------------|
+| **CRC** | **₡** | **Colón Costarricense** | **Moneda predeterminada** |
+| **USD** | **$** | **Dólar Estadounidense** | Clientes internacionales |
+| **EUR** | **€** | **Euro** | Clientes europeos |
+| **MXN** | **$** | Peso Mexicano | Expansión regional |
+| **CAD** | **$** | Dólar Canadiense | Mercado norteamericano |
+| **GBP** | **£** | Libra Esterlina | Mercado británico |
+
+#### **🔧 Configuración Técnica:**
+
+##### **Símbolos Unicode (Evitar Problemas de Encoding):**
+```javascript
+const symbols = {
+    'CRC': '\u00A2',    // ₡ (Unicode: U+00A2) 
+    'USD': '$',         // Dólar estadounidense
+    'EUR': '\u20AC',    // € (Unicode: U+20AC)
+    'GBP': '\u00A3',    // £ (Unicode: U+00A3)
+    'JPY': '\u00A5',    // ¥ (Unicode: U+00A5)
+};
+```
+
+##### **Formato de Números por Moneda:**
+```csharp
+// En FormatHelper.cs
+public static string FormatCurrency(decimal value, string currency)
+{
+    var symbol = GetCurrencySymbol(currency);
+    var formatted = value.ToString("N2", CultureInfo.InvariantCulture);
+    return $"{symbol}{formatted}";
+}
+```
+
+### 📊 **REGLAS DE FORMATO FINANCIERO**
+
+#### **🎯 Estándares de Presentación:**
+
+##### **✅ Formato Correcto:**
+```
+Subtotal:           ₡125,000.00
+Descuento:         -₡5,000.00  
+Subtotal c/Desc:    ₡120,000.00
+Impuesto (13%):     ₡15,600.00
+─────────────────────────────
+Total:              ₡135,600.00
+```
+
+##### **❌ Formato Incorrecto:**
+```
+Subtotal: ¢125000      // Sin separadores ni decimales
+Descuento: ¢-5000      // Símbolo mal ubicado  
+Total: 135,600 CRC     // Inconsistente
+```
+
+#### **🔢 Reglas de Cálculo:**
+
+##### **📐 Fórmulas Estándar:**
+```csharp
+// 1. Subtotal = Σ(Cantidad × PrecioUnitario)
+decimal subtotal = detalles.Sum(d => d.Cantidad * d.PrecioUnitario);
+
+// 2. Subtotal con Descuentos = Subtotal - Σ(Descuentos)
+decimal subtotalConDescuentos = subtotal - detalles.Sum(d => d.Descuento);
+
+// 3. Impuesto = SubtotalConDescuentos × 0.13 (13% Costa Rica)
+decimal impuesto = subtotalConDescuentos * 0.13m;
+
+// 4. Total = SubtotalConDescuentos + Impuesto
+decimal total = subtotalConDescuentos + impuesto;
+```
+
+##### **⚖️ Precisión Decimal:**
+- **Cálculos internos**: `decimal` (precisión máxima)
+- **Base de datos**: `DECIMAL(18,2)` 
+- **Presentación**: 2 decimales siempre
+- **Redondeo**: Banker's rounding (estándar .NET)
+
+### 🔄 **CONVERSIÓN Y TIPOS DE CAMBIO**
+
+#### **💹 Gestión de Tipos de Cambio:**
+
+##### **🎯 Reglas de Negocio:**
+1. **Moneda predeterminada**: Todas las cotizaciones nuevas en CRC
+2. **Cambio permitido**: Solo en versión 1.0, estado Borrador, sin detalles
+3. **Tipo de cambio**: Se mantiene en la versión para auditoría
+4. **Conversión**: Manual (el usuario ingresa precios en la moneda seleccionada)
+
+##### **📊 Estructura de Datos:**
+```csharp
+// Tabla Cotizaciones
+public string Moneda { get; set; } = "CRC"; // Moneda de la cotización
+
+// Tabla CotizacionesVersiones  
+public decimal? TipoCambio { get; set; } // Tipo de cambio histórico (futuro)
+```
+
+#### **🎯 Futuras Integraciones:**
+```csharp
+// Posible integración con API de tipos de cambio
+public interface ITipoCambioService
+{
+    Task<decimal> GetTipoCambioAsync(string from, string to, DateTime fecha);
+    Task<Dictionary<string, decimal>> GetTiposCambioActualesAsync();
+}
+```
+
+### 🎨 **EXPERIENCIA DE USUARIO CON MONEDAS**
+
+#### **🔄 Cambio de Moneda en Interfaz:**
+
+##### **✅ Flujo Optimizado:**
+1. **Detección automática** de si se puede cambiar
+2. **Combo habilitado** solo cuando es posible
+3. **Feedback inmediato** si no es posible
+4. **Confirmación requerida** para cambios
+5. **Actualización visual** instantánea
+
+##### **🎯 Componentes Reactivos:**
+```javascript
+// Actualización automática de displays al cambiar moneda
+function aplicarCambioMoneda(nuevaMoneda) {
+    monedaActual = nuevaMoneda;
+    
+    // Actualizar todos los displays financieros
+    actualizarDisplaysMoneda();
+    
+    // Actualizar configuración global
+    if (window.FormatConfig) {
+        window.FormatConfig.moneda = nuevaMoneda;
+        window.FormatConfig.simboloMoneda = getCurrencySymbol(nuevaMoneda);
+    }
+}
+```
+
+#### **🚨 Validaciones de UX:**
+
+##### **💡 Validaciones Proactivas:**
+```javascript
+// Prevención de errores antes de envío
+$('#MonedaSelect').on('change', function() {
+    const totalLineas = $('#tablaDetalles tbody tr').length;
+    
+    if (totalLineas > 0) {
+        // Revertir selección automáticamente
+        $(this).val(monedaAnterior);
+        showNotification('warning', 
+            'No se puede cambiar la moneda cuando hay líneas de detalle.');
+        return;
+    }
+});
+```
+
+##### **✅ Feedback Positivo:**
+- **Confirmación visual** cuando el cambio es exitoso
+- **Actualización inmediata** de todos los totales
+- **Persistencia** del cambio en la sesión
+
+### 📋 **MEJORES PRÁCTICAS PARA DESARROLLADORES**
+
+#### **🔧 Implementación de Nuevas Monedas:**
+
+##### **1. Agregar al enum/constants:**
+```csharp
+public static readonly Dictionary<string, (string Symbol, string Name)> SupportedCurrencies = new()
+{
+    ["CRC"] = ("₡", "Colón Costarricense"),
+    ["USD"] = ("$", "Dólar Estadounidense"),
+    ["EUR"] = ("€", "Euro"),
+    ["NUEVA"] = ("§", "Nueva Moneda")  // Ejemplo
+};
+```
+
+##### **2. Actualizar FormatHelper:**
+```csharp
+public static List<(string codigo, string simbolo, string nombre)> GetMonedasDisponibles()
+{
+    return SupportedCurrencies.Select(kv => 
+        (kv.Key, kv.Value.Symbol, kv.Value.Name)).ToList();
+}
+```
+
+##### **3. Agregar validaciones:**
+```csharp
+public static bool IsSupportedCurrency(string currency)
+{
+    return SupportedCurrencies.ContainsKey(currency?.ToUpper() ?? "");
+}
+```
+
+#### **⚠️ Validaciones Críticas:**
+
+##### **🚨 Nunca Hacer:**
+```csharp
+// ❌ MAL - Hardcodear monedas
+if (moneda == "CRC" || moneda == "USD") { }
+
+// ❌ MAL - Asumir formato
+var precio = "$" + valor.ToString();
+
+// ❌ MAL - Ignorar validaciones
+cotizacion.Moneda = request.Moneda; // Sin verificar reglas
+```
+
+##### **✅ Siempre Hacer:**
+```csharp
+// ✅ BIEN - Usar funciones centralizadas
+if (FormatHelper.IsSupportedCurrency(moneda)) { }
+
+// ✅ BIEN - Formato consistente  
+var precio = FormatHelper.FormatCurrency(valor, moneda);
+
+// ✅ BIEN - Validar reglas de negocio
+if (PuedeActualizarMoneda(cotizacion, version)) {
+    cotizacion.Moneda = request.Moneda;
+}
+```
+
+---
+
+## 🎨 **INTERFAZ DE USUARIO Y NOTIFICACIONES**
+
+### 📢 **SISTEMA DE NOTIFICACIONES GLOBAL**
+
+**📜 REGLA FUNDAMENTAL**: NUNCA usar `alert()`, `confirm()` o `prompt()` del navegador. El proyecto tiene un sistema de notificaciones centralizado y elegante implementado en `site.js`.
+
+#### **✅ FUNCIONES GLOBALES DISPONIBLES:**
+
+##### **🔔 `window.showNotification(type, message)`**
+**Ubicación**: `src/CotizacionesWeb.UI/wwwroot/js/site.js`
+
+```javascript
+// ✅ CORRECTO - Usar función global
+window.showNotification('success', 'Cotización guardada exitosamente');
+window.showNotification('error', 'Error al procesar los datos');
+window.showNotification('warning', 'Advertencia: Datos incompletos');
+window.showNotification('info', 'Información actualizada');
+
+// ❌ INCORRECTO - NUNCA usar
+alert('Error al guardar'); // ¡MAL!
+confirm('¿Está seguro?'); // ¡MAL!
+```
+
+**Características:**
+- ✅ **Estilos consistentes**: Usa clases Bootstrap del tema
+- ✅ **Auto-dismiss**: Se cierra automáticamente después de 5 segundos
+- ✅ **Responsive**: Funciona en desktop y móvil
+- ✅ **Iconografía**: Incluye iconos Font Awesome apropiados
+- ✅ **Posicionamiento**: Se inserta al inicio del área de contenido
+
+##### **🚨 `window.showModalAlert(modalAlertId, message, type)`**
+**Para alertas dentro de modales específicos:**
+
+```javascript
+// Mostrar error dentro de un modal
+window.showModalAlert('modalEditarDetalleAlert', 'Campo requerido', 'danger');
+window.showModalAlert('modalConfirmAlert', 'Operación exitosa', 'success');
+
+// Ocultar alerta del modal
+window.hideModalAlert('modalEditarDetalleAlert');
+```
+
+**Características:**
+- ✅ **Scope local**: Solo afecta el modal específico
+- ✅ **Auto-scroll**: Hace scroll al inicio del modal al mostrar
+- ✅ **Tipos soportados**: 'danger', 'warning', 'info', 'success'
+
+#### **🎯 IMPLEMENTACIÓN EN CÓDIGO JAVASCRIPT:**
+
+##### **✅ Patrón Correcto para Notificaciones:**
+```javascript
+function showNotification(type, message) {
+    // Usar la función global de site.js
+    if (typeof window.showNotification === 'function' && 
+        window.showNotification !== showNotification) {
+        try {
+            window.showNotification(type, message);
+        } catch (error) {
+            // Solo console como fallback (no alert)
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+    } else {
+        // Fallback seguro - solo console
+        console.log(`[${type.toUpperCase()}] ${message}`);
+    }
+}
+```
+
+##### **❌ Anti-Patrones a Evitar:**
+```javascript
+// ❌ NUNCA HACER ESTO:
+alert('Error al guardar');
+confirm('¿Desea continuar?');
+prompt('Ingrese valor:');
+
+// ❌ TAMPOCO ESTO:
+$('#miModal').modal('show');
+$('#miModal .modal-body').html('<div class="alert alert-danger">Error</div>');
+
+// ❌ NI ESTO:
+if (error) {
+    $('.content').prepend('<div class="alert alert-danger">Error</div>');
+}
+```
+
+#### **🛠️ CONFIGURACIÓN EN VISTAS RAZOR:**
+
+##### **✅ Estructura HTML para Alertas en Modales:**
+```razor
+<!-- Dentro de modal-body -->
+<div id="modalEditarDetalleAlert" class="alert alert-danger d-none" role="alert">
+    <strong>Error:</strong> <span id="modalEditarDetalleAlertMessage"></span>
+</div>
+```
+
+##### **✅ Scripts de Vista Consistentes:**
+```javascript
+@section Scripts {
+    <script>
+        // Configuración específica del servidor
+        if (window.FormatConfig) {
+            window.FormatConfig.moneda = '@Model.Moneda';
+            window.FormatConfig.estado = '@Model.EstadoActual';
+        }
+        
+        // JavaScript específico de la vista
+        $(document).ready(function() {
+            // Usar showNotification para feedback al usuario
+            function procesarFormulario() {
+                // ... lógica
+                if (success) {
+                    window.showNotification('success', 'Operación exitosa');
+                } else {
+                    window.showNotification('error', 'Error en la operación');
+                }
+            }
+        });
+    </script>
+    <script src="~/js/miVista.js" asp-append-version="true"></script>
+}
+```
+
+#### **📋 TIPOS DE NOTIFICACIÓN ESTÁNDAR:**
+
+##### **🎨 Mapeo de Tipos vs Estilos:**
+| Tipo | Clase CSS | Icono | Uso |
+|------|-----------|--------|-----|
+| `success` | `alert-success` | `fa-check-circle` | Operaciones exitosas |
+| `error` | `alert-danger` | `fa-exclamation-circle` | Errores y fallos |
+| `warning` | `alert-warning` | `fa-exclamation-triangle` | Advertencias |
+| `info` | `alert-info` | `fa-info-circle` | Información general |
+
+##### **💡 Ejemplos de Uso por Contexto:**
+```javascript
+// Guardado exitoso
+window.showNotification('success', 'Cotización guardada exitosamente');
+
+// Error de validación
+window.showNotification('error', 'El nombre del interesado es obligatorio');
+
+// Advertencia de estado
+window.showNotification('warning', 'Solo las cotizaciones en estado Borrador pueden editarse');
+
+// Información de proceso
+window.showNotification('info', 'Procesando datos, por favor espere...');
+```
+
+#### **🔗 INTEGRACIÓN CON SISTEMA GLOBAL:**
+
+##### **✅ Verificación de Disponibilidad:**
+```javascript
+// Verificar que el sistema está disponible antes de usar
+function notificarUsuario(tipo, mensaje) {
+    if (typeof window.showNotification === 'function') {
+        window.showNotification(tipo, mensaje);
+    } else {
+        // Fallback para desarrollo/debug
+        console.warn('Sistema de notificaciones no disponible');
+        console.log(`[${tipo}] ${mensaje}`);
+    }
+}
+```
+
+##### **🚫 NUNCA Implementar Sistema Propio:**
+```javascript
+// ❌ MAL - Reimplementar notificaciones
+function miShowNotification(mensaje) {
+    const div = $('<div class="alert alert-info">').text(mensaje);
+    $('body').prepend(div);
+    setTimeout(() => div.remove(), 3000);
+}
+
+// ✅ BIEN - Usar sistema global
+window.showNotification('info', mensaje);
+```
+
+#### **🧪 TESTING Y DEBUGGING:**
+
+##### **🔍 Comandos de Consola Útiles:**
+```javascript
+// Probar notificaciones en consola del navegador
+window.showNotification('success', 'Prueba éxito');
+window.showNotification('error', 'Prueba error');
+window.showNotification('warning', 'Prueba advertencia');
+window.showNotification('info', 'Prueba información');
+
+// Verificar disponibilidad
+console.log('showNotification disponible:', typeof window.showNotification === 'function');
+
+// Ver configuración actual
+console.log('Función showNotification:', window.showNotification);
+```
+
+##### **📝 Logging para Desarrollo:**
+```javascript
+// En archivos JS específicos de vista
+function miFuncion() {
+    try {
+        // ... lógica
+        window.showNotification('success', 'Operación completada');
+    } catch (error) {
+        console.error('Error en miFuncion:', error);
+        window.showNotification('error', 'Error inesperado en la operación');
+    }
+}
+```
+
+#### **⚠️ REGLAS CRÍTICAS:**
+
+##### **🚫 PROHIBIDO:**
+1. **Usar alert/confirm/prompt** del navegador
+2. **Crear sistemas de notificación propios** en vistas individuales
+3. **Insertar HTML de alertas manualmente** en el DOM
+4. **Usar console.log para notificar al usuario** (solo para debug)
+
+##### **✅ OBLIGATORIO:**
+1. **Usar window.showNotification** para feedback al usuario
+2. **Incluir fallbacks apropiados** cuando la función no esté disponible
+3. **Usar tipos estándar** (success, error, warning, info)
+4. **Mensajes descriptivos y en español** para el usuario final
+
+#### **📚 EJEMPLOS REALES DEL PROYECTO:**
+
+##### **Editar Cotización (`editar.js`):**
+```javascript
+// Validación de formulario
+if (!nombreInteresado) {
+    window.showNotification('error', 'El nombre del interesado es obligatorio');
+    $('#NombreInteresado').focus();
+    return;
+}
+
+// Guardado exitoso
+if (response.success) {
+    window.showNotification('success', response.message || 'Cotización guardada exitosamente');
+} else {
+    window.showNotification('error', response.message || 'Error al guardar la cotización');
+}
+```
+
+##### **Manejo de Errores AJAX:**
+```javascript
+$.ajax({
+    // ... configuración
+    success: function(response) {
+        if (response.success) {
+            window.showNotification('success', 'Operación exitosa');
+        } else {
+            window.showNotification('error', response.message);
+        }
+    },
+    error: function(xhr) {
+        let errorMessage = 'Error de comunicación con el servidor';
+        
+        if (xhr.status === 403) {
+            errorMessage = 'No tiene permisos para realizar esta operación';
+        } else if (xhr.status === 404) {
+            errorMessage = 'Recurso no encontrado';
+        } else if (xhr.status >= 500) {
+            errorMessage = 'Error interno del servidor';
+        }
+        
+        window.showNotification('error', errorMessage);
+    }
+});
+```
+
+### 🎯 **BENEFICIOS DEL SISTEMA ESTANDARIZADO:**
+
+#### **🎨 Consistencia Visual:**
+- ✅ **Tema unificado**: Todas las notificaciones siguen el diseño AdminLTE
+- ✅ **Branding consistente**: Colores y tipografía del proyecto
+- ✅ **Responsive**: Se adapta automáticamente a diferentes pantallas
+
+#### **🔧 Mantenimiento Simplificado:**
+- ✅ **Un solo lugar para cambios**: Modificaciones en `site.js` afectan toda la app
+- ✅ **Debugging centralizado**: Fácil agregar logging o analytics
+- ✅ **Testing consistente**: Un solo conjunto de tests para notificaciones
+
+#### **👥 Experiencia de Usuario:**
+- ✅ **Comportamiento predecible**: Los usuarios aprenden el patrón una vez
+- ✅ **Accesibilidad**: Soporte para screen readers y navegación por teclado
+- ✅ **Performance**: Reutiliza elementos DOM en lugar de crear nuevos
+
+---
+
+## 🏗️ **ARQUITECTURA DEL PROYECTO**
+
+> **📚 Documentación Técnica Completa**: Ver `src/CotizacionesWeb.Infrastructure/Docs/` para lineamientos detallados
+
+### 📖 **Documentación de Referencia**
+
+El proyecto mantiene documentación técnica detallada en la carpeta Infrastructure:
+
+- **🏛️ `architecture.md`**: Lineamientos de arquitectura general, estilo arquitectónico y reglas de dependencias
+- **🔐 `authentication.md`**: Sistema de autenticación y autorización
+- **🗃️ `migrations.md`**: Gestión de migraciones y esquema de base de datos
+- **📊 `logging.md`**: Configuración de logging y diagnóstico
+- **⚙️ `EFCommands.md`**: Comandos y configuración de Entity Framework
+
+### 🎯 **Estilo Arquitectónico: Arquitectura Limpia/Hexagonal**
+
+**📜 REGLA FUNDAMENTAL**: Seguir estrictas reglas de dependencia entre capas para mantener el diseño limpio y testeable.
+
+#### **🏗️ Capas del Sistema:**
+
+```
+┌─────────────────────────────────────────────┐
+│                     UI                      │ ← Presentación (Controllers, Views, Models)
+│          CotizacionesWeb.UI                 │
+└─────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────┐
+│                APPLICATION                  │ ← Casos de Uso (Services, DTOs, Interfaces)
+│       CotizacionesWeb.Application           │
+└─────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────┐
+│                  DOMAIN                     │ ← Entidades, Reglas de Negocio, Enums
+│         CotizacionesWeb.Domain              │
+└─────────────────────────────────────────────┘
+                        ▲
+                        │
+┌─────────────────────────────────────────────┐
+│             INFRASTRUCTURE                  │ ← Datos, Integraciones, Implementaciones
+│      CotizacionesWeb.Infrastructure         │
+└─────────────────────────────────────────────┘
+```
+
+#### **⚠️ REGLAS CRÍTICAS DE DEPENDENCIA:**
+
+##### **✅ PERMITIDO:**
+- **UI** → **Application** ✓
+- **Application** → **Domain** ✓  
+- **Infrastructure** → **Application** + **Domain** ✓
+
+##### **❌ PROHIBIDO:**
+- **Controllers** → **Infrastructure** ❌ (Violación de arquitectura limpia)
+- **Domain** → **Cualquier otra capa** ❌ (Domain debe ser independiente)
+- **Application** → **Infrastructure** ❌ (Usar abstracciones/interfaces)
+
+#### **🔧 IMPLEMENTACIÓN PRÁCTICA:**
+
+##### **✅ Patrón Correcto:**
+```csharp
+// En UI/Controllers
+public class CotizacionesController : Controller
+{
+    private readonly ICotizacionService _cotizacionService; // ✓ Solo interface de Application
+    
+    public async Task<IActionResult> Guardar(ViewModel model)
+    {
+        var result = await _cotizacionService.ActualizarAsync(request); // ✓ Delegación a Application
+        return Json(result);
+    }
+}
+
+// En Application
+public interface ICotizacionService // ✓ Abstracción en Application
+{
+    Task<Result> ActualizarAsync(Request request);
+}
+
+// En Infrastructure  
+public class CotizacionService : ICotizacionService // ✓ Implementación en Infrastructure
+{
+    private readonly DbContext _context; // ✓ Acceso a datos aquí
+}
+```
+
+##### **❌ Patrón Incorrecto:**
+```csharp
+// ❌ MAL - Controller accediendo directamente a Infrastructure
+public class CotizacionesController : Controller
+{
+    private readonly DbContext _context; // ❌ Violación de arquitectura
+
+    public async Task<IActionResult> Guardar()
+    {
+        var entity = await _context.Cotizaciones.FindAsync(id); // ❌ Lógica de datos en Controller
+    }
+}
+```
+
+#### **💉 INYECCIÓN DE DEPENDENCIAS:**
+
+##### **✅ Configuración Correcta en Program.cs:**
+```csharp
+// Application Services (Interfaces)
+builder.Services.AddScoped<ICotizacionService, CotizacionService>();
+
+// Infrastructure Services  
+builder.Services.AddDbContext<DbContextCotizaciones>(options => ...);
+
+// Controllers solo reciben interfaces de Application
+```
+
+#### **🧪 BENEFICIOS DE ARQUITECTURA LIMPIA:**
+
+##### **🔍 Testabilidad:**
+- ✅ **Unit Tests** para Domain sin dependencias externas
+- ✅ **Integration Tests** para Application usando mocks
+- ✅ **Controller Tests** usando servicios simulados
+
+##### **🔄 Flexibilidad:**
+- ✅ **Cambiar BD** sin afectar lógica de negocio
+- ✅ **Cambiar UI** (MVC → API) sin tocar Application/Domain
+- ✅ **Integrar servicios** externos sin modificar núcleo
+
+##### **📈 Mantenibilidad:**
+- ✅ **Separación clara** de responsabilidades
+- ✅ **Bajo acoplamiento** entre capas
+- ✅ **Alta cohesión** dentro de cada capa
+
+#### **📋 CHECKLIST DE VERIFICACIÓN:**
+
+##### **🎯 Para Controllers:**
+- [ ] ¿Solo inyecta interfaces de Application?
+- [ ] ¿No tiene lógica de negocio compleja?
+- [ ] ¿No accede directamente a DbContext?
+- [ ] ¿Maneja solo coordinación y serialización?
+
+##### **🎯 Para Services de Application:**
+- [ ] ¿Implementa casos de uso específicos?
+- [ ] ¿No depende de implementaciones concretas?
+- [ ] ¿Usa DTOs para comunicación?
+- [ ] ¿Valida reglas de negocio?
+
+##### **🎯 Para Infrastructure:**
+- [ ] ¿Implementa interfaces de Application?
+- [ ] ¿Contiene toda la lógica de acceso a datos?
+- [ ] ¿Maneja integraciones externas?
+- [ ] ¿No es referenciada directamente por UI?
+
+---
+
+## 🔧 **DEBUGGING Y RESOLUCIÓN DE PROBLEMAS**
+
+### 🚨 **PROBLEMAS COMUNES Y SOLUCIONES**
+
+#### **❌ PROBLEMA: Estado no detectado correctamente**
+
+**Síntomas:**
+- Cotización en estado "Borrador" pero interfaz no editable
+- Mensaje: "Solo las cotizaciones en estado Borrador pueden ser editadas"
+- Botones deshabilitados incorrectamente
+
+**🔍 Diagnóstico:**
+```javascript
+// En consola del navegador (F12)
+window.diagnosticarEstado();
+```
+
+**💡 Soluciones:**
+
+##### **Solución 1: Auto-corrección**
+```javascript
+// Si DOM muestra "Borrador" pero estado detectado es incorrecto
+window.forzarEstadoBorrador();
+```
+
+##### **Solución 2: Corrección manual**
+```javascript
+// Si el estado es B pero no es editable
+window.forzarEstadoEditable();
+```
+
+##### **Solución 3: Reconfiguración completa**
+```javascript
+// Reinicializar vista completamente
+inicializarVista();
+configurarEventos();
+```
+
+#### **❌ PROBLEMA: Notificaciones no se muestran**
+
+**Síntomas:**
+- Aparece `console.log` en lugar de notificaciones visuales
+- Funciones usan `alert()` del navegador
+- No hay feedback visual al usuario
+
+**🔍 Diagnóstico:**
+```javascript
+// Verificar disponibilidad de función global
+console.log('showNotification disponible:', typeof window.showNotification === 'function');
+
+// Probar notificación directa
+window.showNotification('info', 'Prueba de notificación');
+```
+
+**💡 Soluciones:**
+
+##### **Verificar carga de site.js:**
+```javascript
+// En _Layout.cshtml, verificar que existe esta línea:
+<script src="~/js/site.js" asp-append-version="true"></script>
+
+// Y que se carga ANTES de scripts específicos de vista
+```
+
+##### **Verificar implementación en vista:**
+```javascript
+// ✅ CORRECTO
+function showNotification(type, message) {
+    if (typeof window.showNotification === 'function' && 
+        window.showNotification !== showNotification) {
+        window.showNotification(type, message);
+    } else {
+        console.log(`[${type}] ${message}`);
+    }
+}
+
+// ❌ INCORRECTO
+function showNotification(type, message) {
+    alert(message); // ¡No!
+}
+```
+
+#### **❌ PROBLEMA: Errores de JavaScript en consola**
+
+**Síntomas:**
+- `TypeError: window.showNotification is not a function`
+- `ReferenceError: estadoActual is not defined`
+- Funcionalidad de edición no responde
+
+**🔍 Diagnóstico:**
+```javascript
+// Verificar orden de carga de scripts
+console.log('jQuery disponible:', typeof $ !== 'undefined');
+console.log('AdminLTE disponible:', typeof $.fn.CardWidget !== 'undefined');
+console.log('FormatConfig disponible:', typeof window.FormatConfig !== 'undefined');
+console.log('showNotification disponible:', typeof window.showNotification === 'function');
+```
+
+**💡 Soluciones:**
+
+##### **Verificar orden de scripts en _Layout.cshtml:**
+```razor
+<!-- ✅ ORDEN CORRECTO -->
+<!-- jQuery PRIMERO -->
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<!-- Bootstrap -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE -->
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<!-- Format Config ANTES de otros scripts -->
+<script src="~/js/shared/format-config.js" asp-append-version="true"></script>
+<!-- Site.js con funciones globales -->
+<script src="~/js/site.js" asp-append-version="true"></script>
+<!-- Scripts específicos de vista AL FINAL -->
+@await RenderSectionAsync("Scripts", required: false)
+```
+
+### 🛠️ **HERRAMIENTAS DE DEBUGGING DISPONIBLES**
+
+#### **🔍 Funciones de Diagnóstico Global:**
+
+##### **`window.diagnosticarEstado()`**
+```javascript
+// Diagnóstico completo del estado de la cotización
+window.diagnosticarEstado();
+
+/* Salida esperada:
+📊 Variables Globales:
+  - estadoActual: B
+  - monedaActual: CRC
+✅ Verificaciones de Estado:
+  - Es editable (directo): true
+  - Badge texto: "Borrador"
+*/
+```
+
+##### **`window.diagnosticarSimbolos()`**
+```javascript
+// Diagnóstico de símbolos de moneda
+window.diagnosticarSimbolos();
+
+/* Salida esperada:
+💰 DIAGNÓSTICO DE SÍMBOLOS DE MONEDA
+🧪 Pruebas de formateo:
+  FormatUtils.formatCurrency(125000, 'CRC'): ¢125,000.00
+*/
+```
+
+##### **`window.diagnosticarContadorNotas()`**
+```javascript
+// Diagnóstico del contador de caracteres en notas
+window.diagnosticarContadorNotas();
+```
+
+#### **🔧 Funciones de Corrección Automática:**
+
+##### **`window.forzarEstadoBorrador()`**
+```javascript
+// Auto-corrección cuando DOM indica Borrador pero estado no detectado
+window.forzarEstadoBorrador();
+
+/* Hace automáticamente:
+✅ Lee badge del DOM
+✅ Fuerza estadoActual = 'B'
+✅ Reconfigura eventos
+✅ Habilita interfaz
+*/
+```
+
+##### **`window.corregirSimbolos()`**
+```javascript
+// Corrige símbolos de moneda malformados en el DOM
+window.corregirSimbolos();
+```
+
+### 📝 **CHECKLIST DE DEBUGGING**
+
+#### **🎯 Para Problemas de Estado:**
+- [ ] ¿El badge del DOM dice "Borrador"?
+- [ ] ¿`estadoActual === 'B'`?
+- [ ] ¿`window.FormatConfig.estado === 'B'`?
+- [ ] ¿Los botones están habilitados?
+- [ ] ¿Los campos NO tienen `readonly`?
+
+#### **🎯 Para Problemas de Notificaciones:**
+- [ ] ¿Existe `window.showNotification`?
+- [ ] ¿Se carga `site.js` antes del script de vista?
+- [ ] ¿No hay conflictos de nombres de función?
+- [ ] ¿Las notificaciones aparecen en pantalla?
+
+#### **🎯 Para Problemas de JavaScript:**
+- [ ] ¿jQuery está cargado?
+- [ ] ¿AdminLTE está disponible?
+- [ ] ¿No hay errores en consola?
+- [ ] ¿El orden de scripts es correcto?
+
+### 🚀 **COMANDOS DE EMERGENCIA**
+
+#### **Reinicialización Completa:**
+```javascript
+// En consola, ejecutar paso a paso:
+window.diagnosticarEstado();                // 1. Diagnosticar problema
+window.forzarEstadoBorrador();             // 2. Corregir estado si necesario
+window.corregirSimbolos();                 // 3. Corregir símbolos si necesario
+location.reload();                         // 4. Recargar página como último recurso
+```
+
+#### **Debugging de Producción:**
+```javascript
+// Información básica para reportes de error
+console.log('=== INFO DEBUG ===');
+console.log('URL:', window.location.href);
+console.log('User Agent:', navigator.userAgent);
+console.log('jQuery:', typeof $ !== 'undefined' ? $.fn.jquery : 'NO DISPONIBLE');
+console.log('Estado actual:', estadoActual);
+console.log('Moneda actual:', monedaActual);
+console.log('FormatConfig:', !!window.FormatConfig);
+console.log('showNotification:', typeof window.showNotification === 'function');
+console.log('==================');
+```
+
+---
+
 ## 📋 **CAMBIOS ESTRUCTURALES CRÍTICOS (22/03/2026 - SESIÓN 3)**
 
 ### 🔄 **MIGRACIÓN DE MONEDA: CotizacionVersion → Cotizacion**

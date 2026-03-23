@@ -92,6 +92,21 @@ document.addEventListener('DOMContentLoaded', function() {
         $('.btn-editar').on('click', function () {
             const cotizacionId = $(this).attr('data-id');
             
+            // DEBUGGING TEMPORAL
+            console.log('=== CLICK EN BOTÓN EDITAR ===');
+            console.log('Botón clickeado:', this);
+            console.log('CotizacionId del botón:', cotizacionId);
+            console.log('Fila del botón:', $(this).closest('tr').attr('data-cotizacion-id'));
+            console.log('URL que se va a abrir:', '/Cotizaciones/Editar/' + cotizacionId);
+            console.log('============================');
+            
+            // Verificar que el ID no esté vacío o undefined
+            if (!cotizacionId || cotizacionId === 'undefined') {
+                console.error('ERROR: cotizacionId está vacío o undefined');
+                showNotification('error', 'Error: ID de cotización no válido');
+                return;
+            }
+            
             // Navegar directamente a la vista de edición
             window.location.href = '/Cotizaciones/Editar/' + cotizacionId;
         });

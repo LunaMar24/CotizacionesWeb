@@ -310,8 +310,8 @@ public class CotizacionesController : Controller
                     return NotFound($"Cotización {cotizacionId} no encontrada");
                 }
 
-                // Obtener el detalle de la versión actual
-                detalleDto = await _cotizacionService.GetCotizacionVersionDetailAsync(cotizacion.VersionActual);
+                // Obtener el detalle de la versión actual usando el método correcto
+                detalleDto = await _cotizacionService.GetCotizacionCurrentVersionDetailAsync(cotizacionId);
             }
 
             if (detalleDto == null)
@@ -389,6 +389,23 @@ public class CotizacionesController : Controller
     {
         try
         {
+            _logger.LogInformation("=== MÉTODO EDITAR INICIADO ===");
+            _logger.LogInformation("CotizacionId recibido en URL: '{CotizacionId}'", cotizacionId);
+            _logger.LogInformation("Tipo del parámetro: {TipoParametro}", cotizacionId?.GetType().Name);
+            _logger.LogInformation("Request.Path: {RequestPath}", Request.Path);
+            _logger.LogInformation("Request.PathBase: {RequestPathBase}", Request.PathBase);
+            _logger.LogInformation("Request.QueryString: {QueryString}", Request.QueryString);
+            _logger.LogInformation("RouteValues completos: {RouteValues}", string.Join(", ", RouteData.Values.Select(kv => $"{kv.Key}={kv.Value}")));
+            _logger.LogInformation("================================");
+
+            // VERIFICACIÓN ESPECÍFICA: ¿El parámetro es nulo o está mal?
+            if (string.IsNullOrEmpty(cotizacionId))
+            {
+                _logger.LogError("PROBLEMA CRÍTICO: cotizacionId está vacío o nulo");
+                TempData["Error"] = "ID de cotización no válido";
+                return RedirectToAction(nameof(Index));
+            }
+            
             // Cargar la versión actual de la cotización
             var cotizaciones = await _cotizacionService.GetCotizacionesListAsync(
                 new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null, null));
@@ -396,18 +413,26 @@ public class CotizacionesController : Controller
             var cotizacion = cotizaciones.FirstOrDefault(c => c.CotizacionId == cotizacionId);
             if (cotizacion == null)
             {
+                _logger.LogWarning("Cotización {CotizacionId} no encontrada", cotizacionId);
                 return NotFound($"Cotización {cotizacionId} no encontrada");
             }
+
+            _logger.LogInformation("Cotización encontrada: {CotizacionId}, Estado: {Estado}", 
+                cotizacion.CotizacionId, cotizacion.EstadoActual);
 
             // VALIDACIÓN CRÍTICA: Solo se puede editar en estado Borrador
             if (cotizacion.EstadoActual != 'B')
             {
+                _logger.LogWarning("Intento de editar cotización {CotizacionId} en estado {Estado}", 
+                    cotizacion.CotizacionId, cotizacion.EstadoActual);
                 TempData["Error"] = $"No se puede editar la cotización {cotizacionId}. Solo las cotizaciones en estado Borrador pueden ser editadas.";
                 return RedirectToAction(nameof(Index));
             }
 
-            // Obtener el detalle de la versión actual
-            var detalleDto = await _cotizacionService.GetCotizacionVersionDetailAsync(cotizacion.VersionActual);
+            // Obtener el detalle de la versión actual usando el nuevo método correcto
+            _logger.LogInformation("Obteniendo detalle de versión actual para cotización {CotizacionId}", cotizacionId);
+            
+            var detalleDto = await _cotizacionService.GetCotizacionCurrentVersionDetailAsync(cotizacionId);
             if (detalleDto == null)
             {
                 return NotFound($"Detalle de cotización {cotizacionId} no encontrado");
@@ -464,6 +489,13 @@ public class CotizacionesController : Controller
                 }).ToList()
             };
             
+            _logger.LogInformation("ViewModel creado con CotizacionId: '{ViewModelCotizacionId}'", viewModel.CotizacionId);
+            _logger.LogInformation("ViewModel VersionId: {ViewModelVersionId}", viewModel.VersionId);
+            _logger.LogInformation("Puede cambiar moneda: {PuedeCambiarMoneda}", viewModel.PuedeCambiarMoneda);
+            
+            // Agregar monedas disponibles para el filtro
+            ViewBag.MonedasDisponibles = FormatHelper.GetMonedasDisponiblesParaJson();
+            
             return View(viewModel);
         }
         catch (Exception ex)
@@ -471,6 +503,109 @@ public class CotizacionesController : Controller
             _logger.LogError(ex, "Error al cargar cotización para editar {CotizacionId}", cotizacionId);
             TempData["Error"] = "Error al cargar la cotización para edición";
             return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [RequierePermiso("COT_EDIT")]
+    public async Task<IActionResult> GuardarEdicion(CotizacionEditarViewModel viewModel)
+    {
+        try
+        {
+            _logger.LogInformation("Iniciando guardado de cotización {CotizacionId}, VersionId: {VersionId}", 
+                viewModel.CotizacionId, viewModel.VersionId);
+
+            // Validación de estado: usar directamente el servicio de actualización que ya valida
+            // En lugar de hacer consulta separada que puede tener timing issues
+
+            // Validaciones básicas PRIMERO
+            if (string.IsNullOrWhiteSpace(viewModel.NombreInteresado))
+            {
+                _logger.LogWarning("Guardado rechazado: Nombre del interesado vacío para {CotizacionId}", viewModel.CotizacionId);
+                return Json(new { success = false, message = "El nombre del interesado es obligatorio" });
+            }
+
+            if (string.IsNullOrWhiteSpace(viewModel.EmailInteresado))
+            {
+                _logger.LogWarning("Guardado rechazado: Email del interesado vacío para {CotizacionId}", viewModel.CotizacionId);
+                return Json(new { success = false, message = "El email del interesado es obligatorio" });
+            }
+
+            if (viewModel.Detalles == null || !viewModel.Detalles.Any())
+            {
+                _logger.LogWarning("Guardado rechazado: Sin detalles para {CotizacionId}", viewModel.CotizacionId);
+                return Json(new { success = false, message = "Debe agregar al menos una línea de detalle" });
+            }
+
+            // Validar detalles
+            for (int i = 0; i < viewModel.Detalles.Count; i++)
+            {
+                var detalle = viewModel.Detalles[i];
+                if (string.IsNullOrWhiteSpace(detalle.ProductoId))
+                {
+                    _logger.LogWarning("Guardado rechazado: ProductoId vacío en línea {Linea} para {CotizacionId}", i + 1, viewModel.CotizacionId);
+                    return Json(new { success = false, message = $"El producto de la línea {i + 1} es obligatorio" });
+                }
+                if (detalle.Cantidad <= 0)
+                {
+                    _logger.LogWarning("Guardado rechazado: Cantidad inválida en línea {Linea} para {CotizacionId}", i + 1, viewModel.CotizacionId);
+                    return Json(new { success = false, message = $"La cantidad de la línea {i + 1} debe ser mayor a cero" });
+                }
+                if (detalle.PrecioUnitario < 0)
+                {
+                    _logger.LogWarning("Guardado rechazado: Precio inválido en línea {Linea} para {CotizacionId}", i + 1, viewModel.CotizacionId);
+                    return Json(new { success = false, message = $"El precio unitario de la línea {i + 1} no puede ser negativo" });
+                }
+            }
+
+            // Crear request para el servicio
+            var request = new ActualizarCotizacionRequest
+            {
+                CotizacionId = viewModel.CotizacionId,
+                VersionId = viewModel.VersionId,
+                NombreInteresado = viewModel.NombreInteresado.Trim(),
+                EmailInteresado = viewModel.EmailInteresado.Trim(),
+                EmpresaInteresado = viewModel.EmpresaInteresado?.Trim() ?? "",
+                TipoInteresado = viewModel.TipoInteresado,
+                Moneda = viewModel.Moneda, // Incluir la moneda
+                TipoCambio = viewModel.TipoCambio, // Incluir el tipo de cambio
+                Notas = viewModel.Notas?.Trim() ?? "",
+                Detalles = viewModel.Detalles.Select(d => new ActualizarDetalleRequest
+                {
+                    DetalleVersionId = d.DetalleVersionId,
+                    ProductoId = d.ProductoId,
+                    ProductoNombre = d.ProductoNombre,
+                    Cantidad = d.Cantidad,
+                    PrecioUnitario = d.PrecioUnitario,
+                    Descuento = d.Descuento,
+                    TotalLinea = d.TotalLinea
+                }).ToList()
+            };
+
+            _logger.LogInformation("Request creado para {CotizacionId}: {DetallesCount} detalles", 
+                viewModel.CotizacionId, request.Detalles.Count);
+
+            var currentUserId = GetCurrentUserId();
+            
+            // El servicio ActualizarCotizacionAsync ya valida el estado internamente
+            var resultado = await _cotizacionService.ActualizarCotizacionAsync(request, currentUserId);
+
+            if (resultado.Success)
+            {
+                _logger.LogInformation("Cotización {CotizacionId} guardada exitosamente", viewModel.CotizacionId);
+                return Json(new { success = true, message = "Cotización guardada exitosamente" });
+            }
+            else
+            {
+                _logger.LogWarning("Guardado falló para {CotizacionId}: {ErrorMessage}", viewModel.CotizacionId, resultado.ErrorMessage);
+                return Json(new { success = false, message = resultado.ErrorMessage });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al guardar cotización {CotizacionId}", viewModel?.CotizacionId);
+            return Json(new { success = false, message = "Error interno al guardar la cotización" });
         }
     }
 
@@ -498,5 +633,54 @@ public class CotizacionesController : Controller
             return userId;
         }
         return 0; // Fallback para casos donde no se puede obtener el ID
+    }
+
+    // MÉTODO DE DEBUGGING TEMPORAL - Remover en producción
+    [HttpGet("Cotizaciones/Debug/{cotizacionId}")]
+    [RequierePermiso("COT_VIEW")]
+    public async Task<IActionResult> Debug(string cotizacionId)
+    {
+        try
+        {
+            _logger.LogInformation("=== DEBUGGING COTIZACIÓN {CotizacionId} ===", cotizacionId);
+            
+            // Usar el servicio respetando arquitectura limpia
+            var debugInfo = await _cotizacionService.GetCotizacionDebugInfoAsync(cotizacionId);
+            
+            // También consultar a través del listado para comparar
+            var cotizacionesServicio = await _cotizacionService.GetCotizacionesListAsync(
+                new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null, null));
+            
+            var cotizacionServicio = cotizacionesServicio.FirstOrDefault(c => c.CotizacionId == cotizacionId);
+            
+            _logger.LogInformation("Información de debugging obtenida. Estado: {Estado}, Existe: {Existe}", 
+                debugInfo.EstadoActual, debugInfo.ExisteEnBase);
+            
+            return Json(new
+            {
+                debugInfo = new {
+                    debugInfo.CotizacionId,
+                    debugInfo.EstadoActual,
+                    debugInfo.EstadoTexto,
+                    debugInfo.VersionActual,
+                    debugInfo.FechaCreacion,
+                    debugInfo.FechaModificacion,
+                    debugInfo.VersionInfo,
+                    debugInfo.ExisteEnBase
+                },
+                cotizacionServicio = cotizacionServicio != null ? new {
+                    cotizacionServicio.CotizacionId,
+                    cotizacionServicio.EstadoActual,
+                    EstadoTexto = ObtenerTextoEstado(cotizacionServicio.EstadoActual)
+                } : null,
+                timestamp = DateTime.Now,
+                arquitecturaLimpia = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en debugging de cotización {CotizacionId}", cotizacionId);
+            return Json(new { error = ex.Message });
+        }
     }
 }

@@ -8,6 +8,11 @@ namespace CotizacionesWeb.UI.Helpers;
 public static class FormatHelper
 {
     /// <summary>
+    /// Estructura para definir las monedas soportadas
+    /// </summary>
+    private record MonedaInfo(string Codigo, string Nombre);
+
+    /// <summary>
     /// Diccionario de símbolos de moneda con códigos Unicode correctos
     /// </summary>
     private static readonly Dictionary<string, string> CurrencySymbols = new()
@@ -21,6 +26,21 @@ public static class FormatHelper
         { "GBP", "£" },     // Libra esterlina (Unicode: U+00A3)
         { "JPY", "¥" },     // Yen japonés (Unicode: U+00A5)
         { "CNY", "¥" },     // Yuan chino (Unicode: U+00A5)
+    };
+
+    /// <summary>
+    /// Definición centralizada de las monedas soportadas
+    /// </summary>
+    private static readonly List<MonedaInfo> MonedasSoportadas = new()
+    {
+        new("CRC", "Colón Costarricense"),
+        new("USD", "Dólar Estadounidense"),
+        new("EUR", "Euro"),
+        new("GBP", "Libra Esterlina"),
+        new("JPY", "Yen Japonés"),
+        new("MXN", "Peso Mexicano"),
+        new("CAD", "Dólar Canadiense"),
+        new("CNY", "Yuan Chino")
     };
 
     /// <summary>
@@ -97,16 +117,49 @@ public static class FormatHelper
     /// <returns>Lista de tuplas con (código, símbolo, nombre)</returns>
     public static List<(string codigo, string simbolo, string nombre)> GetMonedasDisponibles()
     {
-        return new List<(string codigo, string simbolo, string nombre)>
+        return MonedasSoportadas
+            .Select(m => (m.Codigo, GetCurrencySymbol(m.Codigo), m.Nombre))
+            .ToList();
+    }
+
+    /// <summary>
+    /// Obtiene la lista de monedas disponibles en formato para serialización JSON
+    /// </summary>
+    /// <returns>Lista de objetos MonedaDisponible</returns>
+    public static List<Models.MonedaDisponible> GetMonedasDisponiblesParaJson()
+    {
+        return MonedasSoportadas
+            .Select(m => new Models.MonedaDisponible
+            {
+                Codigo = m.Codigo,
+                Simbolo = GetCurrencySymbol(m.Codigo),
+                Nombre = m.Nombre
+            })
+            .ToList();
+    }
+
+    /// <summary>
+    /// Obtiene información específica de una moneda
+    /// </summary>
+    /// <param name="currency">Código de moneda</param>
+    /// <returns>Información de la moneda o null si no se encuentra</returns>
+    public static Models.MonedaDisponible? GetMonedaInfo(string currency)
+    {
+        if (string.IsNullOrWhiteSpace(currency))
+            return null;
+
+        var upperCurrency = currency.ToUpper().Trim();
+        var monedaInfo = MonedasSoportadas.FirstOrDefault(m => 
+            m.Codigo.Equals(upperCurrency, StringComparison.OrdinalIgnoreCase));
+
+        if (monedaInfo == null)
+            return null;
+
+        return new Models.MonedaDisponible
         {
-            ("CRC", GetCurrencySymbol("CRC"), "Colón Costarricense"),
-            ("USD", GetCurrencySymbol("USD"), "Dólar Estadounidense"),
-            ("EUR", GetCurrencySymbol("EUR"), "Euro"),
-            ("GBP", GetCurrencySymbol("GBP"), "Libra Esterlina"),
-            ("JPY", GetCurrencySymbol("JPY"), "Yen Japonés"),
-            ("MXN", GetCurrencySymbol("MXN"), "Peso Mexicano"),
-            ("CAD", GetCurrencySymbol("CAD"), "Dólar Canadiense"),
-            ("CNY", GetCurrencySymbol("CNY"), "Yuan Chino")
+            Codigo = monedaInfo.Codigo,
+            Simbolo = GetCurrencySymbol(monedaInfo.Codigo),
+            Nombre = monedaInfo.Nombre
         };
     }
 
@@ -120,6 +173,8 @@ public static class FormatHelper
         if (string.IsNullOrWhiteSpace(currency))
             return false;
             
-        return CurrencySymbols.ContainsKey(currency.ToUpper().Trim());
+        var upperCurrency = currency.ToUpper().Trim();
+        return MonedasSoportadas.Any(m => m.Codigo.Equals(upperCurrency, StringComparison.OrdinalIgnoreCase)) ||
+               CurrencySymbols.ContainsKey(upperCurrency);
     }
 }

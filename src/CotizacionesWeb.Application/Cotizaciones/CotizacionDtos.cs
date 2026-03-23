@@ -91,6 +91,31 @@ public record DuplicarCotizacionRequest(
     string CotizacionIdBase
 );
 
+public record ActualizarCotizacionRequest
+{
+    public string CotizacionId { get; set; } = string.Empty;
+    public int VersionId { get; set; }
+    public string NombreInteresado { get; set; } = string.Empty;
+    public string EmailInteresado { get; set; } = string.Empty;
+    public string EmpresaInteresado { get; set; } = string.Empty;
+    public char TipoInteresado { get; set; } = 'P';
+    public string? Moneda { get; set; } // Nueva propiedad para cambio de moneda
+    public decimal? TipoCambio { get; set; } // Nueva propiedad para tipo de cambio
+    public string Notas { get; set; } = string.Empty;
+    public List<ActualizarDetalleRequest> Detalles { get; set; } = new();
+}
+
+public record ActualizarDetalleRequest
+{
+    public int DetalleVersionId { get; set; } // 0 = nuevo detalle, >0 = actualizar existente
+    public string ProductoId { get; set; } = string.Empty;
+    public string ProductoNombre { get; set; } = string.Empty;
+    public decimal Cantidad { get; set; }
+    public decimal PrecioUnitario { get; set; }
+    public decimal Descuento { get; set; }
+    public decimal TotalLinea { get; set; }
+}
+
 // Results
 public record CopiarVersionResult(
     bool Success,
@@ -103,4 +128,21 @@ public record DuplicarCotizacionResult(
     bool Success,
     string? ErrorMessage,
     string? NuevaCotizacionId
+);
+
+public record ActualizarCotizacionResult(
+    bool Success,
+    string? ErrorMessage
+);
+
+// DTO para debugging y diagnóstico
+public record CotizacionDebugInfoDto(
+    string CotizacionId,
+    char EstadoActual,
+    string EstadoTexto,
+    int VersionActual,
+    DateTime? FechaCreacion,
+    DateTime? FechaModificacion,
+    string? VersionInfo,
+    bool ExisteEnBase
 );
