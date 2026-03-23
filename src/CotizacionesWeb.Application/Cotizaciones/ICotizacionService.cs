@@ -25,4 +25,13 @@ public interface ICotizacionService
     
     // Duplicar cotización (crear nueva independiente)
     Task<DuplicarCotizacionResult> DuplicarCotizacionAsync(DuplicarCotizacionRequest request, int? userId = null);
+    
+    // Actualizar cotización existente (solo en estado Borrador)
+    Task<ActualizarCotizacionResult> ActualizarCotizacionAsync(ActualizarCotizacionRequest request, int? userId = null);
+    
+    // Debugging: Obtener información detallada de estado para diagnóstico
+    Task<CotizacionDebugInfoDto> GetCotizacionDebugInfoAsync(string cotizacionId);
+    
+    // Obtener detalle de la versión actual de una cotización específica
+    Task<CotizacionVersionDetalleDto?> GetCotizacionCurrentVersionDetailAsync(string cotizacionId);
 }

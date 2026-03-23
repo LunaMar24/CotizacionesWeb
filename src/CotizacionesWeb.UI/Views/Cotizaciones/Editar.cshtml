@@ -316,6 +316,11 @@
                         </h3>
                     </div>
                     <div class="card-body">
+                        <!-- Sección de Moneda Dinámica (controlada por JavaScript) -->
+                        <div class="moneda-section">
+                            <!-- El contenido se generará dinámicamente por JavaScript -->
+                        </div>
+
                         <div class="financial-summary">
                             <div class="d-flex justify-content-between mb-2">
                                 <span>Subtotal:</span>
@@ -338,13 +343,41 @@
                                 <span class="h5">Total:</span>
                                 <strong class="h5 text-success" id="displayTotal">@FormatHelper.FormatCurrency(Model.Total, Model.Moneda)</strong>
                             </div>
+                            <!-- Campo Tipo de Cambio - En línea separada -->
+                            @if (Model.EstadoActual == 'B')
+                            {
+                                <div class="mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-exchange-alt text-info"></i> 
+                                        <span class="ml-1">Tipo de Cambio:</span>
+                                        <div class="ml-3">
+                                            <input type="number" step="0.01" min="0" class="form-control form-control-sm" 
+                                                   id="TipoCambio" name="TipoCambio" 
+                                                   value="@(Model.TipoCambio?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                                   placeholder="520.50" 
+                                                   title="Tipo de cambio para esta cotización"
+                                                   style="width: 120px; text-align: left;">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center mb-3">
+                                    <small class="text-muted">Opcional - Ingrese el tipo de cambio si aplica</small>
+                                </div>
+                            }
+                            else if (Model.TipoCambio.HasValue && Model.TipoCambio > 0)
+                            {
+                                <div class="mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-exchange-alt text-info"></i> 
+                                        <span class="ml-1">Tipo de Cambio:</span>
+                                        <strong class="ml-3">@Model.TipoCambio.Value.ToString("N2")</strong>
+                                    </div>
+                                </div>
+                            }
+                            <hr class="my-3">
                             <div class="text-center text-muted">
                                 <small>
                                     <strong>Moneda:</strong> @Model.Moneda
-                                    @if (Model.TipoCambio.HasValue && Model.TipoCambio > 0)
-                                    {
-                                        <br><strong>Tipo de Cambio:</strong> @Model.TipoCambio.Value.ToString("N4")
-                                    }
                                 </small>
                             </div>
                         </div>
@@ -510,6 +543,33 @@
     </div>
 </div>
 
+<!-- Modal de Confirmación Genérico -->
+<div class="modal fade" id="modalConfirmacion" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header" id="modalConfirmacionHeader">
+                <h5 class="modal-title" id="modalConfirmacionTitulo">
+                    <i class="fas fa-question-circle"></i> Confirmar Acción
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modalConfirmacionMensaje">
+                <!-- Mensaje dinámico -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarAccion">
+                    <i class="fas fa-check"></i> Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Styles {
     <link rel="stylesheet" href="~/css/cotizaciones/detalle.css" asp-append-version="true">
     <link rel="stylesheet" href="~/css/cotizaciones/editar.css" asp-append-version="true">
@@ -523,20 +583,28 @@
             window.FormatConfig.moneda = '@Model.Moneda';
             window.FormatConfig.simboloMoneda = '@FormatHelper.GetCurrencySymbol(Model.Moneda)';
             window.FormatConfig.estado = '@Model.EstadoActual';
+            window.FormatConfig.tipoCambio = @(Model.TipoCambio?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "null");
         } else {
             // Fallback si FormatConfig no está disponible
             window.FormatConfig = {
                 moneda: '@Model.Moneda',
                 simboloMoneda: '@FormatHelper.GetCurrencySymbol(Model.Moneda)',
-                estado: '@Model.EstadoActual'
+                estado: '@Model.EstadoActual',
+                tipoCambio: @(Model.TipoCambio?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "null")
             };
         }
+        
+        // Agregar monedas disponibles desde el servidor
+        window.MonedasDisponibles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.MonedasDisponibles ?? FormatHelper.GetMonedasDisponiblesParaJson()));
         
         console.log('=== CONFIGURACIÓN DESDE SERVIDOR ===');
         console.log('Moneda:', '@Model.Moneda');
         console.log('Estado:', '@Model.EstadoActual');
         console.log('Estado Texto:', '@Model.EstadoActualTexto');
         console.log('Estado es editable?:', '@Model.EstadoActual' === 'B');
+        console.log('Monedas disponibles tipo:', typeof window.MonedasDisponibles);
+        console.log('Monedas disponibles:', window.MonedasDisponibles);
+        console.log('Puede cambiar moneda?:', @Model.PuedeCambiarMoneda.ToString().ToLower());
         console.log('FormatConfig después:', window.FormatConfig);
         console.log('====================================');
     </script>

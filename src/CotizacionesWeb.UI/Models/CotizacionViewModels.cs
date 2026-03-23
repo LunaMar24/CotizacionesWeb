@@ -2,6 +2,14 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CotizacionesWeb.UI.Models;
 
+// Clase para serialización JSON de monedas
+public class MonedaDisponible
+{
+    public string Codigo { get; set; } = string.Empty;
+    public string Simbolo { get; set; } = string.Empty;
+    public string Nombre { get; set; } = string.Empty;
+}
+
 public class CotizacionViewModel
 {
     public int Id { get; set; }
@@ -180,6 +188,16 @@ public class CotizacionEditarViewModel
     
     // Líneas de detalle (EDITABLE)
     public List<DetalleEditarViewModel> Detalles { get; set; } = new();
+    
+    // Propiedades calculadas para reglas de negocio
+    /// <summary>
+    /// Indica si se puede cambiar la moneda de la cotización.
+    /// Solo es posible si: Versión = 1.0 Y Estado = Borrador Y No hay líneas de detalle
+    /// </summary>
+    public bool PuedeCambiarMoneda => 
+        NumeroVersion == 1.0m && 
+        EstadoActual == 'B' && 
+        (Detalles == null || !Detalles.Any());
 }
 
 public class DetalleEditarViewModel
