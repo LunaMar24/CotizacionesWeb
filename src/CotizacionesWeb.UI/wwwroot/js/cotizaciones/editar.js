@@ -144,9 +144,7 @@ function inicializarVista() {
         configurarContadorCaracteres();
     }, 100);
     
-    if (esEditable) {
-        console.log('Cotización editable - Funcionalidad habilitada');
-    } else {
+    if (!esEditable) {
         mostrarAvisoNoEditable();
     }
     
@@ -670,11 +668,9 @@ function configurarContadorCaracteres() {
         
         if (remaining < 100) {
             clase = 'text-warning';
-            mensaje = `⚠️ ${mensaje}`;
         }
         if (remaining < 50) {
             clase = 'text-danger';
-            mensaje = `🚨 ${mensaje}`;
         }
         
         small.removeClass('text-muted text-warning text-danger warning danger').addClass(clase);
@@ -921,28 +917,22 @@ function formatNumber(value, decimals = 2) {
 }
 
 function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel = null) {
-    
-    // 🔧 VERIFICACIÓN COMPLETA: Bootstrap y modal disponibles
     if (typeof $ === 'undefined') {
-        console.error('❌ jQuery no está disponible');
         usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
         return;
     }
     
     if (typeof $.fn.modal !== 'function') {
-        console.error('❌ Bootstrap modal no está disponible');
         usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
         return;
     }
     
     const modal = $('#modalConfirmacion');
     if (modal.length === 0) {
-        console.error('❌ Modal #modalConfirmacion no existe en DOM');
         usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
         return;
     }
     
-    // Verificar elementos críticos del modal
     const elementos = {
         header: $('#modalConfirmacionHeader'),
         titulo: $('#modalConfirmacionTitulo'),
@@ -952,24 +942,18 @@ function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel = n
     
     const elementosFaltantes = Object.keys(elementos).filter(key => elementos[key].length === 0);
     if (elementosFaltantes.length > 0) {
-        console.error('❌ Elementos del modal faltantes:', elementosFaltantes);
         usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
         return;
     }
     
-    console.log('✅ Modal y Bootstrap disponibles, configurando...');
-    
-    // 🔧 LIMPIAR ESTADO PREVIO COMPLETAMENTE
     modal.off();
     elementos.btnConfirmar.off();
     $('.modal-backdrop').remove();
     $('body').removeClass('modal-open').css({ 'overflow': '', 'padding-right': '' });
     
-    // Variables de control
     let accionConfirmada = false;
     let modalCerrandose = false;
     
-    // Configurar apariencia según tipo
     const config = obtenerConfiguracionModal(tipo);
     elementos.header.removeClass('bg-info bg-warning bg-danger bg-success text-white text-dark').addClass(config.headerClass);
     elementos.titulo.html(`<i class="fas ${config.icono}"></i> ${titulo}`);
@@ -977,21 +961,16 @@ function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel = n
     elementos.btnConfirmar.removeClass('btn-info btn-warning btn-danger btn-success btn-primary').addClass(config.btnClass);
     elementos.btnConfirmar.html(`<i class="fas fa-check"></i> ${config.btnTexto}`);
     
-    // 🔧 EVENTO CONFIRMACIÓN - Más robusto
     elementos.btnConfirmar.on('click.modalconfirm', function(e) {
         e.preventDefault();
         e.stopImmediatePropagation();
         
         if (modalCerrandose) {
-            console.log('🔍 Click ignorado: modal ya cerrandose');
             return;
         }
         
-        console.log('🔍 DEBUG MODAL - CONFIRMACIÓN ejecutada');
         accionConfirmada = true;
         modalCerrandose = true;
-        
-        // Cerrar modal y ejecutar callback
         modal.modal('hide');
         
         setTimeout(() => {
@@ -999,34 +978,26 @@ function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel = n
                 try {
                     onConfirm();
                 } catch (error) {
-                    console.error('❌ Error en callback confirmación:', error);
+                    console.error('Error en callback confirmación:', error);
                 }
             }
         }, 200);
     });
     
-    // 🔧 EVENTO CIERRE MODAL
     modal.on('hidden.bs.modal.confirm', function() {
-        console.log('🔍 DEBUG MODAL - Modal cerrado:', { accionConfirmada, modalCerrandose });
-        
         if (!accionConfirmada && !modalCerrandose && typeof onCancel === 'function') {
-            console.log('🔍 DEBUG MODAL - CANCELACIÓN ejecutada');
             setTimeout(() => {
                 try {
                     onCancel();
                 } catch (error) {
-                    console.error('❌ Error en callback cancelación:', error);
+                    console.error('Error en callback cancelación:', error);
                 }
             }, 100);
         }
         
-        // Limpiar eventos
         $(this).off('.confirm');
         elementos.btnConfirmar.off('.modalconfirm');
     });
-    
-    // 🔧 MOSTRAR MODAL CON VERIFICACIÓN
-    console.log('🔍 DEBUG MODAL - Mostrando modal...');
     
     try {
         modal.modal({
@@ -1035,12 +1006,8 @@ function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel = n
             show: true
         });
         
-        // Verificar que se mostró correctamente
         setTimeout(() => {
-            if (modal.hasClass('show')) {
-                console.log('✅ Modal mostrado correctamente');
-            } else {
-                console.error('❌ Modal no se mostró, usando fallback');
+            if (!modal.hasClass('show')) {
                 modal.off();
                 elementos.btnConfirmar.off();
                 usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
@@ -1048,7 +1015,7 @@ function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel = n
         }, 500);
         
     } catch (error) {
-        console.error('❌ Error mostrando modal:', error);
+        console.error('Error mostrando modal:', error);
         usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
     }
 }
@@ -1658,8 +1625,6 @@ function configurarEventoVersion() {
         setTimeout(function() {
             $('#NumeroVersion').focus().select();
         }, 100);
-        
-        console.log('Modo edición versión activado, valor original:', valorOriginal);
     });
     
     // Evento para guardar cambios
@@ -1721,14 +1686,8 @@ function configurarEventoVersion() {
         
         // Actualizar display del badge
         $('#versionValor').text(displayFormateado);
-        
-        // Volver a modo vista
         $('#versionModoEdicion').addClass('d-none');
         $('#versionModoVista').removeClass('d-none');
-        
-        console.log('Versión actualizada:', displayFormateado);
-        
-        // Mostrar notificación solo si realmente cambió el valor
         const valorOriginalNumerico = parseFloat(valorOriginal);
         
         if (numero !== valorOriginalNumerico) {
@@ -1740,12 +1699,8 @@ function configurarEventoVersion() {
         // Restaurar valor original
         $('#NumeroVersion').val(valorOriginal);
         $('#NumeroVersion').removeClass('is-invalid');
-        
-        // Volver a modo vista
         $('#versionModoEdicion').addClass('d-none');
         $('#versionModoVista').removeClass('d-none');
-        
-        console.log('Edición de versión cancelada');
     }
 }
 function configurarEventoTipoCambio() {
