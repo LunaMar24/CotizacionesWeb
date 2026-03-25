@@ -1033,22 +1033,58 @@ function continuarGuardadoSinValidacionLineas() {
         });
         
         // Recopilar detalles de la tabla
-        $('#tablaDetalles tbody tr').each(function() {
+        console.log('🔍 DEBUGGING: Iniciando recopilación de detalles...');
+        console.log('🔍 Total de filas en tabla:', $('#tablaDetalles tbody tr').length);
+        
+        $('#tablaDetalles tbody tr').each(function(index) {
             const fila = $(this);
+            console.log(`🔍 Procesando fila ${index}:`);
+            console.log('  - data-index:', fila.attr('data-index'));
+            console.log('  - data-detalle-id:', fila.attr('data-detalle-id'));
+            
+            // ?? CORRECCIÓN CRÍTICA: Los inputs usan índices dinámicos, verificar
+            const inputDetalleId = fila.find('input[name$=".DetalleVersionId"]');
+            const inputProductoId = fila.find('input[name$=".ProductoId"]');
+            const inputProductoNombre = fila.find('input[name$=".ProductoNombre"]');
+            const inputCantidad = fila.find('input[name$=".Cantidad"]');
+            const inputPrecio = fila.find('input[name$=".PrecioUnitario"]');
+            const inputDescuento = fila.find('input[name$=".Descuento"]');
+            const inputTotal = fila.find('input[name$=".TotalLinea"]');
+            
+            console.log('  - Inputs encontrados:', {
+                detalleId: inputDetalleId.length,
+                productoId: inputProductoId.length,
+                productoNombre: inputProductoNombre.length,
+                cantidad: inputCantidad.length,
+                precio: inputPrecio.length,
+                descuento: inputDescuento.length,
+                total: inputTotal.length
+            });
+            
+            // ?? NUEVO: Si no se encuentran por el selector, buscar por nombre explícito
             const detalle = {
-                DetalleVersionId: parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0,
-                ProductoId: fila.find('input[name$=".ProductoId"]').val(),
-                ProductoNombre: fila.find('input[name$=".ProductoNombre"]').val(),
-                Cantidad: parseFloat(fila.find('input[name$=".Cantidad"]').val()),
-                PrecioUnitario: parseFloat(fila.find('input[name$=".PrecioUnitario"]').val()),
-                Descuento: parseFloat(fila.find('input[name$=".Descuento"]').val()) || 0,
-                TotalLinea: parseFloat(fila.find('input[name$=".TotalLinea"]').val())
+                DetalleVersionId: parseInt(inputDetalleId.val() || fila.find(`input[name="Detalles[${index}].DetalleVersionId"]`).val()) || 0,
+                ProductoId: inputProductoId.val() || fila.find(`input[name="Detalles[${index}].ProductoId"]`).val() || '',
+                ProductoNombre: inputProductoNombre.val() || fila.find(`input[name="Detalles[${index}].ProductoNombre"]`).val() || '',
+                Cantidad: parseFloat(inputCantidad.val() || fila.find(`input[name="Detalles[${index}].Cantidad"]`).val() || 0),
+                PrecioUnitario: parseFloat(inputPrecio.val() || fila.find(`input[name="Detalles[${index}].PrecioUnitario"]`).val() || 0),
+                Descuento: parseFloat(inputDescuento.val() || fila.find(`input[name="Detalles[${index}].Descuento"]`).val() || 0),
+                TotalLinea: parseFloat(inputTotal.val() || fila.find(`input[name="Detalles[${index}].TotalLinea"]`).val() || 0)
             };
             
-            formData.Detalles.push(detalle);
+            console.log('  - Detalle extraído:', detalle);
+            
+            // ?? VALIDACIÓN: Solo agregar si tiene datos válidos
+            if (detalle.ProductoId && detalle.ProductoId !== '') {
+                formData.Detalles.push(detalle);
+                console.log(`  ✅ Detalle ${index} agregado al array`);
+            } else {
+                console.warn(`  ⚠️ Detalle ${index} NO agregado - ProductoId vacío`);
+            }
         });
         
-        console.log('📋 Detalles recopilados:', formData.Detalles.length, 'líneas');
+        console.log('📋 TOTAL Detalles recopilados:', formData.Detalles.length);
+        console.log('📋 Contenido completo de Detalles:', JSON.stringify(formData.Detalles, null, 2));
         
         // 🔧 MEJORA: Si no hay detalles, crear array vacío explícitamente
         if (formData.Detalles.length === 0) {
@@ -4217,6 +4253,107 @@ window.probarConfirmacionMoneda = function() {
         combo,
         monedaActualCombo
     );
+    
+    console.groupEnd();
+};
+
+// ?? FUNCIÓN DE DIAGNÓSTICO: Verificar detalles antes de guardar
+window.diagnosticarDetallesAntesDeGuardar = function() {
+    console.group('🔍 DIAGNÓSTICO: DETALLES ANTES DE GUARDAR');
+    
+    console.log('📊 Análisis de tabla HTML:');
+    const totalFilas = $('#tablaDetalles tbody tr').length;
+    console.log('  - Total filas visibles:', totalFilas);
+    
+    const detallesRecopilados = [];
+    
+    $('#tablaDetalles tbody tr').each(function(index) {
+        const fila = $(this);
+        
+        const analisis = {
+            index: index,
+            dataIndex: fila.attr('data-index'),
+            dataDetalleId: fila.attr('data-detalle-id'),
+            inputs: {}
+        };
+        
+        // Verificar cada tipo de input
+        const campos = ['DetalleVersionId', 'ProductoId', 'ProductoNombre', 'Cantidad', 'PrecioUnitario', 'Descuento', 'TotalLinea'];
+        
+        campos.forEach(campo => {
+            const inputPorSelector = fila.find(`input[name$=".${campo}"]`);
+            const inputPorNombre = fila.find(`input[name="Detalles[${index}].${campo}"]`);
+            
+            analisis.inputs[campo] = {
+                encontradoPorSelector: inputPorSelector.length > 0,
+                encontradoPorNombre: inputPorNombre.length > 0,
+                valor: inputPorSelector.val() || inputPorNombre.val() || 'NO ENCONTRADO'
+            };
+        });
+        
+        console.log(`Fila ${index}:`, analisis);
+        
+        // Intentar extraer detalle completo
+        const detalle = {
+            DetalleVersionId: parseInt(analisis.inputs.DetalleVersionId.valor) || 0,
+            ProductoId: analisis.inputs.ProductoId.valor,
+            ProductoNombre: analisis.inputs.ProductoNombre.valor,
+            Cantidad: parseFloat(analisis.inputs.Cantidad.valor) || 0,
+            PrecioUnitario: parseFloat(analisis.inputs.PrecioUnitario.valor) || 0,
+            Descuento: parseFloat(analisis.inputs.Descuento.valor) || 0,
+            TotalLinea: parseFloat(analisis.inputs.TotalLinea.valor) || 0
+        };
+        
+        detallesRecopilados.push(detalle);
+    });
+    
+    console.log('📋 Detalles recopilados:');
+    console.table(detallesRecopilados);
+    
+    console.log('✅ Verificación:');
+    const detallesValidos = detallesRecopilados.filter(d => d.ProductoId && d.ProductoId !== 'NO ENCONTRADO');
+    console.log(`  - Detalles válidos: ${detallesValidos.length}/${detallesRecopilados.length}`);
+    
+    if (detallesValidos.length < detallesRecopilados.length) {
+        console.error('❌ HAY DETALLES INVÁLIDOS - No se enviarán al servidor');
+        const invalidos = detallesRecopilados.filter(d => !d.ProductoId || d.ProductoId === 'NO ENCONTRADO');
+        console.error('Detalles inválidos:', invalidos);
+    }
+    
+    console.log('💡 Solución si hay problemas:');
+    console.log('  1. Verificar que agregarNuevaFilaDetalle() genera los inputs correctamente');
+    console.log('  2. Verificar que reindexarFilasDetalle() actualiza los nombres correctamente');
+    console.log('  3. Ejecutar: window.verificarInputsHidden()');
+    
+    console.groupEnd();
+    
+    return detallesRecopilados;
+};
+
+// ?? FUNCIÓN DE DIAGNÓSTICO: Verificar inputs hidden de la tabla
+window.verificarInputsHidden = function() {
+    console.group('🔍 VERIFICACIÓN: INPUTS HIDDEN EN TABLA');
+    
+    $('#tablaDetalles tbody tr').each(function(index) {
+        const fila = $(this);
+        console.log(`\n📋 Fila ${index}:`);
+        
+        const todosLosInputs = fila.find('input[type="hidden"]');
+        console.log(`  - Total inputs hidden: ${todosLosInputs.length}`);
+        
+        todosLosInputs.each(function() {
+            const input = $(this);
+            console.log(`    • name="${input.attr('name')}", value="${input.val()}"`);
+        });
+        
+        // Verificar displays visibles también
+        console.log('  - Displays visibles:');
+        console.log(`    • Producto: ${fila.find('.text-primary').text()}`);
+        console.log(`    • Nombre: ${fila.find('.producto-nombre').text()}`);
+        console.log(`    • Cantidad: ${fila.find('.cantidad-display').text()}`);
+        console.log(`    • Precio: ${fila.find('.precio-display').text()}`);
+        console.log(`    • Total: ${fila.find('.total-linea-display').text()}`);
+    });
     
     console.groupEnd();
 };
