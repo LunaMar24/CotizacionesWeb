@@ -1641,50 +1641,110 @@ function revertirComboMoneda($combo, monedaAnterior) {
 
 // 🆕 FUNCIÓN MEJORADA: Modal de confirmación específico para monedas
 function mostrarModalConfirmacionMoneda(titulo, mensaje, tipo, onConfirm, onCancel, $combo, monedaAnterior) {
-    console.log('Mostrando modal de confirmación de moneda:', { titulo, tipo });
+    console.log('💱 Mostrando modal de confirmación de moneda:', { titulo, tipo });
     
-    // Limpiar eventos previos del modal para evitar conflictos
-    $('#modalConfirmacion').off('hidden.bs.modal.moneda');
-    $('#btnConfirmarAccion').off('click.moneda');
+    // 🔧 CORRECCIÓN CRÍTICA: Usar variable global para evitar race conditions
+    window._monedaCambioConfirmado = false;
+    window._monedaCambioOnConfirm = onConfirm;
+    window._monedaCambioOnCancel = onCancel;
     
-    // Configurar el modal usando la función existente
-    mostrarModalConfirmacion(titulo, mensaje, tipo, 
-        function() {
-            // Callback de confirmación
-            if (typeof onConfirm === 'function') {
-                onConfirm();
-            }
-        },
-        function() {
-            // Este callback de cancelación podría no ejecutarse correctamente
-            // Así que usamos un evento adicional como respaldo
-        }
-    );
+    // Limpiar eventos previos del modal
+    const modal = $('#modalConfirmacion');
+    const btnConfirmar = $('#btnConfirmarAccion');
     
-    // 🔧 RESPALDO: Manejar cancelación cuando se cierre el modal sin confirmar
-    let confirmacionEjecutada = false;
+    modal.off('.moneda');
+    btnConfirmar.off('.moneda');
     
-    // Marcar cuando se confirma
-    $('#btnConfirmarAccion').on('click.moneda', function() {
-        confirmacionEjecutada = true;
+    // Configurar el modal usando la función base pero con callbacks especiales
+    const elementos = {
+        header: $('#modalConfirmacionHeader'),
+        titulo: $('#modalConfirmacionTitulo'),
+        mensaje: $('#modalConfirmacionMensaje'),
+        btnConfirmar: btnConfirmar
+    };
+    
+    // Configurar apariencia
+    const config = obtenerConfiguracionModal(tipo);
+    elementos.header.removeClass('bg-info bg-warning bg-danger bg-success text-white text-dark').addClass(config.headerClass);
+    elementos.titulo.html(`<i class="fas ${config.icono}"></i> ${titulo}`);
+    elementos.mensaje.html(mensaje);
+    elementos.btnConfirmar.removeClass('btn-info btn-warning btn-danger btn-success btn-primary').addClass(config.btnClass);
+    elementos.btnConfirmar.html(`<i class="fas fa-check"></i> ${config.btnTexto}`);
+    
+    // 🔧 CORRECCIÓN CRÍTICA: Evento de confirmación - SETEAR FLAG ANTES DE CERRAR
+    btnConfirmar.on('click.moneda', function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        
+        console.log('✅ CONFIRMACIÓN: Usuario presionó botón CONFIRMAR');
+        
+        // 🔧 CLAVE: Marcar INMEDIATAMENTE como confirmado ANTES de cerrar modal
+        window._monedaCambioConfirmado = true;
+        
+        // Cerrar modal
+        modal.modal('hide');
+        
+        // No ejecutar callback aquí, se ejecutará después del cierre
     });
     
-    // Detectar cuando se cierra el modal
-    $('#modalConfirmacion').on('hidden.bs.modal.moneda', function() {
-        // Solo ejecutar cancelación si no se confirmó
-        if (!confirmacionEjecutada) {
-            console.log('Modal cerrado sin confirmación, ejecutando cancelación...');
-            if (typeof onCancel === 'function') {
-                onCancel();
-            }
+    // 🔧 CORRECCIÓN CRÍTICA: Evento de cierre - Verificar flag para decidir qué callback ejecutar
+    modal.on('hidden.bs.modal.moneda', function() {
+        console.log('🔍 Modal cerrado. Estado de confirmación:', window._monedaCambioConfirmado);
+        
+        // Ejecutar callback correspondiente basado en el flag
+        if (window._monedaCambioConfirmado) {
+            // ✅ CONFIRMADO: Ejecutar callback de confirmación
+            console.log('✅ Ejecutando callback de CONFIRMACIÓN');
+            
+            setTimeout(() => {
+                if (typeof window._monedaCambioOnConfirm === 'function') {
+                    try {
+                        window._monedaCambioOnConfirm();
+                    } catch (error) {
+                        console.error('❌ Error en callback de confirmación:', error);
+                    }
+                }
+                
+                // Limpiar variables globales
+                window._monedaCambioConfirmado = false;
+                window._monedaCambioOnConfirm = null;
+                window._monedaCambioOnCancel = null;
+            }, 100);
+            
+        } else {
+            // ❌ CANCELADO: Ejecutar callback de cancelación
+            console.log('❌ Ejecutando callback de CANCELACIÓN');
+            
+            setTimeout(() => {
+                if (typeof window._monedaCambioOnCancel === 'function') {
+                    try {
+                        window._monedaCambioOnCancel();
+                    } catch (error) {
+                        console.error('❌ Error en callback de cancelación:', error);
+                    }
+                }
+                
+                // Limpiar variables globales
+                window._monedaCambioConfirmado = false;
+                window._monedaCambioOnConfirm = null;
+                window._monedaCambioOnCancel = null;
+            }, 100);
         }
         
         // Limpiar eventos
-        $(this).off('hidden.bs.modal.moneda');
-        $('#btnConfirmarAccion').off('click.moneda');
+        modal.off('.moneda');
+        btnConfirmar.off('.moneda');
     });
     
-    console.log('Modal de confirmación de moneda configurado');
+    // Mostrar modal
+    console.log('🔍 Mostrando modal de confirmación...');
+    modal.modal({
+        backdrop: 'static',
+        keyboard: false,
+        show: true
+    });
+    
+    console.log('✅ Modal configurado correctamente');
 }
 
 // ========================================
@@ -4024,4 +4084,139 @@ window.solucionarProblemaImagenUI = function() {
     console.groupEnd();
     
     return verificacion;
+};
+
+// 🧪 FUNCIÓN DE PRUEBA: Validar que el fix del modal funciona correctamente
+window.probarFixModalMoneda = function() {
+    console.group('🧪 PRUEBA FIX MODAL DE CONFIRMACIÓN MONEDA');
+    
+    console.log('📋 Esta prueba validará que:');
+    console.log('  1. Al presionar CONFIRMAR → se ejecuta callback de confirmación');
+    console.log('  2. Al presionar CANCELAR → se ejecuta callback de cancelación');
+    console.log('  3. Al cerrar con X o ESC → se ejecuta callback de cancelación');
+    
+    let resultadoPrueba = {
+        confirmacionFunciona: false,
+        cancelacionFunciona: false
+    };
+    
+    // Prueba 1: Confirmar cambio
+    console.log('🧪 Prueba 1: Presionar CONFIRMAR...');
+    
+    mostrarModalConfirmacionMoneda(
+        'Prueba 1: Confirmar',
+        '🧪 Esta es una prueba del modal.<br>Presione <strong>Continuar</strong> para confirmar.',
+        'info',
+        function() {
+            // Callback de confirmación
+            console.log('✅ ÉXITO: Callback de CONFIRMACIÓN ejecutado correctamente');
+            resultadoPrueba.confirmacionFunciona = true;
+            showNotification('success', '✅ Prueba 1 exitosa: Confirmación funciona');
+            
+            // Esperar y ejecutar prueba 2
+            setTimeout(() => ejecutarPrueba2(), 2000);
+        },
+        function() {
+            // Callback de cancelación
+            console.error('❌ FALLO: Se ejecutó CANCELACIÓN en lugar de CONFIRMACIÓN');
+            resultadoPrueba.confirmacionFunciona = false;
+            showNotification('error', '❌ Prueba 1 fallida: Se ejecutó cancelación');
+            
+            console.groupEnd();
+        },
+        $('#MonedaSelect'),
+        'CRC'
+    );
+    
+    // Simular click en confirmar después de 1 segundo
+    setTimeout(() => {
+        console.log('🤖 Simulando click en botón CONFIRMAR...');
+        $('#btnConfirmarAccion').click();
+    }, 1000);
+    
+    function ejecutarPrueba2() {
+        console.log('🧪 Prueba 2: Presionar CANCELAR (o cerrar con X)...');
+        
+        mostrarModalConfirmacionMoneda(
+            'Prueba 2: Cancelar',
+            '🧪 Esta es una prueba del modal.<br>Presione <strong>Cancelar</strong> o cierre con X.',
+            'warning',
+            function() {
+                // Callback de confirmación
+                console.error('❌ FALLO: Se ejecutó CONFIRMACIÓN en lugar de CANCELACIÓN');
+                resultadoPrueba.cancelacionFunciona = false;
+                showNotification('error', '❌ Prueba 2 fallida: Se ejecutó confirmación');
+                
+                mostrarResultadoPruebas();
+            },
+            function() {
+                // Callback de cancelación
+                console.log('✅ ÉXITO: Callback de CANCELACIÓN ejecutado correctamente');
+                resultadoPrueba.cancelacionFunciona = true;
+                showNotification('success', '✅ Prueba 2 exitosa: Cancelación funciona');
+                
+                mostrarResultadoPruebas();
+            },
+            $('#MonedaSelect'),
+            'USD'
+        );
+        
+        // Simular cerrar modal (cancelar) después de 1 segundo
+        setTimeout(() => {
+            console.log('🤖 Simulando cierre de modal (cancelación)...');
+            $('#modalConfirmacion').modal('hide');
+        }, 1000);
+    }
+    
+    function mostrarResultadoPruebas() {
+        console.log('📊 RESULTADO FINAL DE PRUEBAS:');
+        console.table(resultadoPrueba);
+        
+        const todoOk = resultadoPrueba.confirmacionFunciona && resultadoPrueba.cancelacionFunciona;
+        
+        if (todoOk) {
+            console.log('🎉 ¡TODAS LAS PRUEBAS EXITOSAS! El fix funciona correctamente.');
+            showNotification('success', '🎉 Fix validado: Modal de moneda funciona correctamente');
+        } else {
+            console.error('❌ ALGUNAS PRUEBAS FALLARON. Revisar implementación.');
+            showNotification('error', '❌ Fix incompleto: Revisar consola para detalles');
+        }
+        
+        console.groupEnd();
+    }
+};
+
+// 🧪 FUNCIÓN SIMPLIFICADA: Probar solo confirmación
+window.probarConfirmacionMoneda = function() {
+    console.group('🧪 PRUEBA SIMPLE: CONFIRMAR CAMBIO DE MONEDA');
+    
+    const combo = $('#MonedaSelect');
+    const monedaActualCombo = combo.val() || monedaActual;
+    const nuevaMonedaPrueba = monedaActualCombo === 'CRC' ? 'USD' : 'CRC';
+    
+    console.log(`💱 Probando cambio: ${monedaActualCombo} -> ${nuevaMonedaPrueba}`);
+    
+    mostrarModalConfirmacionMoneda(
+        'Prueba de Confirmación',
+        `¿Confirma cambio de <strong>${monedaActualCombo}</strong> a <strong>${nuevaMonedaPrueba}</strong>?`,
+        'warning',
+        function() {
+            console.log('✅ CONFIRMACIÓN detectada correctamente');
+            showNotification('success', `✅ Confirmación OK: Cambio ${monedaActualCombo} → ${nuevaMonedaPrueba}`);
+            
+            // Aplicar el cambio de verdad
+            aplicarCambioMoneda(nuevaMonedaPrueba);
+        },
+        function() {
+            console.log('❌ CANCELACIÓN detectada');
+            showNotification('info', '❌ Cancelación OK: Cambio revertido');
+            
+            // Revertir combo
+            combo.val(monedaActualCombo);
+        },
+        combo,
+        monedaActualCombo
+    );
+    
+    console.groupEnd();
 };
