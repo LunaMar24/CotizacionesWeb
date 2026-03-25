@@ -62,31 +62,26 @@ const INTERESADOS_TEMP = [
 ];
 
 $(document).ready(function() {
-// Esperar a que jQuery y otros componentes estén listos
-if (typeof $ === 'undefined') {
-    console.error('jQuery no está disponible');
-    return;
-}
-    
-// Verificar que AdminLTE esté disponible
-if (typeof $.fn.CardWidget === 'undefined') {
-    console.warn('AdminLTE CardWidget no está disponible');
-}
-    
-// 🆕 NUEVA FUNCIONALIDAD: Interceptar navegación para confirmar salida
-$(window).on('beforeunload', function(e) {
-    if (verificarCambiosSinGuardar()) {
-        const mensaje = '¿Está seguro de que desea salir? Se perderán los cambios no guardados.';
-        e.returnValue = mensaje; // Para navegadores antiguos
-        return mensaje; // Para navegadores modernos
+    if (typeof $ === 'undefined') {
+        console.error('jQuery no está disponible');
+        return;
     }
-});
     
-    // 🆕 Interceptar clics en enlaces de navegación
+    if (typeof $.fn.CardWidget === 'undefined') {
+        console.warn('AdminLTE CardWidget no está disponible');
+    }
+    
+    $(window).on('beforeunload', function(e) {
+        if (verificarCambiosSinGuardar()) {
+            const mensaje = '¿Está seguro de que desea salir? Se perderán los cambios no guardados.';
+            e.returnValue = mensaje;
+            return mensaje;
+        }
+    });
+    
     $(document).on('click', 'a[href]:not(.btn-guardar):not([data-toggle])', function(e) {
         const href = $(this).attr('href');
         
-        // Solo interceptar enlaces que navegan fuera de la página actual
         if (href && href !== '#' && !href.startsWith('#') && href !== window.location.href) {
             if (verificarCambiosSinGuardar()) {
                 e.preventDefault();
@@ -96,7 +91,6 @@ $(window).on('beforeunload', function(e) {
         }
     });
     
-    // 🆕 ESPECÍFICO: Interceptar el botón "Volver al Listado"
     $('a[href*="/Cotizaciones"]:contains("Volver al Listado"), a[href="/Cotizaciones"], a[href$="/Cotizaciones/Index"]').on('click', function(e) {
         if (verificarCambiosSinGuardar()) {
             e.preventDefault();
@@ -105,106 +99,33 @@ $(window).on('beforeunload', function(e) {
         }
     });
     
-    // 🆕 Marcar cambios al interactuar con los campos
     $('#NombreInteresado, #EmailInteresado, #EmpresaInteresado, textarea[name="Notas"]').on('input', function() {
-        window.cotizacionGuardada = false; // Marcar como no guardada al hacer cambios
+        window.cotizacionGuardada = false;
     });
     
-    // 🆕 Marcar cambios al agregar/editar/eliminar líneas de detalle
     $(document).on('click', '#btnAgregarLinea, .btn-editar-detalle, .btn-eliminar-detalle', function() {
         window.cotizacionGuardada = false;
     });
     
-    // DEBUGGING: Verificar que FormatConfig esté disponible
-    console.log('=== VERIFICACIÓN INICIAL ===');
-    console.log('FormatConfig disponible:', typeof window.FormatConfig !== 'undefined');
-    console.log('FormatUtils disponible:', typeof window.FormatUtils !== 'undefined');
-    if (window.FormatConfig) {
-        console.log('Estados configurados:', window.FormatConfig.estados);
-        console.log('Configuración del servidor disponible:', window.FormatConfig.moneda, window.FormatConfig.estado);
-    }
-    console.log('============================');
-    
     inicializarVista();
     configurarEventos();
     cargarDatosTemporales();
-    
-    // DEBUGGING ADICIONAL: Verificar estado después de la inicialización
-    setTimeout(function() {
-        console.log('=== VERIFICACIÓN POST-INICIALIZACIÓN ===');
-        console.log('Estado actual variable global:', estadoActual);
-        console.log('¿Es editable según FormatUtils?:', window.FormatUtils?.isEditable(estadoActual));
-        console.log('¿Es editable según lógica directa?:', estadoActual === 'B');
-        console.log('Configuración completa del estado:', window.FormatConfig?.estados?.[estadoActual]);
-        
-        // Verificar si los botones están habilitados/deshabilitados
-        const btnGuardar = $('#btnGuardar');
-        const btnAgregarLinea = $('#btnAgregarLinea');
-        console.log('Botón guardar deshabilitado:', btnGuardar.prop('disabled'));
-        console.log('Botón agregar línea longitud:', btnAgregarLinea.length);
-        console.log('=========================================');
-    }, 1000);
-    
-    console.log('Editar.js cargado correctamente');
 });
 
 function inicializarVista() {
-    console.log('=== INICIO INICIALIZACIÓN VISTA ===');
-    
-    // Obtener configuración desde el servidor (FormatHelper)
     if (window.FormatConfig) {
         monedaActual = window.FormatConfig.moneda || 'CRC';
         estadoActual = window.FormatConfig.estado || 'B';
-        console.log('Configuración desde FormatConfig:', {
-            moneda: monedaActual,
-            estado: estadoActual
-        });
     } else {
-        // Fallback al método anterior
         monedaActual = $('#formEditarCotizacion').find('input[name="Moneda"]').val() || 'CRC';
-                
-        // Obtener estado actual de la cotización desde el badge en el header
         const estadoBadge = $('.header-title .badge').text().trim();
         estadoActual = detectarEstadoDeTexto(estadoBadge);
-        
-        console.log('Configuración desde DOM fallback:', {
-            moneda: monedaActual,
-            estadoBadge: estadoBadge,
-            estadoDetectado: estadoActual
-        });
     }
             
-    // Verificar si es editable usando la configuración centralizada
     const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
         window.FormatUtils.isEditable(estadoActual) : 
-        (estadoActual === 'B'); // Fallback
-        
-    console.log('=== DETECCIÓN DE ESTADO DETALLADA ===');
-    console.log('Estado detectado:', estadoActual);
-    console.log('Tipo del estado:', typeof estadoActual);
-    console.log('Estado === "B":', estadoActual === 'B');
-    console.log('Estado == "B":', estadoActual == 'B');
-    console.log('¿Es editable (lógica directa)?:', estadoActual === 'B');
-    console.log('¿Es editable (FormatUtils)?:', window.FormatUtils?.isEditable(estadoActual));
-    console.log('¿Es editable (resultado final)?:', esEditable);
-    console.log('FormatUtils disponible:', typeof window.FormatUtils !== 'undefined');
-    console.log('FormatConfig disponible:', typeof window.FormatConfig !== 'undefined');
-    if (window.FormatConfig && window.FormatConfig.estados) {
-        console.log('Configuración de estados completa:', window.FormatConfig.estados);
-        console.log('Configuración del estado actual:', window.FormatConfig.estados[estadoActual]);
-    }
+        (estadoActual === 'B');
     
-    // DEBUGGING ADICIONAL: Verificar el DOM directamente
-    const badgeElement = $('.header-title .badge');
-    console.log('=== DEBUGGING DOM ===');
-    console.log('Badge element found:', badgeElement.length > 0);
-    console.log('Badge text raw:', `"${badgeElement.text()}"`);
-    console.log('Badge text trimmed:', `"${badgeElement.text().trim()}"`);
-    console.log('Badge HTML:', badgeElement.html());
-    console.log('Badge classes:', badgeElement.attr('class'));
-    console.log('===================');
-    
-    // Inicializar componentes AdminLTE solo si están disponibles
     if (typeof $.fn.CardWidget !== 'undefined') {
         try {
             $('[data-card-widget="collapse"]').CardWidget();
@@ -213,72 +134,41 @@ function inicializarVista() {
         }
     }
     
-    // Configurar cards colapsables
     $('.card-header[data-card-widget="collapse"]').on('click', function(e) {
         if (!$(e.target).closest('.btn').length) {
             $(this).find('.btn[data-card-widget="collapse"]').click();
         }
     });
     
-    // Contador de caracteres para notas (siempre mostrar correctamente)
-    // Ejecutar con un pequeño retraso para asegurar que el DOM esté listo
     setTimeout(function() {
         configurarContadorCaracteres();
     }, 100);
     
-    // Solo habilitar edición si es editable
     if (esEditable) {
-        console.log('✅ Cotización ES EDITABLE - Habilitando funcionalidad');
-        // Ya se configuró el contador arriba
+        console.log('Cotización editable - Funcionalidad habilitada');
     } else {
-        console.log('❌ Cotización NO ES EDITABLE - Mostrando aviso');
-        // Mostrar aviso si no es editable
         mostrarAvisoNoEditable();
     }
     
-    // NUEVA FUNCIONALIDAD: Verificar estado inicial de moneda
-    // Ejecutar con un pequeño retraso para asegurar que el DOM esté completamente listo
     setTimeout(function() {
         verificarYActualizarEstadoMoneda();
     }, 200);
-    
-    console.log('=== RESUMEN INICIALIZACIÓN ===');
-    console.log('Vista de edición inicializada:', {
-        estado: estadoActual,
-        estadoTexto: (typeof window.FormatUtils !== 'undefined') ? 
-            window.FormatUtils.getEstadoTexto(estadoActual) : 
-            'Estado ' + estadoActual,
-        editable: esEditable,
-        moneda: monedaActual,
-        configuracionServidor: !!window.FormatConfig,
-        formatUtilsDisponible: typeof window.FormatUtils !== 'undefined'
-    });
-    console.log('===============================');
 }
 
 /**
  * Detecta el estado a partir del texto del badge
  */
 function detectarEstadoDeTexto(texto) {
-    console.log('=== DETECTAR ESTADO DE TEXTO ===');
-    console.log('Texto de entrada:', `"${texto}"`);
-    
-    // Si tenemos FormatConfig disponible, usarlo
     if (typeof window.FormatConfig !== 'undefined' && window.FormatConfig.estados) {
         const estados = window.FormatConfig.estados;
-        console.log('Usando FormatConfig.estados:', estados);
         
         for (let [codigo, config] of Object.entries(estados)) {
-            console.log(`Comparando "${texto}" con "${config.texto}" (código: ${codigo})`);
             if (config.texto === texto) {
-                console.log(`✅ Match encontrado: ${codigo}`);
                 return codigo;
             }
         }
-        console.log('❌ No se encontró match en FormatConfig');
     }
     
-    // Fallback: mapeo manual
     const mapeosEstado = {
         'Borrador': 'B',
         'Pendiente Aprobación': 'P',
@@ -289,74 +179,47 @@ function detectarEstadoDeTexto(texto) {
         'Archivada': 'X'
     };
     
-    console.log('Usando mapeo manual fallback:', mapeosEstado);
-    
-    // Verificar mapeo exacto
     if (mapeosEstado[texto]) {
-        console.log(`✅ Match exacto encontrado: ${mapeosEstado[texto]}`);
         return mapeosEstado[texto];
     }
     
-    // Verificar mapeo case-insensitive
     const textoLower = texto.toLowerCase();
     for (let [textoEstado, codigo] of Object.entries(mapeosEstado)) {
         if (textoEstado.toLowerCase() === textoLower) {
-            console.log(`✅ Match case-insensitive encontrado: ${codigo}`);
             return codigo;
         }
     }
     
-    console.log('❌ No se encontró ningún match, usando default "B"');
-    console.log('===============================');
-    
-    return 'B'; // Default a Borrador
+    return 'B';
 }
 
 function configurarEventos() {
-// Verificar nuevamente si es editable en configurarEventos
-const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
-    window.FormatUtils.isEditable(estadoActual) : 
-    (estadoActual === 'B'); // Fallback
-    
-console.log('=== CONFIGURAR EVENTOS ===');
-console.log('Estado actual:', estadoActual);
-console.log('Es editable:', esEditable);
-console.log('==========================');
+    const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
+        window.FormatUtils.isEditable(estadoActual) : 
+        (estadoActual === 'B');
     
     if (esEditable) {
-        // Guardar cambios
         $('#btnGuardar').on('click', guardarCotizacion);
-        
-        // Configurar tipo de cambio (siempre editable en estado Borrador)
         configurarEventoTipoCambio();
-        
-        // Configurar versión (editable en estado Borrador)
         configurarEventoVersion();
         
-        // Agregar nueva línea
         $('#btnAgregarLinea').on('click', function() {
-            abrirModalDetalle(-1); // -1 indica nueva línea
+            abrirModalDetalle(-1);
         });
         
-        // Editar línea existente
         $(document).on('click', '.btn-editar-detalle', function() {
             const index = parseInt($(this).attr('data-index'));
             abrirModalDetalle(index);
         });
         
-        // Eliminar línea
         $(document).on('click', '.btn-eliminar-detalle', function() {
             const index = parseInt($(this).attr('data-index'));
             eliminarDetalle(index);
         });
         
-        // Guardar cambios en modal de detalle
         $('#btnGuardarDetalle').on('click', guardarDetalle);
-        
-        // Cálculos automáticos en modal
         $('#modalCantidad, #modalPrecioUnitario, #modalDescuento').on('input', calcularTotalLinea);
         
-        // Cambio de producto
         $('#modalProductoId').on('change', function() {
             const productoId = $(this).val();
             const producto = productosDisponibles.find(p => p.id === productoId);
@@ -367,7 +230,6 @@ console.log('==========================');
             }
         });
         
-        // Cambio de interesado
         $('#selectInteresado').on('change', function() {
             const interesadoId = parseInt($(this).val());
             const interesado = interesadosDisponibles.find(i => i.id === interesadoId);
@@ -379,7 +241,6 @@ console.log('==========================');
             }
         });
         
-        // También configurar evento para select2 si está inicializado
         $(document).on('select2:select', '#selectInteresado', function() {
             const interesadoId = parseInt($(this).val());
             const interesado = interesadosDisponibles.find(i => i.id === interesadoId);
@@ -391,10 +252,8 @@ console.log('==========================');
             }
         });
         
-        // Limpiar modal al cerrar
         $('#modalEditarDetalle').on('hidden.bs.modal', limpiarModalDetalle);
     } else {
-        // Mostrar mensaje si intenta interactuar con elementos no editables
         $('.form-control, .btn-success, .btn-warning, .btn-danger').on('click', function(e) {
             if ($(this).is(':disabled, [readonly]')) {
                 const estadoTexto = (typeof window.FormatUtils !== 'undefined') ? 
