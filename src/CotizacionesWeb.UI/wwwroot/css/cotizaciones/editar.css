@@ -239,12 +239,12 @@ select.form-control[disabled] {
 
 /* Estilos específicos para campo Tipo de Cambio */
 #TipoCambio {
-    text-align: left;
+    text-align: center;
     font-weight: 500;
     border: 1px solid #17a2b8;
     border-radius: 4px;
     background-color: #fff;
-    padding: 0.375rem 0.75rem;
+    padding: 0.25rem 0.5rem;
     font-size: 0.875rem;
 }
 
@@ -258,12 +258,158 @@ select.form-control[disabled] {
     color: #17a2b8;
     opacity: 0.8;
     font-style: italic;
+    font-size: 0.8rem;
 }
 
 /* Ícono de tipo de cambio */
 .fa-exchange-alt {
     color: #17a2b8 !important;
     margin-right: 5px;
+}
+
+/* Botón de edición de tipo de cambio (pequeño, estilo link) */
+#btnEditarTipoCambio {
+    border: none;
+    background: none;
+    padding: 0;
+    margin: 0;
+    vertical-align: baseline;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+#btnEditarTipoCambio:hover {
+    background: none !important;
+    border: none !important;
+}
+
+#btnEditarTipoCambio:hover i {
+    color: #17a2b8 !important;
+}
+
+#btnEditarTipoCambio:focus {
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Botones de guardar y cancelar (más pequeños) */
+#btnGuardarTipoCambio, #btnCancelarTipoCambio {
+    line-height: 1;
+    font-size: 0.7rem;
+    border-radius: 0.2rem;
+}
+
+#btnGuardarTipoCambio {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+#btnGuardarTipoCambio:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+#btnCancelarTipoCambio {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+#btnCancelarTipoCambio:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+
+/* Valor del tipo de cambio en modo vista */
+#tipoCambioValor {
+    font-weight: normal;
+    color: #6c757d;
+}
+
+/* Asegurar que el contenedor del tipo de cambio tenga el mismo estilo que moneda */
+#tipoCambioModoVista small,
+#tipoCambioModoEdicion small {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* Contenedor de modo edición centrado */
+#tipoCambioModoEdicion .d-flex {
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Estilos específicos para campo Número de Versión */
+#NumeroVersion {
+    text-align: center;
+    font-weight: 500;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    background-color: #fff;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+#NumeroVersion:focus {
+    border-color: #0056b3;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    outline: 0;
+}
+
+/* Botón de edición de versión (pequeño, estilo link) */
+#btnEditarVersion {
+    border: none;
+    background: none;
+    padding: 0;
+    margin: 0;
+    vertical-align: baseline;
+    line-height: 1;
+    transition: color 0.2s ease;
+}
+
+#btnEditarVersion:hover {
+    background: none !important;
+    border: none !important;
+}
+
+#btnEditarVersion:hover i {
+    color: #007bff !important;
+}
+
+#btnEditarVersion:focus {
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Botones de guardar y cancelar para versión (más pequeños) */
+#btnGuardarVersion, #btnCancelarVersion {
+    line-height: 1;
+    font-size: 0.7rem;
+    border-radius: 0.2rem;
+}
+
+#btnGuardarVersion {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+}
+
+#btnGuardarVersion:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+#btnCancelarVersion {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+#btnCancelarVersion:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
 }
 
 /* Responsividad mejorada */
@@ -296,4 +442,105 @@ select.form-control[disabled] {
     .card-body {
         padding: 0.5rem !important;
     }
+}
+
+/* ========================================
+   NUEVOS ESTILOS PARA DIFERENCIACIÓN DE LÍNEAS
+   ======================================== */
+
+/* Líneas nuevas (temporales) - fondo verde claro */
+.linea-nueva {
+    background-color: rgba(40, 167, 69, 0.05) !important;
+    border-left: 3px solid #28a745;
+}
+
+.linea-nueva:hover {
+    background-color: rgba(40, 167, 69, 0.1) !important;
+}
+
+/* Líneas persistentes (guardadas en BD) - fondo azul claro */
+.linea-persistente {
+    background-color: rgba(23, 162, 184, 0.05) !important;
+    border-left: 3px solid #17a2b8;
+}
+
+.linea-persistente:hover {
+    background-color: rgba(23, 162, 184, 0.1) !important;
+}
+
+/* Iconos de estado para líneas */
+.fa-plus-circle {
+    color: #28a745 !important;
+    font-size: 0.9rem;
+    margin-left: 0.25rem;
+}
+
+.fa-database {
+    color: #17a2b8 !important;
+    font-size: 0.9rem;
+    margin-left: 0.25rem;
+}
+
+/* Contador de líneas mejorado */
+#contadorLineas {
+    font-size: 0.875rem;
+    font-weight: bold;
+}
+
+/* Tooltip para explicar tipos de líneas */
+.linea-nueva [title],
+.linea-persistente [title] {
+    cursor: help;
+}
+
+/* Mensaje informativo para cambio de moneda */
+.moneda-section .alert {
+    margin-bottom: 0;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+}
+
+/* Mejorar visibilidad de validaciones */
+.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.modal .is-invalid {
+    animation: shake 0.3s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+
+/* Mejorar contraste de mensajes de error */
+.invalid-feedback {
+    display: block !important;
+    color: #dc3545;
+    font-size: 0.875em;
+    font-weight: 500;
+    margin-top: 0.25rem;
+}
+
+/* Estados de botones durante carga */
+.btn[disabled] {
+    cursor: not-allowed !important;
+    opacity: 0.65;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+/* Mejorar accesibilidad */
+.btn:focus,
+.form-control:focus,
+select.form-control:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
 }

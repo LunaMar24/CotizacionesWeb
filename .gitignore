@@ -84,3 +84,4 @@ logs/
 # VS Code
 .vscode/
 
+/src/CotizacionesWeb.UI/NewFolder

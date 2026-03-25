@@ -534,8 +534,9 @@ public class CotizacionesController : Controller
 
             if (viewModel.Detalles == null || !viewModel.Detalles.Any())
             {
-                _logger.LogWarning("Guardado rechazado: Sin detalles para {CotizacionId}", viewModel.CotizacionId);
-                return Json(new { success = false, message = "Debe agregar al menos una línea de detalle" });
+                _logger.LogInformation("Guardando cotización {CotizacionId} sin líneas de detalle (estado borrador permitido)", viewModel.CotizacionId);
+                // ? PERMITIDO: En estado Borrador se puede guardar sin líneas
+                // No bloquear, solo registrar para auditoría
             }
 
             // Validar detalles
@@ -564,6 +565,8 @@ public class CotizacionesController : Controller
             {
                 CotizacionId = viewModel.CotizacionId,
                 VersionId = viewModel.VersionId,
+                // ?? NUEVO: Incluir número de versión si fue modificado
+                NumeroVersion = viewModel.NumeroVersion,
                 NombreInteresado = viewModel.NombreInteresado.Trim(),
                 EmailInteresado = viewModel.EmailInteresado.Trim(),
                 EmpresaInteresado = viewModel.EmpresaInteresado?.Trim() ?? "",
@@ -571,6 +574,11 @@ public class CotizacionesController : Controller
                 Moneda = viewModel.Moneda, // Incluir la moneda
                 TipoCambio = viewModel.TipoCambio, // Incluir el tipo de cambio
                 Notas = viewModel.Notas?.Trim() ?? "",
+                // ?? NUEVO: Incluir totales calculados
+                SubTotal = viewModel.SubTotal,
+                TotalDescuentos = viewModel.Descuento,
+                Impuesto = viewModel.Impuesto,
+                Total = viewModel.Total,
                 Detalles = viewModel.Detalles.Select(d => new ActualizarDetalleRequest
                 {
                     DetalleVersionId = d.DetalleVersionId,
@@ -582,6 +590,14 @@ public class CotizacionesController : Controller
                     TotalLinea = d.TotalLinea
                 }).ToList()
             };
+
+            _logger.LogInformation("?? Request para actualización creado con los siguientes datos importantes:");
+            _logger.LogInformation("  - CotizacionId: {CotizacionId}", request.CotizacionId);
+            _logger.LogInformation("  - VersionId: {VersionId}", request.VersionId);
+            _logger.LogInformation("  - Moneda en request: '{Moneda}'", request.Moneda);
+            _logger.LogInformation("  - NumeroVersion: {NumeroVersion}", request.NumeroVersion);
+            _logger.LogInformation("  - TipoCambio: {TipoCambio}", request.TipoCambio);
+            _logger.LogInformation("  - Cantidad de detalles: {DetallesCount}", request.Detalles.Count);
 
             _logger.LogInformation("Request creado para {CotizacionId}: {DetallesCount} detalles", 
                 viewModel.CotizacionId, request.Detalles.Count);
@@ -681,6 +697,137 @@ public class CotizacionesController : Controller
         {
             _logger.LogError(ex, "Error en debugging de cotización {CotizacionId}", cotizacionId);
             return Json(new { error = ex.Message });
+        }
+    }
+
+    // ?? MÉTODO ESPECÍFICO PARA DEBUG DE MONEDA
+    [HttpGet("Cotizaciones/DebugMoneda/{cotizacionId}")]
+    [RequierePermiso("COT_VIEW")]
+    public async Task<IActionResult> DebugMoneda(string cotizacionId)
+    {
+        try
+        {
+            _logger.LogInformation("=== DEBUGGING MONEDA COTIZACIÓN {CotizacionId} ===", cotizacionId);
+            
+            // Obtener información directa de la base de datos
+            var cotizaciones = await _cotizacionService.GetCotizacionesListAsync(
+                new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null, null));
+            
+            var cotizacion = cotizaciones.FirstOrDefault(c => c.CotizacionId == cotizacionId);
+            
+            if (cotizacion == null)
+            {
+                return Json(new { error = "Cotización no encontrada", timestamp = DateTime.Now });
+            }
+
+            // Obtener detalle de la versión actual
+            var detalle = await _cotizacionService.GetCotizacionCurrentVersionDetailAsync(cotizacionId);
+            
+            var result = new
+            {
+                cotizacionId = cotizacion.CotizacionId,
+                monedaCotizacion = cotizacion.Moneda,
+                estado = cotizacion.EstadoActual,
+                versionActual = cotizacion.VersionActual,
+                detalleVersion = detalle != null ? new
+                {
+                    versionId = detalle.Version.VersionId,
+                    numeroVersion = detalle.Version.NumeroVersion,
+                    tipoCambio = detalle.Version.TipoCambio,
+                    cantidadDetalles = detalle.Detalles.Count,
+                    lineasPersistentes = detalle.Detalles.Count(d => d.DetalleVersionId > 0)
+                } : null,
+                timestamp = DateTime.Now,
+                puedeEditarMoneda = cotizacion.EstadoActual == 'B' && 
+                                   (detalle?.Detalles.Count(d => d.DetalleVersionId > 0) ?? 0) == 0
+            };
+
+            _logger.LogInformation("Debug moneda completado: Moneda={Moneda}, Estado={Estado}, PuedeEditar={PuedeEditar}",
+                result.monedaCotizacion, result.estado, result.puedeEditarMoneda);
+
+            return Json(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en debugging de moneda para cotización {CotizacionId}", cotizacionId);
+            return Json(new { error = ex.Message, timestamp = DateTime.Now });
+        }
+    }
+
+    // ?? MÉTODO PARA FORZAR ELIMINACIÓN DE LÍNEAS Y PERMITIR CAMBIO DE MONEDA
+    [HttpPost("Cotizaciones/EliminarLineasParaCambioMoneda/{cotizacionId}")]
+    [ValidateAntiForgeryToken]
+    [RequierePermiso("COT_EDIT")]
+    public async Task<IActionResult> EliminarLineasParaCambioMoneda(string cotizacionId)
+    {
+        try
+        {
+            _logger.LogInformation("=== ELIMINANDO LÍNEAS PARA CAMBIO DE MONEDA {CotizacionId} ===", cotizacionId);
+            
+            // ?? CORRECCIÓN CRÍTICA: Obtener también la información de la cotización para la moneda
+            var cotizaciones = await _cotizacionService.GetCotizacionesListAsync(
+                new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null, null));
+            
+            var cotizacion = cotizaciones.FirstOrDefault(c => c.CotizacionId == cotizacionId);
+            if (cotizacion == null)
+            {
+                return Json(new { success = false, message = "Cotización no encontrada" });
+            }
+
+            // Obtener detalle actual
+            var detalle = await _cotizacionService.GetCotizacionCurrentVersionDetailAsync(cotizacionId);
+            if (detalle == null)
+            {
+                return Json(new { success = false, message = "Detalle de versión no encontrado" });
+            }
+
+            var lineasPersistentes = detalle.Detalles.Where(d => d.DetalleVersionId > 0).ToList();
+            
+            if (!lineasPersistentes.Any())
+            {
+                return Json(new { success = true, message = "No hay líneas persistentes que eliminar" });
+            }
+
+            _logger.LogInformation("?? Monedas disponibles:");
+            _logger.LogInformation("  - Cotización.Moneda: '{MonedaCotizacion}'", cotizacion.Moneda);
+            _logger.LogInformation("  - Version.Moneda: '{MonedaVersion}'", detalle.Version.Moneda);
+            _logger.LogInformation("  - Usando moneda de cotización: '{MonedaUsada}'", cotizacion.Moneda);
+
+            // ?? CORRECCIÓN CRÍTICA: Crear request usando la moneda correcta desde la entidad Cotizacion
+            var request = new ActualizarCotizacionRequest
+            {
+                CotizacionId = cotizacionId,
+                VersionId = detalle.Version.VersionId,
+                NombreInteresado = detalle.Version.NombreInteresado,
+                EmailInteresado = detalle.Version.EmailInteresado,
+                EmpresaInteresado = detalle.Version.EmpresaInteresado,
+                TipoInteresado = detalle.Version.TipoInteresado,
+                Moneda = cotizacion.Moneda, // ?? CORREGIDO: Usar moneda desde Cotizacion, no desde Version
+                TipoCambio = detalle.Version.TipoCambio,
+                Notas = detalle.Version.Notas,
+                Detalles = new List<ActualizarDetalleRequest>() // Sin detalles = eliminar todos
+            };
+
+            var currentUserId = GetCurrentUserId();
+            var resultado = await _cotizacionService.ActualizarCotizacionAsync(request, currentUserId);
+
+            if (resultado.Success)
+            {
+                _logger.LogInformation("Líneas eliminadas exitosamente para cotización {CotizacionId}", cotizacionId);
+                return Json(new { 
+                    success = true, 
+                    message = $"Se eliminaron {lineasPersistentes.Count} líneas persistentes. Ahora puede cambiar la moneda." 
+                });
+            }
+            else
+            {
+                return Json(new { success = false, message = resultado.ErrorMessage });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al eliminar líneas para cambio de moneda {CotizacionId}", cotizacionId);
+            return Json(new { success = false, message = "Error interno al eliminar líneas" });
         }
     }
 }

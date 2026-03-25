@@ -117,7 +117,35 @@
                                     <div class="d-flex">
                                         <strong class="info-label">Versión:</strong>
                                         <span>
-                                            <span class="badge badge-version">@FormatHelper.FormatVersion(Model.NumeroVersion)</span>
+                                            @if (Model.EstadoActual == 'B')
+                                            {
+                                                <!-- Modo vista (etiqueta con botón de edición) -->
+                                                <span id="versionModoVista">
+                                                    <span class="badge badge-version" id="versionValor">@FormatHelper.FormatVersion(Model.NumeroVersion)</span>
+                                                    <button type="button" class="btn btn-sm btn-link p-0 ml-1" id="btnEditarVersion" title="Editar versión">
+                                                        <i class="fas fa-pencil-alt" style="font-size: 0.7rem; color: #6c757d;"></i>
+                                                    </button>
+                                                </span>
+                                                
+                                                <!-- Modo edición (campo de entrada) -->
+                                                <span class="d-none" id="versionModoEdicion">
+                                                    <input type="number" step="0.1" min="1.0" max="99.9" class="form-control form-control-sm d-inline-block" 
+                                                           id="NumeroVersion" name="NumeroVersion" 
+                                                           value="@Model.NumeroVersion.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)"
+                                                           title="Número de versión de la cotización"
+                                                           style="width: 80px; text-align: center; font-size: 0.875rem;">
+                                                    <button type="button" class="btn btn-sm btn-success ml-1" id="btnGuardarVersion" title="Guardar" style="padding: 0.1rem 0.3rem;">
+                                                        <i class="fas fa-check" style="font-size: 0.7rem;"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-secondary ml-1" id="btnCancelarVersion" title="Cancelar" style="padding: 0.1rem 0.3rem;">
+                                                        <i class="fas fa-times" style="font-size: 0.7rem;"></i>
+                                                    </button>
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-version">@FormatHelper.FormatVersion(Model.NumeroVersion)</span>
+                                            }
                                         </span>
                                     </div>
                                 </div>
@@ -343,43 +371,61 @@
                                 <span class="h5">Total:</span>
                                 <strong class="h5 text-success" id="displayTotal">@FormatHelper.FormatCurrency(Model.Total, Model.Moneda)</strong>
                             </div>
-                            <!-- Campo Tipo de Cambio - En línea separada -->
+                            <hr class="my-3">
+                            <div class="text-center text-muted">
+                                <small>
+                                    <strong>Moneda:</strong> <span id="displayMonedaCodigo">@Model.Moneda</span>
+                                </small>
+                            </div>
+                            
+                            <!-- Campo Tipo de Cambio - Debajo de la moneda con el mismo estilo -->
                             @if (Model.EstadoActual == 'B')
                             {
-                                <div class="mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-exchange-alt text-info"></i> 
-                                        <span class="ml-1">Tipo de Cambio:</span>
-                                        <div class="ml-3">
+                                <div class="text-center text-muted mt-1">
+                                    <!-- Modo vista (etiqueta) -->
+                                    <div id="tipoCambioModoVista">
+                                        <small>
+                                            <strong>Tipo de Cambio:</strong> 
+                                            <span id="tipoCambioValor">@(Model.TipoCambio?.ToString("N2") ?? "No definido")</span>
+                                            <button type="button" class="btn btn-sm btn-link p-0 ml-1" id="btnEditarTipoCambio" title="Editar tipo de cambio">
+                                                <i class="fas fa-pencil-alt" style="font-size: 0.7rem; color: #6c757d;"></i>
+                                            </button>
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Modo edición (campo de entrada) -->
+                                    <div class="d-none" id="tipoCambioModoEdicion">
+                                        <small>
+                                            <strong>Tipo de Cambio:</strong>
+                                        </small>
+                                        <div class="d-flex justify-content-center align-items-center mt-1">
                                             <input type="number" step="0.01" min="0" class="form-control form-control-sm" 
                                                    id="TipoCambio" name="TipoCambio" 
                                                    value="@(Model.TipoCambio?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "")"
                                                    placeholder="520.50" 
                                                    title="Tipo de cambio para esta cotización"
-                                                   style="width: 120px; text-align: left;">
+                                                   style="width: 100px; text-align: center; font-size: 0.875rem;">
+                                            <button type="button" class="btn btn-sm btn-success ml-1" id="btnGuardarTipoCambio" title="Guardar" style="padding: 0.1rem 0.3rem;">
+                                                <i class="fas fa-check" style="font-size: 0.7rem;"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-secondary ml-1" id="btnCancelarTipoCambio" title="Cancelar" style="padding: 0.1rem 0.3rem;">
+                                                <i class="fas fa-times" style="font-size: 0.7rem;"></i>
+                                            </button>
+                                        </div>
+                                        <div class="mt-1">
+                                            <small class="text-muted" style="font-size: 0.75rem;">Opcional - Ingrese el tipo de cambio si aplica</small>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="text-center mb-3">
-                                    <small class="text-muted">Opcional - Ingrese el tipo de cambio si aplica</small>
                                 </div>
                             }
                             else if (Model.TipoCambio.HasValue && Model.TipoCambio > 0)
                             {
-                                <div class="mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-exchange-alt text-info"></i> 
-                                        <span class="ml-1">Tipo de Cambio:</span>
-                                        <strong class="ml-3">@Model.TipoCambio.Value.ToString("N2")</strong>
-                                    </div>
+                                <div class="text-center text-muted mt-1">
+                                    <small>
+                                        <strong>Tipo de Cambio:</strong> @Model.TipoCambio.Value.ToString("N2")
+                                    </small>
                                 </div>
                             }
-                            <hr class="my-3">
-                            <div class="text-center text-muted">
-                                <small>
-                                    <strong>Moneda:</strong> @Model.Moneda
-                                </small>
-                            </div>
                         </div>
                     </div>
                 </div>
