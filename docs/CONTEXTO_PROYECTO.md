@@ -4,7 +4,55 @@
 
 ---
 
+## 📋 **REGLAS GENERALES DE DESARROLLO**
+
+### ⚠️ **REGLA CRÍTICA: NO CREAR FUNCIONES DE DIAGNÓSTICO AUTOMÁTICAMENTE**
+
+**❌ PROHIBIDO**: Agregar funciones de diagnóstico como `window.diagnosticar*()`, `window.debug*()`, `window.probar*()` sin solicitud explícita del usuario.
+
+**✅ PERMITIDO**: 
+- Logging normal con `console.log()` para debugging
+- Comentarios explicativos en el código
+- Validaciones y manejo de errores estándar
+
+**💡 RAZÓN**: Las funciones de diagnóstico deben ser solicitadas explícitamente por el usuario cuando sean necesarias para troubleshooting específico.
+
+### 🔒 **REGLAS DE EDICIÓN DE MONEDA**
+
+**La moneda de una cotización SOLO se puede cambiar cuando se cumplen TODAS estas condiciones:**
+
+1. ✅ **Estado Borrador**: La cotización debe estar en estado `'B'` (Borrador)
+2. ✅ **Sin líneas de detalle**: NO debe tener ninguna línea en la tabla (ni temporales ni persistentes)
+3. ✅ **Tabla vacía**: `totalLineas === 0`
+
+**❌ NO se puede cambiar la moneda si:**
+- Hay cualquier línea en la tabla (aunque no esté guardada)
+- La cotización está en estado diferente a Borrador
+- Ya hay productos/servicios agregados
+
+**💡 RAZÓN**: Los precios ya están expresados en la moneda original. Cambiar la moneda con líneas existentes causaría inconsistencias financieras.
+
+---
+
 ## 🏛️ **PRINCIPIOS FUNDAMENTALES DE DESARROLLO**
+
+### 📖 **CONTEXTO DEL PROYECTO**
+
+**Tipo de Proyecto**: ASP.NET Core MVC (.NET 8) - **NO es Blazor ni Razor Pages puro**
+
+**Arquitectura**: Clean Architecture con separación en capas:
+- **UI**: Controllers, Views, JavaScript, CSS
+- **Application**: Interfaces, DTOs, Casos de uso
+- **Infrastructure**: EF Core, Servicios, Implementaciones
+- **Domain**: Entidades, Enums, Reglas de negocio
+
+**Stack Tecnológico**:
+- .NET 8 / ASP.NET Core MVC
+- Entity Framework Core 8 (Code First)
+- SQL Server (LocalDB dev / Azure prod)
+- AdminLTE 3.2 + Bootstrap 4.6
+- jQuery 3.x (JavaScript principal)
+- Font Awesome 6.4.0
 
 ### 🔄 **PRINCIPIO DRY (Don't Repeat Yourself) - CRÍTICO**
 
@@ -311,26 +359,27 @@ Este patrón debe aplicarse a:
 
 ### 🔄 **REGLAS DE NEGOCIO PARA CAMBIO DE MONEDA**
 
-**📜 REGLA FUNDAMENTAL**: El cambio de moneda en cotizaciones está estrictamente controlado por reglas de negocio para evitar inconsistencias en la información financiera.
+**📜 REGLA FUNDAMENTAL**: El cambio de moneda está estrictamente controlado para evitar inconsistencias financieras.
 
 #### **✅ CONDICIONES PARA PERMITIR CAMBIO DE MONEDA:**
 
 La moneda de una cotización **SOLO** se puede cambiar cuando se cumplen **TODAS** estas condiciones:
 
-1. **🎯 Versión 1.0 únicamente**: La cotización debe estar en su primera versión (`NumeroVersion == 1.0m`)
-2. **📝 Estado Borrador**: La cotización debe estar en estado 'B' (Borrador)
-3. **📋 Sin líneas de detalle**: No debe tener ninguna línea de productos/servicios agregada
+1. **📝 Estado Borrador**: La cotización debe estar en estado `'B'` (Borrador)
+2. **📋 Sin líneas**: NO debe tener ninguna línea de detalle (ni guardadas ni temporales)
+3. **🔢 Tabla vacía**: `totalLineas === 0` (la tabla de productos debe estar completamente vacía)
 
 #### **❌ ESCENARIOS DONDE NO SE PERMITE:**
 
-##### **🚫 Versiones Superiores a 1.0:**
+##### **🚫 Con Líneas de Detalle:**
 ```csharp
 // ❌ NO PERMITIDO
-if (version.NumeroVersion > 1.0m) {
-    return Error("No se puede cambiar la moneda en versiones superiores a 1.0");
+var tieneLineas = $('#tablaDetalles tbody tr').length > 0;
+if (tieneLineas) {
+    return Error("No se puede cambiar la moneda cuando hay líneas de detalle");
 }
 ```
-**Justificación**: Las versiones superiores representan evoluciones de la cotización que ya han sido procesadas, aprobadas o enviadas.
+**Justificación**: Los precios de productos están expresados en la moneda original; cambiar la moneda haría que los precios no correspondan.
 
 ##### **🚫 Estados Diferentes a Borrador:**
 ```csharp
@@ -339,19 +388,7 @@ if (cotizacion.EstadoActual != 'B') {
     return Error("Solo se puede cambiar la moneda en estado Borrador");
 }
 ```
-**Justificación**: Cotizaciones en otros estados han pasado por procesos de aprobación o envío que no deben alterarse.
-
-##### **🚫 Con Líneas de Detalle Existentes:**
-```csharp
-// ❌ NO PERMITIDO
-var tieneDetalles = await _context.DetallesCotizacionVersion
-    .AnyAsync(d => d.VersionId == version.VersionId);
-    
-if (tieneDetalles) {
-    return Error("No se puede cambiar la moneda cuando hay líneas de detalle");
-}
-```
-**Justificación**: Los precios de productos están expresados en la moneda original; cambiar la moneda haría que los precios no correspondan.
+**Justificación**: Cotizaciones en otros estados han pasado por procesos de aprobación que no deben alterarse.
 
 #### **🔧 IMPLEMENTACIÓN TÉCNICA:**
 
@@ -361,9 +398,10 @@ if (tieneDetalles) {
 bool puedeActualizarMoneda = false;
 if (!string.IsNullOrEmpty(request.Moneda) && request.Moneda != cotizacion.Moneda)
 {
-    // Verificar reglas de negocio para cambio de moneda
-    if (version.NumeroVersion == 1.0m && cotizacion.EstadoActual == 'B')
+    // Verificar estado Borrador
+    if (cotizacion.EstadoActual == 'B')
     {
+        // Verificar que NO haya líneas (ni una sola)
         var tieneDetalles = await _context.DetallesCotizacionVersion
             .AnyAsync(d => d.VersionId == version.VersionId);
 
@@ -375,148 +413,60 @@ if (!string.IsNullOrEmpty(request.Moneda) && request.Moneda != cotizacion.Moneda
         else
         {
             return new ActualizarCotizacionResult(false, 
-                "No se puede cambiar la moneda cuando ya hay líneas de detalle");
+                "No se puede cambiar la moneda cuando hay líneas de detalle");
         }
     }
     else
     {
         return new ActualizarCotizacionResult(false, 
-            "Solo se puede cambiar la moneda en versión 1.0 y estado Borrador");
+            "Solo se puede cambiar la moneda en estado Borrador");
     }
 }
 ```
 
-##### **Frontend (Vista):**
-```csharp
-// En CotizacionEditarViewModel
-public bool PuedeCambiarMoneda => 
-    NumeroVersion == 1.0m && 
-    EstadoActual == 'B' && 
-    (Detalles == null || !Detalles.Any());
-```
-
-##### **JavaScript (Validación Adicional):**
+##### **Frontend (JavaScript):**
 ```javascript
-// En editar.js
+// En editar.js - Validación del combo de moneda
 $('#MonedaSelect').on('change', function() {
     const totalLineas = $('#tablaDetalles tbody tr').length;
     
+    // ❌ Bloquear si hay CUALQUIER línea (temporal o persistente)
     if (totalLineas > 0) {
         showNotification('warning', 
-            'No se puede cambiar la moneda cuando hay líneas de detalle agregadas.');
+            'No se puede cambiar la moneda cuando hay líneas de detalle.');
         $(this).val(monedaAnterior); // Revertir
         return;
     }
     
-    // Proceder con confirmación...
+    // ✅ Proceder con modal de confirmación si no hay líneas
+    mostrarModalConfirmacionMoneda(...);
 });
 ```
 
 #### **🎯 FLUJOS DE USUARIO DOCUMENTADOS:**
 
 ##### **✅ Flujo Exitoso:**
-1. **Usuario crea nueva cotización** → Estado: Borrador, Versión: 1.0
-2. **Sin agregar productos** → Sin líneas de detalle
-3. **Accede a edición** → Ve combo de monedas habilitado
-4. **Selecciona nueva moneda** → Sistema solicita confirmación
-5. **Confirma cambio** → Moneda actualizada exitosamente
+1. **Usuario crea cotización** → Estado: Borrador
+2. **NO agrega productos** → Sin líneas de detalle
+3. **Cambia moneda** → Sistema solicita confirmación
+4. **Confirma cambio** → Moneda actualizada exitosamente
 
-##### **❌ Flujo Restringido - Con Detalles:**
-1. **Usuario tiene cotización v1.0** → Estado: Borrador 
-2. **Agrega líneas de productos** → Ya tiene detalles
-3. **Intenta cambiar moneda** → Campo de moneda bloqueado
-4. **Ve explicación** → "No se puede cambiar cuando hay líneas de detalle"
+##### **❌ Flujo Bloqueado:**
+1. **Usuario crea cotización** → Estado: Borrador  
+2. **Agrega 1 línea de producto** → Tiene líneas de detalle
+3. **Intenta cambiar moneda** → ❌ Sistema bloquea el cambio
+4. **Ve mensaje** → "No se puede cambiar cuando hay líneas de detalle"
+5. **Solución**: Eliminar todas las líneas primero
 
-##### **❌ Flujo Restringido - Versión Superior:**
-1. **Usuario tiene cotización v2.0** → Versión superior a 1.0
-2. **Accede a edición** → Campo de moneda bloqueado
-3. **Ve explicación** → "No se puede cambiar en versiones superiores a 1.0"
+#### **💡 DIFERENCIA CON REGLA ANTERIOR:**
 
-##### **❌ Flujo Restringido - Estado Diferente:**
-1. **Usuario tiene cotización Enviada** → Estado 'E'
-2. **Accede a vista** → Solo lectura (no hay edición)
-3. **Ve información** → "La moneda no se puede cambiar fuera del estado Borrador"
+**❌ REGLA ANTERIOR (INCORRECTA)**:
+- Se permitía cambio si solo había líneas "temporales" (no guardadas)
+- Problema: Usuarios podían cambiar moneda con productos en la tabla
 
-#### **📊 IMPACTO EN OTROS COMPONENTES:**
-
-##### **🔄 Recálculos Automáticos:**
-- **Displays financieros** se actualizan con nueva simbología
-- **Totales** se recalculan (aunque estén en 0 sin detalles)
-- **Configuración global** se actualiza para futuras operaciones
-
-##### **💾 Persistencia:**
-```csharp
-// Se actualiza la tabla Cotizaciones, campo Moneda
-cotizacion.Moneda = request.Moneda;
-
-// Se registra en historial (futuro)
-var historial = new HistorialCotizacion {
-    TipoEvento = "CambioMoneda",
-    Comentario = $"Moneda cambiada de {monedaAnterior} a {nuevaMoneda}"
-};
-```
-
-#### **🎯 CONSIDERACIONES DE DISEÑO:**
-
-##### **💡 Principios Aplicados:**
-- **🛡️ Validación en múltiples capas**: Frontend, Backend, Base de datos
-- **📢 Feedback inmediato**: Usuario sabe por qué no puede cambiar
-- **🔄 Reversibilidad**: Cambios se pueden confirmar o cancelar
-- **🚨 Prevención de errores**: No se permite llegar a estados inconsistentes
-
-##### **🎨 Experiencia de Usuario:**
-- **✅ Clara indicación visual** de cuándo se puede/no se puede cambiar
-- **✅ Explicaciones específicas** para cada restricción
-- **✅ Confirmación requerida** para cambios importantes
-- **✅ Notificaciones informativas** sobre el resultado
-
-#### **📋 TESTING DE REGLAS DE NEGOCIO:**
-
-##### **🧪 Casos de Prueba Críticos:**
-```csharp
-[Test]
-public void CambioMoneda_Version1_EstadoBorrador_SinDetalles_Permitido()
-{
-    // Arrange: v1.0, Estado B, sin detalles
-    // Act: Cambiar moneda CRC -> USD  
-    // Assert: Cambio exitoso
-}
-
-[Test] 
-public void CambioMoneda_ConDetalles_Rechazado()
-{
-    // Arrange: v1.0, Estado B, CON detalles
-    // Act: Intentar cambiar moneda
-    // Assert: Error específico sobre líneas de detalle
-}
-
-[Test]
-public void CambioMoneda_VersionSuperior_Rechazado()
-{
-    // Arrange: v2.0, Estado B, sin detalles  
-    // Act: Intentar cambiar moneda
-    // Assert: Error específico sobre versión
-}
-```
-
-##### **🔍 Verificaciones Automáticas:**
-- **Backend**: Validación en `CotizacionService.ActualizarCotizacionAsync`
-- **Frontend**: Validación en Vue/JavaScript antes de envío
-- **UI**: Habilitación/deshabilitación de controles según estado
-
-#### **🚨 ALERTAS Y MONITOREO:**
-
-##### **📊 Métricas Recomendadas:**
-- **Intentos de cambio exitosos** vs **rechazados**
-- **Razones de rechazo** más comunes
-- **Uso por moneda** (CRC, USD, EUR)
-
-##### **🚨 Alertas de Sistema:**
-```csharp
-// En caso de error de lógica de negocio
-_logger.LogWarning("Intento de cambio de moneda violó reglas de negocio: {Razon}", 
-                razonRechazo);
-```
+**✅ REGLA ACTUAL (CORRECTA)**:
+- NO se permite cambio si hay CUALQUIER línea (guardada o temporal)
+- Justificación: Los precios ya están ingresados y no se convertirían automáticamente
 
 ---
 
