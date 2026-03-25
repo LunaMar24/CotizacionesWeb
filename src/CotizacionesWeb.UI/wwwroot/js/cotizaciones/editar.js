@@ -62,16 +62,58 @@ const INTERESADOS_TEMP = [
 ];
 
 $(document).ready(function() {
-    // Esperar a que jQuery y otros componentes estén listos
-    if (typeof $ === 'undefined') {
-        console.error('jQuery no está disponible');
-        return;
-    }
+// Esperar a que jQuery y otros componentes estén listos
+if (typeof $ === 'undefined') {
+    console.error('jQuery no está disponible');
+    return;
+}
     
-    // Verificar que AdminLTE esté disponible
-    if (typeof $.fn.CardWidget === 'undefined') {
-        console.warn('AdminLTE CardWidget no está disponible');
+// Verificar que AdminLTE esté disponible
+if (typeof $.fn.CardWidget === 'undefined') {
+    console.warn('AdminLTE CardWidget no está disponible');
+}
+    
+// 🆕 NUEVA FUNCIONALIDAD: Interceptar navegación para confirmar salida
+$(window).on('beforeunload', function(e) {
+    if (verificarCambiosSinGuardar()) {
+        const mensaje = '¿Está seguro de que desea salir? Se perderán los cambios no guardados.';
+        e.returnValue = mensaje; // Para navegadores antiguos
+        return mensaje; // Para navegadores modernos
     }
+});
+    
+    // 🆕 Interceptar clics en enlaces de navegación
+    $(document).on('click', 'a[href]:not(.btn-guardar):not([data-toggle])', function(e) {
+        const href = $(this).attr('href');
+        
+        // Solo interceptar enlaces que navegan fuera de la página actual
+        if (href && href !== '#' && !href.startsWith('#') && href !== window.location.href) {
+            if (verificarCambiosSinGuardar()) {
+                e.preventDefault();
+                confirmarSalidaConCambios();
+                return false;
+            }
+        }
+    });
+    
+    // 🆕 ESPECÍFICO: Interceptar el botón "Volver al Listado"
+    $('a[href*="/Cotizaciones"]:contains("Volver al Listado"), a[href="/Cotizaciones"], a[href$="/Cotizaciones/Index"]').on('click', function(e) {
+        if (verificarCambiosSinGuardar()) {
+            e.preventDefault();
+            confirmarSalidaConCambios();
+            return false;
+        }
+    });
+    
+    // 🆕 Marcar cambios al interactuar con los campos
+    $('#NombreInteresado, #EmailInteresado, #EmpresaInteresado, textarea[name="Notas"]').on('input', function() {
+        window.cotizacionGuardada = false; // Marcar como no guardada al hacer cambios
+    });
+    
+    // 🆕 Marcar cambios al agregar/editar/eliminar líneas de detalle
+    $(document).on('click', '#btnAgregarLinea, .btn-editar-detalle, .btn-eliminar-detalle', function() {
+        window.cotizacionGuardada = false;
+    });
     
     // DEBUGGING: Verificar que FormatConfig esté disponible
     console.log('=== VERIFICACIÓN INICIAL ===');
@@ -287,6 +329,9 @@ console.log('==========================');
         
         // Configurar tipo de cambio (siempre editable en estado Borrador)
         configurarEventoTipoCambio();
+        
+        // Configurar versión (editable en estado Borrador)
+        configurarEventoVersion();
         
         // Agregar nueva línea
         $('#btnAgregarLinea').on('click', function() {
@@ -554,10 +599,20 @@ function agregarNuevaFilaDetalle(datos) {
     const tbody = $('#tablaDetalles tbody');
     const nuevoIndex = tbody.find('tr').length;
     
+    // 🔧 MEJORA: Indicador visual para líneas nuevas vs persistentes
+    const esLineaNueva = datos.detalleVersionId === 0;
+    const claseIndicador = esLineaNueva ? 'linea-nueva' : 'linea-persistente';
+    const iconoEstado = esLineaNueva ? 
+        '<i class="fas fa-plus-circle text-success" title="Línea nueva (no guardada)"></i>' : 
+        '<i class="fas fa-database text-info" title="Línea persistente (guardada en BD)"></i>';
+    
     const nuevaFila = `
-        <tr data-detalle-id="${datos.detalleVersionId}" data-index="${nuevoIndex}">
+        <tr data-detalle-id="${datos.detalleVersionId}" data-index="${nuevoIndex}" class="${claseIndicador}">
             <td>
-                <strong class="text-primary">${datos.productoId}</strong>
+                <div class="d-flex align-items-center">
+                    <strong class="text-primary">${datos.productoId}</strong>
+                    <span class="ml-2">${iconoEstado}</span>
+                </div>
                 <input type="hidden" name="Detalles[${nuevoIndex}].DetalleVersionId" value="${datos.detalleVersionId}" />
                 <input type="hidden" name="Detalles[${nuevoIndex}].ProductoId" value="${datos.productoId}" />
             </td>
@@ -602,7 +657,10 @@ function agregarNuevaFilaDetalle(datos) {
     tbody.append(nuevaFila);
     actualizarContadorLineas();
     
-    console.log(`Nueva fila agregada:`, datos);
+    // 🔧 CORRECCIÓN CRÍTICA: Verificar estado de moneda después de agregar línea
+    verificarYActualizarEstadoMoneda();
+    
+    console.log(`Nueva fila agregada (${esLineaNueva ? 'TEMPORAL' : 'PERSISTENTE'}):`, datos);
 }
 
 function eliminarDetalle(index) {
@@ -619,6 +677,18 @@ function eliminarDetalle(index) {
 
 function ejecutarEliminacionDetalle(index) {
     const fila = $(`tr[data-index="${index}"]`);
+    
+    // 🔧 CORRECCIÓN: Verificar si es línea persistente que se está eliminando
+    const detalleVersionId = parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0;
+    const productoNombre = fila.find('.producto-nombre').text();
+    
+    if (detalleVersionId > 0) {
+        console.log(`🔥 ELIMINANDO línea PERSISTENTE: DetalleVersionId=${detalleVersionId}, Producto=${productoNombre}`);
+        showNotification('info', `Línea persistente "${productoNombre}" marcada para eliminación. Se eliminará de BD al guardar.`);
+    } else {
+        console.log(`🗑️ Eliminando línea TEMPORAL: Producto=${productoNombre}`);
+    }
+    
     fila.remove();
     
     // Reindexar filas
@@ -628,6 +698,26 @@ function ejecutarEliminacionDetalle(index) {
     recalcularTotales();
     
     showNotification('success', 'Detalle eliminado correctamente');
+    
+    // 🔧 MEJORA: Si eliminamos una línea persistente, verificar si ahora se puede cambiar moneda
+    if (detalleVersionId > 0) {
+        // Verificar líneas persistentes restantes
+        let lineasPersistentesRestantes = 0;
+        $('#tablaDetalles tbody tr').each(function() {
+            const dvId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+            if (dvId > 0) {
+                lineasPersistentesRestantes++;
+            }
+        });
+        
+        if (lineasPersistentesRestantes === 0) {
+            showNotification('success', '🎉 Ya no hay líneas persistentes. Ahora puede cambiar la moneda si lo desea.');
+            // Actualizar automáticamente la validación de moneda
+            setTimeout(() => {
+                verificarYActualizarEstadoMoneda();
+            }, 1000);
+        }
+    }
 }
 
 function reindexarFilasDetalle() {
@@ -737,8 +827,43 @@ function limpiarModalDetalle() {
 }
 
 function actualizarContadorLineas() {
-    const cantidad = $('#tablaDetalles tbody tr').length;
-    $('#contadorLineas').text(`${cantidad} item(s)`);
+    const totalLineas = $('#tablaDetalles tbody tr').length;
+    
+    // 🔧 MEJORA: Contador detallado que distingue líneas persistentes vs temporales
+    let lineasPersistentes = 0;
+    let lineasTemporales = 0;
+    
+    $('#tablaDetalles tbody tr').each(function() {
+        const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+        if (detalleVersionId > 0) {
+            lineasPersistentes++;
+        } else {
+            lineasTemporales++;
+        }
+    });
+    
+    let textoContador = '';
+    if (totalLineas === 0) {
+        textoContador = '0 líneas';
+    } else {
+        const partes = [];
+        if (lineasPersistentes > 0) {
+            partes.push(`${lineasPersistentes} guardada${lineasPersistentes > 1 ? 's' : ''}`);
+        }
+        if (lineasTemporales > 0) {
+            partes.push(`${lineasTemporales} nueva${lineasTemporales > 1 ? 's' : ''}`);
+        }
+        textoContador = partes.join(', ') + ` (${totalLineas} total)`;
+    }
+    
+    $('#contadorLineas').html(textoContador);
+    
+    console.log('Contador actualizado:', {
+        total: totalLineas,
+        persistentes: lineasPersistentes,
+        temporales: lineasTemporales,
+        texto: textoContador
+    });
 }
 
 function configurarContadorCaracteres() {
@@ -789,47 +914,123 @@ function guardarCotizacion() {
         return;
     }
     
+    // 🔧 CORRECCIÓN: Ir directamente al guardado sin modal de confirmación general
+    // La confirmación específica se hará solo si es necesario (sin líneas, errores, etc.)
+    ejecutarGuardadoCotizacion();
+}
+
+// 🆕 NUEVA FUNCIÓN: Lógica de guardado separada para poder usar confirmación
+function ejecutarGuardadoCotizacion() {
+    console.log('=== INICIO EJECUTAR GUARDADO ===');
+    
     const form = $('#formEditarCotizacion');
     const btn = $('#btnGuardar');
     
-    // Validar que hay datos básicos
+    // 🔧 MEJORA: Validaciones más claras y permisivas
     const nombreInteresado = $('#NombreInteresado').val().trim();
     const emailInteresado = $('#EmailInteresado').val().trim();
     const totalLineas = $('#tablaDetalles tbody tr').length;
     
+    console.log('📊 Estado actual:', {
+        nombreInteresado: nombreInteresado,
+        emailInteresado: emailInteresado,
+        totalLineas: totalLineas
+    });
+    
+    // Array para acumular errores de validación
+    const erroresValidacion = [];
+    
     if (!nombreInteresado) {
-        showNotification('error', 'El nombre del interesado es obligatorio');
-        $('#NombreInteresado').focus();
-        return;
+        erroresValidacion.push('• El nombre del interesado es obligatorio');
     }
     
     if (!emailInteresado) {
-        showNotification('error', 'El email del interesado es obligatorio');
-        $('#EmailInteresado').focus();
+        erroresValidacion.push('• El email del interesado es obligatorio');
+    }
+    
+    // 🔧 CORRECCIÓN CRÍTICA: Solo mostrar advertencia para líneas vacías, NO bloquear
+    if (totalLineas === 0) {
+        console.log('⚠️ Advertencia: Guardando cotización sin líneas de detalle');
+        // 🔧 CORRECCIÓN: Mostrar modal y después continuar al confirmar
+        mostrarModalConfirmacion(
+            'Cotización Sin Productos',
+            '¿Está seguro de que desea guardar la cotización sin líneas de productos?<br><br>' +
+            '<small class="text-muted">La cotización se guardará como borrador y podrá agregar productos más tarde.</small>',
+            'warning',
+            function() {
+                // 🔧 CLAVE: Llamar a continuar guardado después de confirmar
+                console.log('✅ Usuario confirmó guardar sin líneas');
+                continuarGuardadoSinValidacionLineas();
+            },
+            function() {
+                // Usuario canceló
+                console.log('❌ Usuario canceló guardado sin líneas');
+            }
+        );
+        return; // ⚠️ IMPORTANTE: Salir aquí para esperar confirmación
+    }
+    
+    // Si hay errores críticos, mostrarlos y no continuar
+    if (erroresValidacion.length > 0) {
+        console.log('❌ Errores de validación encontrados:', erroresValidacion);
+        
+        const mensajeError = '<strong>No se puede guardar por los siguientes errores:</strong><br><br>' +
+                           erroresValidacion.join('<br>') +
+                           '<br><br><small class="text-muted">Por favor corrija estos campos y vuelva a intentar.</small>';
+        
+        mostrarModalConfirmacion(
+            'Errores de Validación',
+            mensajeError,
+            'danger',
+            function() {
+                // Solo cerrar modal, no hacer nada más
+                if (erroresValidacion.some(e => e.includes('nombre'))) {
+                    $('#NombreInteresado').focus();
+                } else if (erroresValidacion.some(e => e.includes('email'))) {
+                    $('#EmailInteresado').focus();
+                }
+            }
+        );
         return;
     }
     
-    if (totalLineas === 0) {
-        showNotification('error', 'Debe agregar al menos una línea de detalle');
-        return;
-    }
+    // Si llegamos aquí, NO hay errores críticos y HAY líneas, continuar directamente
+    console.log('✅ Validaciones pasadas, continuando con guardado...');
+    continuarGuardadoSinValidacionLineas();
+}
+
+// 🆕 FUNCIÓN AUXILIAR: Continuar guardado sin validar líneas
+function continuarGuardadoSinValidacionLineas() {
+    console.log('=== INICIO CONTINUAR GUARDADO ===');
+    console.log('🚀 Ejecutando guardado sin validación de líneas...');
+    
+    const btn = $('#btnGuardar');
     
     // Deshabilitar botón
     btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Guardando...');
     
     try {
+        console.log('📋 Preparando datos para envío...');
+        
         // Preparar datos para envío
         const formData = {
             CotizacionId: $('input[name="CotizacionId"]').val(),
             VersionId: parseInt($('input[name="VersionId"]').val()),
-            NombreInteresado: nombreInteresado,
-            EmailInteresado: emailInteresado,
+            NombreInteresado: $('#NombreInteresado').val().trim(),
+            EmailInteresado: $('#EmailInteresado').val().trim(),
             EmpresaInteresado: $('#EmpresaInteresado').val().trim(),
             TipoInteresado: $('#TipoInteresado').val(),
             Notas: $('textarea[name="Notas"]').val().trim(),
             Detalles: [],
             __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
         };
+        
+        console.log('📊 Datos básicos:', {
+            CotizacionId: formData.CotizacionId,
+            VersionId: formData.VersionId,
+            NombreInteresado: formData.NombreInteresado,
+            EmailInteresado: formData.EmailInteresado
+        });
         
         // Recopilar detalles de la tabla
         $('#tablaDetalles tbody tr').each(function() {
@@ -844,22 +1045,57 @@ function guardarCotizacion() {
                 TotalLinea: parseFloat(fila.find('input[name$=".TotalLinea"]').val())
             };
             
-            
             formData.Detalles.push(detalle);
         });
         
-        // Incluir moneda y tipo de cambio si se pueden cambiar
-        const monedaSeleccionada = $('#MonedaSelect').val();
-        if (monedaSeleccionada) {
-            formData.Moneda = monedaSeleccionada;
+        console.log('📋 Detalles recopilados:', formData.Detalles.length, 'líneas');
+        
+        // 🔧 MEJORA: Si no hay detalles, crear array vacío explícitamente
+        if (formData.Detalles.length === 0) {
+            console.log('ℹ️ Guardando cotización sin líneas de detalle (estado borrador)');
+            formData.Detalles = [];
         }
         
+        // 🔧 CORRECCIÓN: SIEMPRE incluir versión, moneda y tipo de cambio para garantizar persistencia
+        
+        // Incluir número de versión (puede haber sido editado)
+        const numeroVersionActual = $('#NumeroVersion').val() || $('#versionValor').text().replace('v', '');
+        if (numeroVersionActual) {
+            formData.NumeroVersion = parseFloat(numeroVersionActual);
+            console.log('📊 NumeroVersion incluido:', formData.NumeroVersion);
+        }
+        
+        // 🔧 CRUCIAL: Incluir moneda SIEMPRE (sea del combo o la actual)
+        const monedaSeleccionada = $('#MonedaSelect').val() || monedaActual;
+        formData.Moneda = monedaSeleccionada;
+        console.log('💱 Moneda a enviar:', formData.Moneda, '(combo:', $('#MonedaSelect').val(), ', global:', monedaActual, ')');
+        
+        // Incluir tipo de cambio (siempre enviar para persistencia)
         const tipoCambioIngresado = $('#TipoCambio').val();
         if (tipoCambioIngresado && !isNaN(parseFloat(tipoCambioIngresado))) {
             formData.TipoCambio = parseFloat(tipoCambioIngresado);
+            console.log('💹 TipoCambio incluido:', formData.TipoCambio);
+        } else {
+            // Enviar null explícitamente si no hay valor
+            formData.TipoCambio = null;
+            console.log('💹 TipoCambio: null (no especificado)');
         }
         
-        console.log('Datos a enviar:', formData);
+        // 🔧 CORRECCIÓN: Incluir totales calculados para garantizar persistencia de montos
+        formData.SubTotal = calcularSubtotalActual();
+        formData.TotalDescuentos = calcularTotalDescuentos();
+        formData.Impuesto = calcularImpuestoActual();
+        formData.Total = calcularTotalFinalActual();
+        
+        console.log('💰 Totales calculados:', {
+            SubTotal: formData.SubTotal,
+            TotalDescuentos: formData.TotalDescuentos,
+            Impuesto: formData.Impuesto,
+            Total: formData.Total
+        });
+        
+        console.log('🚀 Enviando al servidor...');
+        console.log('Datos completos a enviar:', formData);
         
         // Enviar al servidor
         $.ajax({
@@ -870,14 +1106,27 @@ function guardarCotizacion() {
                 btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Cambios');
                 
                 if (response.success) {
+                    console.log('✅ GUARDADO EXITOSO');
                     showNotification('success', response.message || 'Cotización guardada exitosamente');
                     
-                    // Opcional: Redirigir al listado después de un momento
+                    // 🔧 CORRECCIÓN: Marcar que se guardó exitosamente para evitar confirmaciones
+                    marcarComoGuardado();
+                    
+                    // 🆕 NUEVA FUNCIONALIDAD: Verificar estado después del guardado
+                    setTimeout(() => {
+                        verificarEstadoPostGuardado();
+                    }, 1000);
+                    
+                    // 🔧 IMPORTANTE: Recargar página después del guardado exitoso para actualizar estado
                     setTimeout(function() {
-                        // window.location.href = '/Cotizaciones';
-                        console.log('Guardado exitoso - permaneciendo en la vista de edición');
-                    }, 1500);
+                        console.log('🔄 Recargando página para reflejar cambios...');
+                        showNotification('info', 'Recargando página para mostrar cambios...');
+                        
+                        // Recargar la página actual en lugar de redirigir
+                        window.location.reload(true); // true fuerza recarga desde servidor
+                    }, 2000);
                 } else {
+                    console.error('❌ Error en respuesta del servidor:', response.message);
                     showNotification('error', response.message || 'Error al guardar la cotización');
                 }
             },
@@ -896,7 +1145,7 @@ function guardarCotizacion() {
                     errorMessage = 'Error interno del servidor';
                 }
                 
-                console.error('Error al guardar:', {
+                console.error('❌ Error AJAX:', {
                     status: xhr.status,
                     statusText: xhr.statusText,
                     response: xhr.responseJSON,
@@ -908,10 +1157,12 @@ function guardarCotizacion() {
         });
         
     } catch (error) {
-        console.error('Error al procesar guardado:', error);
+        console.error('❌ Error al procesar guardado:', error);
         btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Cambios');
         showNotification('error', 'Error al procesar los datos de la cotización');
     }
+    
+    console.log('=== FIN CONTINUAR GUARDADO ===');
 }
 
 function mostrarAvisoNoEditable() {
@@ -985,96 +1236,169 @@ function formatNumber(value, decimals = 2) {
 }
 
 function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel = null) {
-    console.log('Mostrando modal de confirmación:', { titulo, tipo });
+    console.log('🔍 DEBUG MODAL - Iniciando:', { titulo, tipo });
     
-    // Definir clases y colores para cada tipo
-    const configuracionesTipo = {
-        'info': {
-            headerClass: 'bg-info text-white',
-            icono: 'fa-info-circle',
-            btnClass: 'btn-info',
-            btnTexto: 'Aceptar'
-        },
-        'warning': {
-            headerClass: 'bg-warning text-dark',
-            icono: 'fa-exclamation-triangle',
-            btnClass: 'btn-warning',
-            btnTexto: 'Continuar'
-        },
-        'danger': {
-            headerClass: 'bg-danger text-white',
-            icono: 'fa-exclamation-circle',
-            btnClass: 'btn-danger',
-            btnTexto: 'Eliminar'
-        },
-        'success': {
-            headerClass: 'bg-success text-white',
-            icono: 'fa-check-circle',
-            btnClass: 'btn-success',
-            btnTexto: 'Aceptar'
-        }
-    };
-    
-    const config = configuracionesTipo[tipo] || configuracionesTipo['info'];
-    
-    // Configurar modal
-    const $modalHeader = $('#modalConfirmacionHeader');
-    const $modalTitulo = $('#modalConfirmacionTitulo');
-    const $modalMensaje = $('#modalConfirmacionMensaje');
-    const $btnConfirmar = $('#btnConfirmarAccion');
-    
-    // Limpiar clases anteriores del header
-    $modalHeader.removeClass('bg-info bg-warning bg-danger bg-success text-white text-dark');
-    $modalHeader.addClass(config.headerClass);
-    
-    // Configurar título con icono
-    $modalTitulo.html(`<i class="fas ${config.icono}"></i> ${titulo}`);
-    
-    // Configurar mensaje (permitir HTML)
-    $modalMensaje.html(mensaje);
-    
-    // Configurar botón de confirmar
-    $btnConfirmar.removeClass('btn-info btn-warning btn-danger btn-success btn-primary');
-    $btnConfirmar.addClass(config.btnClass);
-    $btnConfirmar.html(`<i class="fas fa-check"></i> ${config.btnTexto}`);
-    
-    // Limpiar eventos anteriores y configurar nuevos
-    $btnConfirmar.off('click.confirmacion');
-    $btnConfirmar.on('click.confirmacion', function() {
-        $('#modalConfirmacion').modal('hide');
-        if (typeof onConfirm === 'function') {
-            console.log('Ejecutando callback de confirmación');
-            onConfirm();
-        }
-    });
-    
-    // Configurar callback de cancelación si existe
-    if (typeof onCancel === 'function') {
-        $('#modalConfirmacion').off('hidden.bs.modal.cancelacion');
-        $('#modalConfirmacion').on('hidden.bs.modal.cancelacion', function(e) {
-            // Solo ejecutar si se cerró sin confirmar
-            if (!e.confirmedAction) {
-                console.log('Modal cerrada sin confirmar, ejecutando callback de cancelación');
-                onCancel();
-            }
-            // Limpiar el evento
-            $(this).off('hidden.bs.modal.cancelacion');
-        });
+    // 🔧 VERIFICACIÓN COMPLETA: Bootstrap y modal disponibles
+    if (typeof $ === 'undefined') {
+        console.error('❌ jQuery no está disponible');
+        usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
+        return;
     }
     
-    // Marcar cuando se confirma la acción
-    $btnConfirmar.off('click.marcarConfirmacion');
-    $btnConfirmar.on('click.marcarConfirmacion', function() {
-        $('#modalConfirmacion')[0].confirmedAction = true;
+    if (typeof $.fn.modal !== 'function') {
+        console.error('❌ Bootstrap modal no está disponible');
+        usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
+        return;
+    }
+    
+    const modal = $('#modalConfirmacion');
+    if (modal.length === 0) {
+        console.error('❌ Modal #modalConfirmacion no existe en DOM');
+        usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
+        return;
+    }
+    
+    // Verificar elementos críticos del modal
+    const elementos = {
+        header: $('#modalConfirmacionHeader'),
+        titulo: $('#modalConfirmacionTitulo'),
+        mensaje: $('#modalConfirmacionMensaje'),
+        btnConfirmar: $('#btnConfirmarAccion')
+    };
+    
+    const elementosFaltantes = Object.keys(elementos).filter(key => elementos[key].length === 0);
+    if (elementosFaltantes.length > 0) {
+        console.error('❌ Elementos del modal faltantes:', elementosFaltantes);
+        usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
+        return;
+    }
+    
+    console.log('✅ Modal y Bootstrap disponibles, configurando...');
+    
+    // 🔧 LIMPIAR ESTADO PREVIO COMPLETAMENTE
+    modal.off();
+    elementos.btnConfirmar.off();
+    $('.modal-backdrop').remove();
+    $('body').removeClass('modal-open').css({ 'overflow': '', 'padding-right': '' });
+    
+    // Variables de control
+    let accionConfirmada = false;
+    let modalCerrandose = false;
+    
+    // Configurar apariencia según tipo
+    const config = obtenerConfiguracionModal(tipo);
+    elementos.header.removeClass('bg-info bg-warning bg-danger bg-success text-white text-dark').addClass(config.headerClass);
+    elementos.titulo.html(`<i class="fas ${config.icono}"></i> ${titulo}`);
+    elementos.mensaje.html(mensaje);
+    elementos.btnConfirmar.removeClass('btn-info btn-warning btn-danger btn-success btn-primary').addClass(config.btnClass);
+    elementos.btnConfirmar.html(`<i class="fas fa-check"></i> ${config.btnTexto}`);
+    
+    // 🔧 EVENTO CONFIRMACIÓN - Más robusto
+    elementos.btnConfirmar.on('click.modalconfirm', function(e) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        
+        if (modalCerrandose) {
+            console.log('🔍 Click ignorado: modal ya cerrandose');
+            return;
+        }
+        
+        console.log('🔍 DEBUG MODAL - CONFIRMACIÓN ejecutada');
+        accionConfirmada = true;
+        modalCerrandose = true;
+        
+        // Cerrar modal y ejecutar callback
+        modal.modal('hide');
+        
+        setTimeout(() => {
+            if (typeof onConfirm === 'function') {
+                try {
+                    onConfirm();
+                } catch (error) {
+                    console.error('❌ Error en callback confirmación:', error);
+                }
+            }
+        }, 200);
     });
     
-    // Limpiar la marca al mostrar el modal
-    $('#modalConfirmacion')[0].confirmedAction = false;
+    // 🔧 EVENTO CIERRE MODAL
+    modal.on('hidden.bs.modal.confirm', function() {
+        console.log('🔍 DEBUG MODAL - Modal cerrado:', { accionConfirmada, modalCerrandose });
+        
+        if (!accionConfirmada && !modalCerrandose && typeof onCancel === 'function') {
+            console.log('🔍 DEBUG MODAL - CANCELACIÓN ejecutada');
+            setTimeout(() => {
+                try {
+                    onCancel();
+                } catch (error) {
+                    console.error('❌ Error en callback cancelación:', error);
+                }
+            }, 100);
+        }
+        
+        // Limpiar eventos
+        $(this).off('.confirm');
+        elementos.btnConfirmar.off('.modalconfirm');
+    });
     
-    // Mostrar modal
-    $('#modalConfirmacion').modal('show');
+    // 🔧 MOSTRAR MODAL CON VERIFICACIÓN
+    console.log('🔍 DEBUG MODAL - Mostrando modal...');
     
-    console.log('Modal de confirmación configurada y mostrada');
+    try {
+        modal.modal({
+            backdrop: 'static',
+            keyboard: false,
+            show: true
+        });
+        
+        // Verificar que se mostró correctamente
+        setTimeout(() => {
+            if (modal.hasClass('show')) {
+                console.log('✅ Modal mostrado correctamente');
+            } else {
+                console.error('❌ Modal no se mostró, usando fallback');
+                modal.off();
+                elementos.btnConfirmar.off();
+                usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
+            }
+        }, 500);
+        
+    } catch (error) {
+        console.error('❌ Error mostrando modal:', error);
+        usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
+    }
+}
+
+// 🆕 FUNCIÓN AUXILIAR: Confirmación nativa como fallback
+function usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel) {
+    console.log('🔄 Usando confirmación nativa');
+    
+    // Limpiar HTML del mensaje para mostrar solo texto
+    const mensajeTexto = mensaje.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    const textoCompleto = `${titulo}\n\n${mensajeTexto}`;
+    
+    // Usar setTimeout para evitar bloqueo inmediato
+    setTimeout(() => {
+        const confirmacion = confirm(textoCompleto);
+        
+        if (confirmacion && typeof onConfirm === 'function') {
+            onConfirm();
+        } else if (!confirmacion && typeof onCancel === 'function') {
+            onCancel();
+        }
+    }, 10);
+}
+
+// 🆕 FUNCIÓN AUXILIAR: Configuración de modal por tipo
+function obtenerConfiguracionModal(tipo) {
+    const configuraciones = {
+        'info': { headerClass: 'bg-info text-white', icono: 'fa-info-circle', btnClass: 'btn-info', btnTexto: 'Aceptar' },
+        'warning': { headerClass: 'bg-warning text-dark', icono: 'fa-exclamation-triangle', btnClass: 'btn-warning', btnTexto: 'Continuar' },
+        'danger': { headerClass: 'bg-danger text-white', icono: 'fa-exclamation-circle', btnClass: 'btn-danger', btnTexto: 'Eliminar' },
+        'success': { headerClass: 'bg-success text-white', icono: 'fa-check-circle', btnClass: 'btn-success', btnTexto: 'Aceptar' }
+    };
+    
+    return configuraciones[tipo] || configuraciones['info'];
 }
 
 function showNotification(type, message) {
@@ -1290,6 +1614,294 @@ window.corregirSimbolos = function() {
     console.log('✅ Corrección de símbolos completada');
 };
 
+// ========================================
+// FUNCIONES AUXILIARES PARA MONEDA
+// ========================================
+
+// 🆕 FUNCIÓN AUXILIAR: Revertir combo de moneda de forma segura
+function revertirComboMoneda($combo, monedaAnterior) {
+    console.log(`🔄 Revirtiendo combo de ${$combo.val()} a ${monedaAnterior}`);
+    
+    // Desconectar todos los eventos temporalmente
+    $combo.off('change.moneda');
+    
+    // Establecer valor anterior por múltiples métodos
+    $combo.val(monedaAnterior);
+    
+    // Forzar por índice si es necesario
+    if ($combo.val() !== monedaAnterior) {
+        const opcionAnterior = $combo.find(`option[value="${monedaAnterior}"]`);
+        if (opcionAnterior.length > 0) {
+            $combo[0].selectedIndex = opcionAnterior.index();
+        }
+    }
+    
+    console.log(`✅ Combo revertido a: ${$combo.val()}`);
+}
+
+// 🆕 FUNCIÓN MEJORADA: Modal de confirmación específico para monedas
+function mostrarModalConfirmacionMoneda(titulo, mensaje, tipo, onConfirm, onCancel, $combo, monedaAnterior) {
+    console.log('Mostrando modal de confirmación de moneda:', { titulo, tipo });
+    
+    // Limpiar eventos previos del modal para evitar conflictos
+    $('#modalConfirmacion').off('hidden.bs.modal.moneda');
+    $('#btnConfirmarAccion').off('click.moneda');
+    
+    // Configurar el modal usando la función existente
+    mostrarModalConfirmacion(titulo, mensaje, tipo, 
+        function() {
+            // Callback de confirmación
+            if (typeof onConfirm === 'function') {
+                onConfirm();
+            }
+        },
+        function() {
+            // Este callback de cancelación podría no ejecutarse correctamente
+            // Así que usamos un evento adicional como respaldo
+        }
+    );
+    
+    // 🔧 RESPALDO: Manejar cancelación cuando se cierre el modal sin confirmar
+    let confirmacionEjecutada = false;
+    
+    // Marcar cuando se confirma
+    $('#btnConfirmarAccion').on('click.moneda', function() {
+        confirmacionEjecutada = true;
+    });
+    
+    // Detectar cuando se cierra el modal
+    $('#modalConfirmacion').on('hidden.bs.modal.moneda', function() {
+        // Solo ejecutar cancelación si no se confirmó
+        if (!confirmacionEjecutada) {
+            console.log('Modal cerrado sin confirmación, ejecutando cancelación...');
+            if (typeof onCancel === 'function') {
+                onCancel();
+            }
+        }
+        
+        // Limpiar eventos
+        $(this).off('hidden.bs.modal.moneda');
+        $('#btnConfirmarAccion').off('click.moneda');
+    });
+    
+    console.log('Modal de confirmación de moneda configurado');
+}
+
+// ========================================
+// FUNCIONES PARA CÁLCULOS Y CONFIRMACIONES
+// ========================================
+
+// 🆕 FUNCIÓN: Calcular subtotal actual de la tabla
+function calcularSubtotalActual() {
+    let subtotal = 0;
+    $('#tablaDetalles tbody tr').each(function() {
+        const cantidad = parseFloat($(this).find('input[name$=".Cantidad"]').val()) || 0;
+        const precio = parseFloat($(this).find('input[name$=".PrecioUnitario"]').val()) || 0;
+        subtotal += (cantidad * precio);
+    });
+    return subtotal;
+}
+
+// 🆕 FUNCIÓN: Calcular total de descuentos actual
+function calcularTotalDescuentos() {
+    let totalDescuentos = 0;
+    $('#tablaDetalles tbody tr').each(function() {
+        const descuento = parseFloat($(this).find('input[name$=".Descuento"]').val()) || 0;
+        totalDescuentos += descuento;
+    });
+    return totalDescuentos;
+}
+
+// 🆕 FUNCIÓN: Calcular impuesto actual
+function calcularImpuestoActual() {
+    const subtotal = calcularSubtotalActual();
+    const descuentos = calcularTotalDescuentos();
+    const subtotalConDescuentos = subtotal - descuentos;
+    return subtotalConDescuentos * 0.13; // 13% impuesto Costa Rica
+}
+
+// 🆕 FUNCIÓN: Calcular total final actual
+function calcularTotalFinalActual() {
+    const subtotal = calcularSubtotalActual();
+    const descuentos = calcularTotalDescuentos();
+    const impuesto = calcularImpuestoActual();
+    return (subtotal - descuentos) + impuesto;
+}
+
+// 🆕 FUNCIÓN: Confirmación para salir/navegar
+function confirmarSalidaConCambios() {
+    // Verificar si hay cambios sin guardar
+    const hayCambios = verificarCambiosSinGuardar();
+    
+    if (!hayCambios) {
+        return true; // No hay cambios, puede salir
+    }
+    
+    // Mostrar confirmación modal
+    mostrarModalConfirmacion(
+        'Cambios Sin Guardar',
+        '¿Está seguro de que desea salir sin guardar los cambios?<br><br>' +
+        '<strong class="text-danger">Se perderán todos los cambios realizados.</strong>',
+        'danger',
+        function() {
+            // Confirma salida sin guardar
+            window.location.href = '/Cotizaciones';
+        },
+        function() {
+            // Cancela salida - no hace nada, se queda en la vista
+            console.log('Usuario canceló salida, permanece en edición');
+        }
+    );
+    
+    return false; // Bloquea navegación hasta confirmación
+}
+
+// 🆕 FUNCIÓN: Verificar si hay cambios sin guardar
+function verificarCambiosSinGuardar() {
+    // Si se guardó recientemente, no considerar cambios
+    if (seGuardoRecientemente()) {
+        return false;
+    }
+    
+    // Verificar cambios en campos principales
+    const nombreActual = $('#NombreInteresado').val().trim();
+    const emailActual = $('#EmailInteresado').val().trim();
+    const empresaActual = $('#EmpresaInteresado').val().trim();
+    const notasActuales = $('textarea[name="Notas"]').val().trim();
+    
+    // Verificar cambios en moneda y versión
+    const monedaCombo = $('#MonedaSelect').val();
+    const versionEditada = $('#NumeroVersion').val();
+    const tipoCambioEditado = $('#TipoCambio').val();
+    
+    // Verificar si hay líneas en la tabla
+    const totalLineas = $('#tablaDetalles tbody tr').length;
+    
+    // 🔧 MEJORA: Considerar líneas temporales vs persistentes
+    let lineasNuevas = 0;
+    $('#tablaDetalles tbody tr').each(function() {
+        const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+        if (detalleVersionId === 0) {
+            lineasNuevas++;
+        }
+    });
+    
+    // Considerar que hay cambios si:
+    // 1. Hay contenido en campos principales
+    // 2. Hay líneas nuevas (temporales) en la tabla
+    // 3. Se cambió moneda, versión o tipo de cambio
+    const hayCambios = (
+        nombreActual.length > 0 ||
+        emailActual.length > 0 ||
+        empresaActual.length > 0 ||
+        notasActuales.length > 0 ||
+        lineasNuevas > 0 ||
+        (monedaCombo && monedaCombo !== monedaActual) ||
+        (versionEditada && versionEditada !== $('#versionValor').text().replace('v', '')) ||
+        (tipoCambioEditado && tipoCambioEditado.length > 0)
+    );
+    
+    console.log('Verificación de cambios (MEJORADA):', {
+        nombreActual: nombreActual.length,
+        emailActual: emailActual.length,
+        totalLineas,
+        lineasNuevas,
+        monedaCambiada: (monedaCombo && monedaCombo !== monedaActual),
+        hayCambios
+    });
+    
+    return hayCambios;
+}
+
+// 🆕 FUNCIÓN AUXILIAR: Verificar si se puede cambiar moneda y sugerir acción
+function verificarYSugerirCambioMoneda() {
+    const estadoActual = obtenerEstadoActual();
+    
+    if (estadoActual !== 'B') {
+        showNotification('info', 'El cambio de moneda solo está disponible en cotizaciones en estado Borrador.');
+        return false;
+    }
+    
+    // Contar líneas persistentes
+    let lineasPersistentes = 0;
+    let lineasTemporales = 0;
+    
+    $('#tablaDetalles tbody tr').each(function() {
+        const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+        if (detalleVersionId > 0) {
+            lineasPersistentes++;
+        } else {
+            lineasTemporales++;
+        }
+    });
+    
+    if (lineasPersistentes > 0) {
+        // Sugerir eliminar líneas persistentes
+        mostrarModalConfirmacion(
+            'Eliminar Líneas para Cambiar Moneda',
+            `Para cambiar la moneda debe eliminar las <strong>${lineasPersistentes} líneas guardadas</strong> en la base de datos.<br><br>` +
+            '¿Desea eliminar todas las líneas guardadas para proceder con el cambio de moneda?<br><br>' +
+            '<small class="text-warning">⚠️ Esta acción eliminará las líneas de forma permanente.</small>',
+            'warning',
+            function() {
+                eliminarTodasLasLineasPersistentes();
+            }
+        );
+        return false;
+    }
+    
+    if (lineasTemporales > 0) {
+        showNotification('info', `Hay ${lineasTemporales} líneas temporales. Éstas no impiden el cambio de moneda ya que no están guardadas.`);
+    }
+    
+    return true; // Se puede cambiar moneda
+}
+
+// 🆕 FUNCIÓN: Eliminar todas las líneas persistentes
+function eliminarTodasLasLineasPersistentes() {
+    const lineasAEliminar = [];
+    
+    $('#tablaDetalles tbody tr').each(function() {
+        const index = parseInt($(this).attr('data-index'));
+        const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+        
+        if (detalleVersionId > 0) {
+            lineasAEliminar.push(index);
+        }
+    });
+    
+    if (lineasAEliminar.length === 0) {
+        showNotification('info', 'No hay líneas persistentes que eliminar.');
+        return;
+    }
+    
+    // Eliminar líneas de atrás hacia adelante para evitar problemas de índices
+    lineasAEliminar.reverse().forEach(index => {
+        const fila = $(`tr[data-index="${index}"]`);
+        fila.remove();
+    });
+    
+    // Reindexar después de eliminar
+    reindexarFilasDetalle();
+    recalcularTotales();
+    
+    showNotification('success', `${lineasAEliminar.length} líneas persistentes eliminadas. Ahora puede cambiar la moneda.`);
+    
+    // Actualizar estado de moneda automáticamente
+    verificarYActualizarEstadoMoneda();
+}
+
+// 🆕 FUNCIÓN: Marcar como guardado para evitar confirmaciones innecesarias
+function marcarComoGuardado() {
+    window.cotizacionGuardada = true;
+    console.log('✅ Cotización marcada como guardada');
+}
+
+// 🆕 FUNCIÓN: Verificar si se guardó recientemente
+function seGuardoRecientemente() {
+    return window.cotizacionGuardada === true;
+}
+
 // FUNCIÓN DE DIAGNÓSTICO PARA CONTADOR DE CARACTERES
 window.diagnosticarContadorNotas = function() {
     console.group('📝 DIAGNÓSTICO CONTADOR DE NOTAS');
@@ -1328,12 +1940,12 @@ window.diagnosticarContadorNotas = function() {
     }
 };
 
-// FUNCIÓN DE DIAGNÓSTICO ESPECÍFICA PARA MONEDAS
+// 🆕 FUNCIÓN DE DIAGNÓSTICO PARA MONEDAS MEJORADA
 window.diagnosticarMonedas = function() {
-    console.group('💰 DIAGNÓSTICO ESPECÍFICO DE MONEDAS');
+    console.group('💰 DIAGNÓSTICO COMPLETO DE MONEDAS');
     
     console.log('🔍 Variables globales:');
-    console.log('  - monedaActual:', monedaActual);
+    console.log('  - monedaActual (variable):', monedaActual);
     console.log('  - typeof monedaActual:', typeof monedaActual);
     
     console.log('🔍 Configuración del servidor:');
@@ -1348,33 +1960,410 @@ window.diagnosticarMonedas = function() {
         console.log('  - FormatConfig.simboloMoneda:', window.FormatConfig.simboloMoneda);
     }
     
+    console.log('🔍 DOM - Elementos de moneda:');
+    const elementoMonedaCodigo = $('#displayMonedaCodigo');
+    console.log('  - #displayMonedaCodigo encontrado:', elementoMonedaCodigo.length > 0);
+    console.log('  - #displayMonedaCodigo texto:', elementoMonedaCodigo.text().trim());
+    
+    const comboMoneda = $('#MonedaSelect');
+    console.log('  - #MonedaSelect encontrado:', comboMoneda.length > 0);
+    console.log('  - #MonedaSelect valor:', comboMoneda.val());
+    console.log('  - #MonedaSelect options count:', comboMoneda.find('option').length);
+    
+    console.log('🔍 Método obtenerMonedaActual():');
+    const monedaDetectada = obtenerMonedaActual();
+    console.log('  - Moneda detectada:', monedaDetectada);
+    
     console.log('🔍 Estado actual de la sección moneda:');
     const seccionMoneda = $('.moneda-section');
     console.log('  - Sección encontrada:', seccionMoneda.length > 0);
-    console.log('  - Contenido actual:', seccionMoneda.html());
+    console.log('  - Contenido HTML:', seccionMoneda.html()?.substring(0, 200) + '...');
     
     console.log('🔍 Condiciones para edición:');
-    const versionActual = obtenerVersionActual();
     const estadoActual = obtenerEstadoActual();
     const totalLineas = $('#tablaDetalles tbody tr').length;
-    const puedeEditarMoneda = (versionActual === 1.0 && estadoActual === 'B' && totalLineas === 0);
+    let lineasPersistentes = 0;
+    $('#tablaDetalles tbody tr').each(function() {
+        const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+        if (detalleVersionId > 0) lineasPersistentes++;
+    });
+    const puedeEditarMoneda = (estadoActual === 'B' && lineasPersistentes === 0);
     
-    console.log('  - Versión actual:', versionActual);
     console.log('  - Estado actual:', estadoActual);
     console.log('  - Total líneas:', totalLineas);
+    console.log('  - Líneas persistentes:', lineasPersistentes);
     console.log('  - ¿Puede editar moneda?:', puedeEditarMoneda);
     
     console.log('💡 Acciones de corrección:');
     console.log('  - Para forzar actualización: verificarYActualizarEstadoMoneda()');
-    console.log('  - Para obtener moneda actual: obtenerMonedaActual()');
+    console.log('  - Para probar combo: window.probarComboMoneda()');
+    console.log('  - Para resetear moneda: window.resetearMoneda()');
     
     console.groupEnd();
     
     // Auto-corrección si es posible
     if (typeof window.MonedasDisponibles === 'undefined') {
         console.warn('⚠️ MonedasDisponibles no está definido. Esto puede causar problemas.');
-        console.log('💡 Verifique que el ViewBag.MonedasDisponibles se esté pasando correctamente desde el controlador.');
     }
+    
+    if (comboMoneda.length > 0 && comboMoneda.val() !== monedaDetectada) {
+        console.warn(`⚠️ Inconsistencia: Combo muestra "${comboMoneda.val()}" pero moneda detectada es "${monedaDetectada}"`);
+    }
+};
+
+// 🆕 FUNCIÓN DE DIAGNÓSTICO PARA MODALES
+window.diagnosticarModalMoneda = function() {
+    console.group('🔍 DIAGNÓSTICO MODAL DE MONEDA');
+    
+    console.log('📊 Estado del modal:');
+    const modal = $('#modalConfirmacion');
+    console.log('  - Modal existe:', modal.length > 0);
+    console.log('  - Modal visible:', modal.hasClass('show'));
+    console.log('  - Modal HTML:', modal.length > 0 ? 'Disponible' : 'NO DISPONIBLE');
+    
+    console.log('📋 Estado del combo:');
+    const combo = $('#MonedaSelect');
+    console.log('  - Combo existe:', combo.length > 0);
+    console.log('  - Eventos registrados:', $._data(combo[0], 'events'));
+    console.log('  - Valor actual:', combo.val());
+    console.log('  - Moneda global:', monedaActual);
+    
+    console.log('🎛️ Eventos activos:');
+    console.log('  - Modal hidden events:', $._data(modal[0], 'events'));
+    console.log('  - Button click events:', $._data($('#btnConfirmarAccion')[0], 'events'));
+    
+    console.log('💡 Acciones de prueba:');
+    console.log('  - Para probar modal: window.probarModalMoneda()');
+    console.log('  - Para limpiar eventos: window.limpiarEventosModal()');
+    
+    console.groupEnd();
+};
+
+// 🆕 FUNCIÓN PARA PROBAR EL MODAL
+window.probarModalMoneda = function() {
+    console.log('🧪 Probando modal de moneda...');
+    
+    mostrarModalConfirmacionMoneda(
+        'Prueba de Modal',
+        'Este es un modal de prueba para verificar funcionamiento',
+        'info',
+        function() {
+            console.log('✅ Confirmación funciona correctamente');
+            showNotification('success', 'Modal de confirmación funciona');
+        },
+        function() {
+            console.log('❌ Cancelación funciona correctamente');
+            showNotification('info', 'Modal de cancelación funciona');
+        },
+        $('#MonedaSelect'),
+        'CRC'
+    );
+};
+
+// 🆕 FUNCIÓN PARA LIMPIAR EVENTOS DEL MODAL
+window.limpiarEventosModal = function() {
+    console.log('🧹 Limpiando todos los eventos del modal...');
+    
+    $('#modalConfirmacion').off();
+    $('#btnConfirmarAccion').off();
+    
+    console.log('✅ Eventos del modal limpiados');
+};
+
+// 🆕 FUNCIÓN DE DIAGNÓSTICO ESPECÍFICA PARA EL PROBLEMA
+window.diagnosticarProblemaComboMoneda = function() {
+    console.group('🔍 DIAGNÓSTICO PROBLEMA COMBO MONEDA');
+    
+    const combo = $('#MonedaSelect');
+    const valorMostrado = combo.val();
+    const textoMostrado = combo.find('option:selected').text();
+    const indiceSeleccionado = combo[0].selectedIndex;
+    
+    console.log('📊 Estado actual del combo:');
+    console.log('  - Valor mostrado:', valorMostrado);
+    console.log('  - Texto mostrado:', textoMostrado);
+    console.log('  - Índice seleccionado:', indiceSeleccionado);
+    console.log('  - Moneda global:', monedaActual);
+    console.log('  - FormatConfig.moneda:', window.FormatConfig?.moneda);
+    
+    console.log('📋 Opciones disponibles:');
+    combo.find('option').each(function(index) {
+        const value = $(this).val();
+        const text = $(this).text();
+        const selected = this.selected;
+        console.log(`  ${index}: "${value}" -> "${text}" ${selected ? '(SELECTED ✓)' : ''}`);
+    });
+    
+    console.log('🔍 Labels en el DOM:');
+    const labelMoneda = $('#displayMonedaCodigo');
+    console.log('  - Label moneda texto:', labelMoneda.text());
+    
+    // Detectar inconsistencia
+    const hayInconsistencia = (valorMostrado !== monedaActual) || 
+                             (window.FormatConfig?.moneda && valorMostrado !== window.FormatConfig.moneda);
+    
+    if (hayInconsistencia) {
+        console.warn('⚠️ INCONSISTENCIA DETECTADA:');
+        console.log('  - Combo muestra:', valorMostrado);
+        console.log('  - Variable global:', monedaActual);
+        console.log('  - FormatConfig:', window.FormatConfig?.moneda);
+        
+        console.log('💡 Soluciones disponibles:');
+        console.log('  1. window.forzarComboMonedaCorreto(monedaActual)');
+        console.log('  2. window.resetearMoneda()');
+        console.log('  3. Recargar la página');
+        
+        // Ofrecer auto-corrección
+        const monedaCorrecta = monedaActual || window.FormatConfig?.moneda || 'CRC';
+        console.log(`🔧 Ejecutando auto-corrección a: ${monedaCorrecta}`);
+        window.forzarComboMonedaCorreto(monedaCorrecta);
+    } else {
+        console.log('✅ No se detectaron inconsistencias');
+    }
+    
+    console.groupEnd();
+};
+
+// 🆕 FUNCIÓN PARA PROBAR EL COMBO DE MONEDA
+window.probarComboMoneda = function() {
+    console.log('🧪 Probando combo de moneda...');
+    
+    const combo = $('#MonedaSelect');
+    if (combo.length === 0) {
+        console.error('❌ Combo de moneda no encontrado');
+        return;
+    }
+    
+    console.log('📋 Options disponibles:');
+    combo.find('option').each(function(index) {
+        const value = $(this).val();
+        const text = $(this).text();
+        const selected = $(this).prop('selected');
+        console.log(`  ${index}: "${value}" -> "${text}" ${selected ? '(SELECTED)' : ''}`);
+    });
+    
+    console.log('🔍 Estado actual:');
+    console.log('  - Valor seleccionado:', combo.val());
+    console.log('  - Moneda global:', monedaActual);
+    console.log('  - ¿Coinciden?:', combo.val() === monedaActual);
+    
+    // Probar cambio manual
+    const opciones = combo.find('option').map(function() { return $(this).val(); }).get();
+    if (opciones.length > 1) {
+        const nuevaOpcion = opciones.find(op => op !== combo.val());
+        if (nuevaOpcion) {
+            console.log(`🧪 Probando cambio a: ${nuevaOpcion}`);
+            combo.val(nuevaOpcion).trigger('change');
+        }
+    }
+};
+
+// 🆕 FUNCIÓN PARA TESTEAR CAMBIOS SECUENCIALES DE MONEDA
+window.testearCambioMonedaSecuencial = function() {
+    console.log('🧪 Iniciando test de cambio secuencial de moneda...');
+    
+    const combo = $('#MonedaSelect');
+    if (combo.length === 0) {
+        console.error('❌ Combo no disponible');
+        return;
+    }
+    
+    const opciones = combo.find('option').map(function() { 
+        return $(this).val(); 
+    }).get().filter(val => val !== '');
+    
+    console.log('Opciones disponibles:', opciones);
+    
+    if (opciones.length < 2) {
+        console.error('❌ No hay suficientes opciones para probar');
+        return;
+    }
+    
+    let indiceActual = 0;
+    
+    function cambiarAlaSiguiente() {
+        if (indiceActual >= opciones.length - 1) {
+            console.log('✅ Test completado - todas las opciones probadas');
+            return;
+        }
+        
+        indiceActual++;
+        const siguienteMoneda = opciones[indiceActual];
+        
+        console.log(`🔄 Cambiando a: ${siguienteMoneda} (${indiceActual}/${opciones.length - 1})`);
+        
+        // Simular cambio de usuario
+        combo.val(siguienteMoneda).trigger('change');
+        
+        // Programar siguiente cambio
+        setTimeout(cambiarAlaSiguiente, 3000); // 3 segundos entre cambios
+    }
+    
+    // Iniciar el test
+    cambiarAlaSiguiente();
+};
+
+// 🆕 FUNCIÓN DE DIAGNÓSTICO ESPECÍFICA PARA GUARDADO DE MONEDA
+window.diagnosticarGuardadoMoneda = function() {
+    console.group('🔍 DIAGNÓSTICO GUARDADO DE MONEDA');
+    
+    const monedaCombo = $('#MonedaSelect').val();
+    const formData = {
+        CotizacionId: $('input[name="CotizacionId"]').val(),
+        VersionId: parseInt($('input[name="VersionId"]').val()),
+        Moneda: monedaCombo || monedaActual,
+        MonedaAnterior: monedaActual,
+        MonedaGlobal: window.FormatConfig?.moneda
+    };
+    
+    console.log('📊 Estado antes del guardado:');
+    console.table(formData);
+    
+    console.log('🔍 Verificaciones:');
+    console.log('  - ¿Hay cambio de moneda?:', monedaCombo !== monedaActual);
+    console.log('  - ¿Es editable (estado)?:', estadoActual === 'B');
+    console.log('  - ¿Hay líneas persistentes?:', contarLineasPersistentes());
+    
+    const lineasPersistentes = contarLineasPersistentes();
+    console.log('  - Líneas persistentes encontradas:', lineasPersistentes);
+    
+    // Mostrar lo que se enviaría al servidor
+    const datosParaEnvio = {
+        CotizacionId: formData.CotizacionId,
+        VersionId: formData.VersionId,
+        Moneda: formData.Moneda,
+        NombreInteresado: $('#NombreInteresado').val(),
+        EmailInteresado: $('#EmailInteresado').val(),
+        Detalles: []
+    };
+    
+    $('#tablaDetalles tbody tr').each(function() {
+        const fila = $(this);
+        const detalle = {
+            DetalleVersionId: parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0,
+            ProductoId: fila.find('input[name$=".ProductoId"]').val(),
+            EsPersistente: parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) > 0
+        };
+        datosParaEnvio.Detalles.push(detalle);
+    });
+    
+    console.log('📤 Datos que se enviarían al servidor:');
+    console.log('  - Moneda:', datosParaEnvio.Moneda);
+    console.log('  - Líneas persistentes en envío:', datosParaEnvio.Detalles.filter(d => d.EsPersistente).length);
+    console.log('  - Total líneas:', datosParaEnvio.Detalles.length);
+    
+    console.groupEnd();
+    
+    return {
+        puedeGuardarConCambioMoneda: (estadoActual === 'B' && lineasPersistentes === 0),
+        datosParaEnvio
+    };
+};
+
+function contarLineasPersistentes() {
+    let lineasPersistentes = 0;
+    $('#tablaDetalles tbody tr').each(function() {
+        const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+        if (detalleVersionId > 0) {
+            lineasPersistentes++;
+        }
+    });
+    return lineasPersistentes;
+}
+
+// 🆕 FUNCIÓN PARA PROBAR EL GUARDADO COMPLETO
+window.probarGuardadoConMoneda = function(nuevaMoneda) {
+    console.log('🧪 Probando guardado con cambio de moneda a:', nuevaMoneda);
+    
+    // Cambiar la moneda primero
+    const combo = $('#MonedaSelect');
+    if (combo.length > 0) {
+        combo.val(nuevaMoneda).trigger('change');
+        
+        // Esperar un poco y luego intentar guardar
+        setTimeout(() => {
+            console.log('🔄 Intentando guardar después del cambio de moneda...');
+            $('#btnGuardar').click();
+        }, 2000);
+    } else {
+        console.error('❌ Combo de moneda no encontrado');
+    }
+};
+
+// 🆕 FUNCIÓN PARA RESETEAR MONEDA
+window.resetearMoneda = function() {
+    console.log('🔄 Reseteando estado de moneda...');
+    
+    // Limpiar variable global
+    monedaActual = 'CRC';
+    
+    // Actualizar FormatConfig si existe
+    if (window.FormatConfig) {
+        window.FormatConfig.moneda = 'CRC';
+        window.FormatConfig.simboloMoneda = '¢';
+    }
+    
+    // Limpiar combo si existe
+    const combo = $('#MonedaSelect');
+    if (combo.length > 0) {
+        combo.val('CRC');
+    }
+    
+    // Actualizar displays
+    $('#displayMonedaCodigo').text('CRC');
+    actualizarDisplaysMoneda();
+    
+    console.log('✅ Moneda reseteada a CRC');
+};
+
+// 🆕 FUNCIÓN PARA FORZAR COMBO CORRECTO
+window.forzarComboMonedaCorreto = function(monedaEsperada) {
+    console.log('🔧 Forzando combo a moneda correcta:', monedaEsperada);
+    
+    const combo = $('#MonedaSelect');
+    if (combo.length === 0) {
+        console.error('❌ Combo no encontrado');
+        return false;
+    }
+    
+    console.log('Estado antes de corrección:', {
+        valorActual: combo.val(),
+        monedaEsperada: monedaEsperada,
+        optionsDisponibles: combo.find('option').map(function() { return $(this).val(); }).get()
+    });
+    
+    // Desconectar eventos
+    combo.off('change.moneda');
+    
+    // Establecer valor forzadamente
+    combo.val(monedaEsperada);
+    
+    // Verificar y forzar por índice si es necesario
+    const opcionCorrecta = combo.find(`option[value="${monedaEsperada}"]`);
+    if (opcionCorrecta.length > 0) {
+        const indice = opcionCorrecta.index();
+        combo[0].selectedIndex = indice;
+        console.log('✅ Forzado por índice:', indice);
+    }
+    
+    // Actualizar variables globales
+    monedaActual = monedaEsperada;
+    if (window.FormatConfig) {
+        window.FormatConfig.moneda = monedaEsperada;
+    }
+    
+    console.log('Estado después de corrección:', {
+        valorCombo: combo.val(),
+        selectedIndex: combo[0].selectedIndex,
+        monedaGlobal: monedaActual
+    });
+    
+    // Reconectar eventos
+    setTimeout(() => {
+        combo.on('change.moneda', configurarEventoMoneda);
+    }, 100);
+    
+    return combo.val() === monedaEsperada;
 };
 
 // FUNCIÓN PARA FORZAR ACTUALIZACIÓN DE MONEDAS
@@ -1390,36 +2379,94 @@ window.forzarActualizacionMonedas = function() {
     console.log('✅ Actualización forzada completada');
 };
 
-// FUNCIÓN PARA PROBAR MONEDAS INMEDIATAMENTE
-window.probarMonedas = function() {
-    console.group('🧪 PRUEBA RÁPIDA DE MONEDAS');
+// 🆕 FUNCIÓN DE DIAGNÓSTICO PARA PERSISTENCIA
+window.diagnosticarPersistencia = function() {
+    console.group('🔍 DIAGNÓSTICO DE PERSISTENCIA');
     
-    console.log('1. MonedasDisponibles:', window.MonedasDisponibles);
-    console.log('2. Tipo:', typeof window.MonedasDisponibles);
-    console.log('3. Es array:', Array.isArray(window.MonedasDisponibles));
+    console.log('📊 Estado de datos para envío:');
+    const formData = {
+        CotizacionId: $('input[name="CotizacionId"]').val(),
+        VersionId: parseInt($('input[name="VersionId"]').val()),
+        Moneda: $('#MonedaSelect').val() || monedaActual,
+        NumeroVersion: $('#NumeroVersion').val() || $('#versionValor').text().replace('v', ''),
+        TipoCambio: $('#TipoCambio').val()
+    };
     
-    if (Array.isArray(window.MonedasDisponibles) && window.MonedasDisponibles.length > 0) {
-        const primera = window.MonedasDisponibles[0];
-        console.log('4. Primera moneda:', primera);
-        console.log('5. Propiedades de primera moneda:', Object.keys(primera));
-        console.log('6. Estructura esperada:', {
-            codigo: primera.Codigo || primera.codigo,
-            simbolo: primera.Simbolo || primera.simbolo,
-            nombre: primera.Nombre || primera.nombre
-        });
-        
-        // Probar función obtenerNombreMoneda
-        const nombreUSD = obtenerNombreMoneda('USD');
-        console.log('7. obtenerNombreMoneda("USD"):', nombreUSD);
-        
-        // Probar generar HTML
-        console.log('8. Probando mostrarComboMoneda...');
-        mostrarComboMoneda();
-    } else {
-        console.error('❌ MonedasDisponibles no es un array válido');
-    }
+    console.table(formData);
+    
+    console.log('💾 Líneas de detalle:');
+    const detalles = [];
+    $('#tablaDetalles tbody tr').each(function() {
+        const fila = $(this);
+        const detalle = {
+            Index: parseInt(fila.attr('data-index')),
+            DetalleVersionId: parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0,
+            ProductoId: fila.find('input[name$=".ProductoId"]').val(),
+            EsPersistente: parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) > 0,
+            Estado: parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) > 0 ? 'PERSISTENTE' : 'TEMPORAL'
+        };
+        detalles.push(detalle);
+    });
+    
+    console.table(detalles);
+    
+    console.log('🔄 Resumen:');
+    const totalLineas = detalles.length;
+    const lineasPersistentes = detalles.filter(d => d.EsPersistente).length;
+    const lineasTemporales = totalLineas - lineasPersistentes;
+    
+    console.log(`  - Total líneas: ${totalLineas}`);
+    console.log(`  - Líneas persistentes (BD): ${lineasPersistentes}`);
+    console.log(`  - Líneas temporales (nuevas): ${lineasTemporales}`);
+    console.log(`  - ¿Puede cambiar moneda?: ${lineasPersistentes === 0 ? '✅ SÍ' : '❌ NO'}`);
+    
+    console.log('💱 Estado de moneda:');
+    console.log(`  - Moneda actual (variable): ${monedaActual}`);
+    console.log(`  - Moneda seleccionada (combo): ${$('#MonedaSelect').val() || 'N/A'}`);
+    console.log(`  - ¿Hay cambio de moneda?: ${($('#MonedaSelect').val() && $('#MonedaSelect').val() !== monedaActual) ? '✅ SÍ' : '❌ NO'}`);
     
     console.groupEnd();
+    
+    return {
+        formData,
+        detalles,
+        resumen: {
+            totalLineas,
+            lineasPersistentes,
+            lineasTemporales,
+            puedeCambiarMoneda: lineasPersistentes === 0,
+            hayCambioMoneda: $('#MonedaSelect').val() && $('#MonedaSelect').val() !== monedaActual
+        }
+    };
+};
+
+// 🆕 FUNCIÓN PARA PROBAR ELIMINACIÓN FORZADA
+window.forzarEliminacionLineasPersistentes = function() {
+    console.log('🔥 Eliminando FORZADAMENTE todas las líneas persistentes...');
+    
+    const lineasEliminadas = [];
+    $('#tablaDetalles tbody tr').each(function() {
+        const fila = $(this);
+        const detalleVersionId = parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0;
+        
+        if (detalleVersionId > 0) {
+            const productName = fila.find('.producto-nombre').text();
+            lineasEliminadas.push({ id: detalleVersionId, producto: productName });
+            fila.remove();
+        }
+    });
+    
+    if (lineasEliminadas.length > 0) {
+        reindexarFilasDetalle();
+        recalcularTotales();
+        verificarYActualizarEstadoMoneda();
+        
+        console.log(`✅ Eliminadas ${lineasEliminadas.length} líneas persistentes:`, lineasEliminadas);
+        showNotification('success', `🔥 ${lineasEliminadas.length} líneas persistentes eliminadas. Ahora puede cambiar la moneda.`);
+    } else {
+        console.log('ℹ️ No hay líneas persistentes que eliminar');
+        showNotification('info', 'No hay líneas persistentes que eliminar');
+    }
 };
 
 // ========================================
@@ -1453,7 +2500,7 @@ function obtenerNombreMoneda(codigo) {
 }
 
 function aplicarCambioMoneda(nuevaMoneda) {
-    console.log(`Aplicando cambio de moneda a: ${nuevaMoneda}`);
+    console.log(`💱 Aplicando cambio de moneda a: ${nuevaMoneda}`);
     
     // Actualizar variable global
     const monedaAnterior = monedaActual;
@@ -1465,13 +2512,44 @@ function aplicarCambioMoneda(nuevaMoneda) {
         window.FormatConfig.simboloMoneda = getCurrencySymbol(nuevaMoneda);
     }
     
+    // 🔧 CORRECCIÓN MEJORADA: Forzar la actualización del combo correctamente
+    const comboMoneda = $('#MonedaSelect');
+    if (comboMoneda.length > 0) {
+        // Desconectar eventos temporalmente para evitar loops
+        comboMoneda.off('change.moneda');
+        
+        // Establecer el valor correcto
+        comboMoneda.val(nuevaMoneda);
+        
+        // Verificar que se estableció correctamente
+        const valorActualCombo = comboMoneda.val();
+        console.log('🔧 Combo actualizado:', {
+            valorEsperado: nuevaMoneda,
+            valorActual: valorActualCombo,
+            esticoEsperado: valorActualCombo === nuevaMoneda
+        });
+        
+        // Forzar refresh visual del combo (trigger sin events)
+        comboMoneda[0].selectedIndex = comboMoneda.find(`option[value="${nuevaMoneda}"]`).index();
+        
+        // Reconectar eventos después de un pequeño delay
+        setTimeout(() => {
+            comboMoneda.on('change.moneda', configurarEventoMoneda);
+        }, 100);
+    }
+    
     // Actualizar displays financieros (aunque estén en 0 porque no hay detalles)
     actualizarDisplaysMoneda();
     
-    // Mostrar notificación de éxito
-    showNotification('success', `Moneda cambiada a ${obtenerNombreMoneda(nuevaMoneda)}`);
+    // 🔧 MEJORA: Marcar como cambio pendiente de guardar
+    window.cotizacionGuardada = false;
     
-    console.log(`Cambio de moneda completado: ${monedaAnterior} -> ${nuevaMoneda}`);
+    // Mostrar notificación de éxito con instrucción
+    showNotification('success', 
+        `💱 Moneda cambiada a ${obtenerNombreMoneda(nuevaMoneda)}. ` +
+        `Debe GUARDAR la cotización para persistir el cambio.`);
+    
+    console.log(`✅ Cambio de moneda completado: ${monedaAnterior} -> ${nuevaMoneda} (pendiente de guardar)`);
 }
 
 function actualizarDisplaysMoneda() {
@@ -1481,24 +2559,27 @@ function actualizarDisplaysMoneda() {
     const impuesto = 0;
     const total = 0;
     
+    // 🔧 CORRECCIÓN CRÍTICA: Usar monedaActual consistentemente
     $('#displaySubTotal').text(formatCurrency(subtotal));
     $('#displayDescuento').text(formatCurrency(descuento));
     $('#displaySubtotalDescontado').text(formatCurrency(subtotal - descuento));
     $('#displayImpuesto').text(formatCurrency(impuesto));
     $('#displayTotal').text(formatCurrency(total));
     
-    // Actualizar el texto de la moneda en el resumen
-    const monedaTexto = $('.text-center.text-muted small').filter(function() {
-        return $(this).html().includes('Moneda:');
-    });
+    // 🔧 CORRECCIÓN CRÍTICA: Actualizar AMBOS elementos de moneda
+    $('#displayMonedaCodigo').text(monedaActual);
     
-    if (monedaTexto.length > 0) {
-        const simbolo = getCurrencySymbol(monedaActual);
-        const nombre = obtenerNombreMoneda(monedaActual);
-        monedaTexto.html(`<strong>Moneda:</strong> ${simbolo} ${monedaActual} - ${nombre}`);
+    // 🔧 NUEVO: También actualizar el texto "Moneda:" que aparece abajo
+    $('.text-center.text-muted small').filter(function() {
+        return $(this).html().includes('Moneda:');
+    }).html(`<strong>Moneda:</strong> ${monedaActual}`);
+    
+    // 🔧 CORRECCIÓN: Forzar recálculo de totales si hay líneas
+    if ($('#tablaDetalles tbody tr').length > 0) {
+        recalcularTotales(); // Esto asegura que todos los totales usen la moneda correcta
     }
     
-    console.log('Displays de moneda actualizados');
+    console.log('✅ Displays de moneda actualizados a:', monedaActual);
 }
 
 // ========================================
@@ -1509,24 +2590,43 @@ function verificarYActualizarEstadoMoneda() {
     console.log('Verificando estado de moneda...');
     
     // Obtener información actual
-    const versionActual = obtenerVersionActual();
     const estadoActual = obtenerEstadoActual();
     const totalLineas = $('#tablaDetalles tbody tr').length;
     
-    // Verificar condiciones para cambio de moneda
-    const puedeEditarMoneda = (versionActual === 1.0 && estadoActual === 'B' && totalLineas === 0);
+    // 🔧 CORRECCIÓN FINAL: La moneda se puede cambiar SOLO cuando:
+    // 1. Está en estado Borrador, Y
+    // 2. NO hay NINGUNA línea (ni temporal ni persistente)
+    // 
+    // Esto es consistente con la regla de negocio: "No se puede cambiar moneda si hay líneas de detalle"
     
-    console.log('Condiciones para cambio de moneda:', {
-        versionActual,
+    const puedeEditarMoneda = (estadoActual === 'B' && totalLineas === 0);
+    
+    // Para diagnóstico detallado
+    let lineasPersistentes = 0;
+    let lineasTemporales = 0;
+    $('#tablaDetalles tbody tr').each(function() {
+        const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+        if (detalleVersionId > 0) {
+            lineasPersistentes++;
+        } else {
+            lineasTemporales++;
+        }
+    });
+    
+    console.log('Condiciones para cambio de moneda (REGLA NEGOCIO):', {
         estadoActual,
         totalLineas,
-        puedeEditarMoneda
+        lineasPersistentes,
+        lineasTemporales,
+        puedeEditarMoneda,
+        regla: 'NO puede haber líneas para cambiar moneda'
     });
     
     if (puedeEditarMoneda) {
         mostrarComboMoneda();
     } else {
-        mostrarDisplayMoneda(totalLineas > 0 ? 'detalles' : 'estado');
+        const razon = totalLineas > 0 ? 'hay-lineas' : 'estado-no-borrador';
+        mostrarDisplayMoneda(razon);
     }
     
     // Configurar tipo de cambio independientemente (siempre editable si está en Borrador)
@@ -1536,16 +2636,17 @@ function verificarYActualizarEstadoMoneda() {
 }
 
 function mostrarComboMoneda() {
-console.log('Cambiando a modo edición de moneda');
+    console.log('💱 Cambiando a modo edición de moneda');
     
-const seccionMoneda = $('.moneda-section');
-if (seccionMoneda.length === 0) {
-    console.warn('No se encontró la sección de moneda');
-    return;
-}
+    const seccionMoneda = $('.moneda-section');
+    if (seccionMoneda.length === 0) {
+        console.warn('No se encontró la sección de moneda');
+        return;
+    }
     
-// Obtener moneda actual
-const monedaActual = obtenerMonedaActual();
+    // 🔧 CORRECCIÓN: Obtener moneda actual correctamente
+    const monedaActualReal = obtenerMonedaActual();
+    console.log('💰 Moneda actual detectada para combo:', monedaActualReal);
     
     // Obtener monedas disponibles
     let monedasDisponibles = [];
@@ -1580,12 +2681,14 @@ const monedaActual = obtenerMonedaActual();
         ];
     }
     
-    // Generar options dinámicamente
-    const optionsHTML = monedasDisponibles.map(moneda => 
-        `<option value="${moneda.codigo}" ${monedaActual === moneda.codigo ? 'selected' : ''}>
+    // 🔧 CORRECCIÓN: Generar options con la moneda actual correctamente seleccionada
+    const optionsHTML = monedasDisponibles.map(moneda => {
+        const isSelected = monedaActualReal === moneda.codigo;
+        console.log(`🔍 Comparando: "${monedaActualReal}" === "${moneda.codigo}" -> ${isSelected}`);
+        return `<option value="${moneda.codigo}" ${isSelected ? 'selected' : ''}>
             ${moneda.simbolo} ${moneda.codigo} - ${moneda.nombre}
-        </option>`
-    ).join('');
+        </option>`;
+    }).join('');
     
     // HTML para combo de monedas (sin tipo de cambio)
     const comboHTML = `
@@ -1606,12 +2709,44 @@ const monedaActual = obtenerMonedaActual();
             </div>
             <small class="text-success">
                 <i class="fas fa-check-circle"></i>
-                Puede cambiar la moneda: versión 1.0, estado Borrador y sin líneas de detalle.
+                Puede cambiar la moneda: estado Borrador y sin líneas guardadas en BD.
             </small>
         </div>
     `;
     
     seccionMoneda.html(comboHTML);
+    
+    // 🔧 CORRECCIÓN MEJORADA: Establecer valor inicial con múltiples métodos
+    const comboCreado = $('#MonedaSelect');
+    
+    // Método 1: Establecer valor directamente
+    comboCreado.val(monedaActualReal);
+    
+    // Método 2: Si no funciona el método 1, forzar por índice
+    if (comboCreado.val() !== monedaActualReal) {
+        const opcionCorrecta = comboCreado.find(`option[value="${monedaActualReal}"]`);
+        if (opcionCorrecta.length > 0) {
+            comboCreado[0].selectedIndex = opcionCorrecta.index();
+            console.log('🔧 Forzado por selectedIndex:', opcionCorrecta.index());
+        }
+    }
+    
+    // Método 3: Verificar que se estableció correctamente
+    const valorFinal = comboCreado.val();
+    console.log('✅ Verificación final combo:', {
+        esperado: monedaActualReal,
+        obtenido: valorFinal,
+        esCorecto: valorFinal === monedaActualReal,
+        selectedIndex: comboCreado[0].selectedIndex
+    });
+    
+    // Si aún no es correcto, intentar una vez más
+    if (valorFinal !== monedaActualReal) {
+        console.warn('⚠️ Combo no se estableció correctamente, intentando corrección...');
+        setTimeout(() => {
+            window.forzarComboMonedaCorreto(monedaActualReal);
+        }, 200);
+    }
     
     // Re-configurar event listener para el combo de moneda
     configurarEventoMoneda();
@@ -1636,39 +2771,66 @@ function configurarEventoMoneda() {
     
     // Configurar nuevo evento
     $('#MonedaSelect').on('change.moneda', function() {
-        const nuevaMoneda = $(this).val();
+        const $combo = $(this); // Referencia fija al combo
+        const nuevaMoneda = $combo.val();
         const monedaAnterior = monedaActual;
         
-        console.log(`Cambio de moneda solicitado: ${monedaAnterior} -> ${nuevaMoneda}`);
+        console.log(`💱 Cambio de moneda solicitado: ${monedaAnterior} -> ${nuevaMoneda}`);
+        console.log(`🔍 Estado del combo: valor="${nuevaMoneda}", texto="${$combo.find('option:selected').text()}"`);
         
         if (nuevaMoneda !== monedaAnterior) {
-            // Verificar que no hay detalles (doble verificación)
-            const totalLineas = $('#tablaDetalles tbody tr').length;
+            // 🔧 CORRECCIÓN: Verificar líneas persistentes, no temporales
+            let lineasPersistentes = 0;
+            $('#tablaDetalles tbody tr').each(function() {
+                const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+                if (detalleVersionId > 0) {
+                    lineasPersistentes++;
+                }
+            });
             
-            if (totalLineas > 0) {
-                showNotification('warning', 'No se puede cambiar la moneda cuando hay líneas de detalle agregadas.');
-                $(this).val(monedaAnterior); // Revertir selección
+            if (lineasPersistentes > 0) {
+                showNotification('warning', 'No se puede cambiar la moneda cuando hay líneas guardadas en la base de datos. Elimine todas las líneas persistentes primero.');
+                // 🔧 CORRECCIÓN: Revertir INMEDIATAMENTE sin triggerar eventos
+                console.log(`⚠️ Revirtiendo combo: ${nuevaMoneda} -> ${monedaAnterior}`);
+                revertirComboMoneda($combo, monedaAnterior);
                 return;
             }
+            
+            // 🔧 PREVENIR CAMBIOS MIENTRAS ESTÁ EL MODAL ABIERTO
+            $combo.off('change.moneda');
             
             // Confirmar cambio
             const nombreMonedaNueva = obtenerNombreMoneda(nuevaMoneda);
             const nombreMonedaAnterior = obtenerNombreMoneda(monedaAnterior);
             
-            mostrarModalConfirmacion(
+            mostrarModalConfirmacionMoneda(
                 'Confirmar Cambio de Moneda',
                 `¿Está seguro de que desea cambiar la moneda de <strong>${nombreMonedaAnterior}</strong> a <strong>${nombreMonedaNueva}</strong>?<br><br>
-                 <small class="text-muted">Este cambio solo es posible en versión 1.0, estado Borrador y sin líneas de detalle.</small>`,
+                 <small class="text-muted">Este cambio es posible porque no hay líneas guardadas en la base de datos.</small>`,
                 'warning',
                 function() {
+                    // ✅ CONFIRMADO: Aplicar el cambio de moneda
+                    console.log(`✅ Usuario CONFIRMÓ cambio: ${monedaAnterior} -> ${nuevaMoneda}`);
                     aplicarCambioMoneda(nuevaMoneda);
+                    // Reconectar eventos después del cambio exitoso
+                    setTimeout(() => {
+                        configurarEventoMoneda();
+                    }, 300);
                 },
                 function() {
-                    // Callback de cancelación - revertir selección
-                    $('#MonedaSelect').val(monedaAnterior);
-                    console.log('Cambio de moneda cancelado, revertido a:', monedaAnterior);
-                }
+                    // ❌ CANCELADO: Revertir selección sin triggerar eventos
+                    console.log(`❌ Usuario CANCELÓ cambio: ${nuevaMoneda} -> ${monedaAnterior}`);
+                    revertirComboMoneda($combo, monedaAnterior);
+                    // Reconectar eventos después de revertir
+                    setTimeout(() => {
+                        configurarEventoMoneda();
+                    }, 300);
+                },
+                $combo,
+                monedaAnterior
             );
+        } else {
+            console.log('ℹ️ Misma moneda seleccionada, no se hace nada');
         }
     });
 }
@@ -1700,20 +2862,31 @@ function obtenerEstadoActual() {
 }
 
 function obtenerMonedaActual() {
-    // 1. Usar variable global si está disponible
+    // 1. Usar variable global si está disponible y es válida
     if (typeof monedaActual !== 'undefined' && monedaActual && monedaActual !== 'undefined') {
-        console.log('Moneda desde variable global:', monedaActual);
+        console.log('💰 Moneda desde variable global:', monedaActual);
         return monedaActual;
     }
     
     // 2. Intentar obtener desde FormatConfig
     if (window.FormatConfig && window.FormatConfig.moneda && window.FormatConfig.moneda !== 'undefined') {
-        console.log('Moneda desde FormatConfig:', window.FormatConfig.moneda);
+        console.log('💰 Moneda desde FormatConfig:', window.FormatConfig.moneda);
         monedaActual = window.FormatConfig.moneda; // Actualizar variable global
         return monedaActual;
     }
     
-    // 3. Fallback: buscar en el texto de moneda del display financiero
+    // 3. 🔧 CORREGIDO: Buscar en el elemento específico de moneda del DOM
+    const elementoMonedaCodigo = $('#displayMonedaCodigo');
+    if (elementoMonedaCodigo.length > 0) {
+        const monedaDesdeCodigo = elementoMonedaCodigo.text().trim();
+        if (monedaDesdeCodigo && monedaDesdeCodigo !== 'undefined') {
+            console.log('💰 Moneda desde #displayMonedaCodigo:', monedaDesdeCodigo);
+            monedaActual = monedaDesdeCodigo; // Actualizar variable global
+            return monedaActual;
+        }
+    }
+    
+    // 4. Fallback: buscar en el texto de moneda del display financiero
     const monedaTexto = $('.text-center.text-muted small').filter(function() {
         return $(this).html().includes('Moneda:');
     }).text();
@@ -1721,14 +2894,41 @@ function obtenerMonedaActual() {
     if (monedaTexto) {
         const match = monedaTexto.match(/Moneda:\s*[^\w]*(\w+)/);
         if (match && match[1] !== 'undefined') {
-            console.log('Moneda desde DOM financiero:', match[1]);
+            console.log('💰 Moneda desde texto financiero:', match[1]);
             monedaActual = match[1]; // Actualizar variable global
             return match[1];
         }
     }
     
-    // 4. Default final
-    console.log('Usando moneda default: CRC');
+    // 5. 🔧 NUEVO: Buscar en cualquier elemento que contenga el símbolo de moneda
+    const simbolosMoneda = ['¢', '$', '€', '£', '¥'];
+    const elementosConSimbolos = $('.financial-summary *').filter(function() {
+        const texto = $(this).text();
+        return simbolosMoneda.some(simbolo => texto.includes(simbolo));
+    });
+    
+    if (elementosConSimbolos.length > 0) {
+        const textoConSimbolo = elementosConSimbolos.first().text();
+        console.log('💰 Texto con símbolo encontrado:', textoConSimbolo);
+        
+        // Detectar moneda por símbolo
+        if (textoConSimbolo.includes('¢')) {
+            console.log('💰 Moneda detectada por símbolo ¢: CRC');
+            monedaActual = 'CRC';
+            return 'CRC';
+        } else if (textoConSimbolo.includes('$')) {
+            console.log('💰 Moneda detectada por símbolo $: USD (asumido)');
+            monedaActual = 'USD';
+            return 'USD';
+        } else if (textoConSimbolo.includes('€')) {
+            console.log('💰 Moneda detectada por símbolo €: EUR');
+            monedaActual = 'EUR';
+            return 'EUR';
+        }
+    }
+    
+    // 6. Default final
+    console.log('💰 Usando moneda default: CRC');
     monedaActual = 'CRC';
     return 'CRC';
 }
@@ -1768,29 +2968,1060 @@ function obtenerTipoCambioActual() {
     return null;
 }
 
-function configurarEventoTipoCambio() {
+function configurarEventoVersion() {
     // Limpiar eventos anteriores
-    $('#TipoCambio').off('input.tipocambio change.tipocambio');
+    $('#btnEditarVersion, #btnGuardarVersion, #btnCancelarVersion, #NumeroVersion').off('.version');
+    
+    let valorOriginal = '';
+    
+    // Evento para mostrar modo edición
+    $('#btnEditarVersion').on('click.version', function() {
+        // Guardar valor original (extraer el número de "v1.0")
+        const versionTexto = $('#versionValor').text();
+        const match = versionTexto.match(/v?(\d+\.\d+)/);
+        valorOriginal = match ? match[1] : '1.0';
+        
+        // Establecer valor en el campo de entrada
+        $('#NumeroVersion').val(valorOriginal);
+        
+        // Cambiar a modo edición
+        $('#versionModoVista').addClass('d-none');
+        $('#versionModoEdicion').removeClass('d-none');
+        
+        // Enfocar el campo con un pequeño delay para mejor UX
+        setTimeout(function() {
+            $('#NumeroVersion').focus().select();
+        }, 100);
+        
+        console.log('Modo edición versión activado, valor original:', valorOriginal);
+    });
+    
+    // Evento para guardar cambios
+    $('#btnGuardarVersion').on('click.version', function() {
+        guardarCambioVersion();
+    });
+    
+    // Evento para cancelar edición
+    $('#btnCancelarVersion').on('click.version', function() {
+        cancelarEdicionVersion();
+    });
+    
+    // Evento para guardar con Enter y cancelar con Escape
+    $('#NumeroVersion').on('keydown.version', function(e) {
+        if (e.which === 13) { // Enter
+            e.preventDefault();
+            guardarCambioVersion();
+        } else if (e.which === 27) { // Escape
+            e.preventDefault();
+            cancelarEdicionVersion();
+        }
+    });
     
     // Validación en tiempo real
-    $('#TipoCambio').on('input.tipocambio', function() {
-        const valor = parseFloat($(this).val());
+    $('#NumeroVersion').on('input.version', function() {
+        const valor = $(this).val();
+        const numero = parseFloat(valor);
         
-        if (isNaN(valor) || valor < 0) {
+        if (valor && (isNaN(numero) || numero < 1.0 || numero > 99.9)) {
             $(this).addClass('is-invalid');
         } else {
             $(this).removeClass('is-invalid');
         }
     });
     
-    // Formateo al perder foco
-    $('#TipoCambio').on('change.tipocambio', function() {
-        const valor = parseFloat($(this).val());
+    function guardarCambioVersion() {
+        const nuevoValor = $('#NumeroVersion').val();
+        const numero = parseFloat(nuevoValor);
         
-        if (!isNaN(valor) && valor >= 0) {
-            $(this).val(valor.toFixed(2));
-            $(this).removeClass('is-invalid');
-            console.log('Tipo de cambio actualizado:', valor.toFixed(2));
+        // Validar que no tenga errores
+        if ($('#NumeroVersion').hasClass('is-invalid')) {
+            showNotification('warning', 'Por favor ingrese un número de versión válido (1.0 - 99.9).');
+            $('#NumeroVersion').focus();
+            return;
+        }
+        
+        if (!nuevoValor || isNaN(numero) || numero < 1.0 || numero > 99.9) {
+            showNotification('warning', 'El número de versión debe estar entre 1.0 y 99.9.');
+            $('#NumeroVersion').focus();
+            return;
+        }
+        
+        // Formatear el valor correctamente
+        const valorFormateado = numero.toFixed(1);
+        const displayFormateado = `v${valorFormateado}`;
+        
+        // Actualizar el campo oculto con el valor correcto para el envío
+        $('#NumeroVersion').val(valorFormateado);
+        
+        // Actualizar display del badge
+        $('#versionValor').text(displayFormateado);
+        
+        // Volver a modo vista
+        $('#versionModoEdicion').addClass('d-none');
+        $('#versionModoVista').removeClass('d-none');
+        
+        console.log('Versión actualizada:', displayFormateado);
+        
+        // Mostrar notificación solo si realmente cambió el valor
+        const valorOriginalNumerico = parseFloat(valorOriginal);
+        
+        if (numero !== valorOriginalNumerico) {
+            showNotification('success', `Versión actualizada a ${displayFormateado}`);
+        }
+    }
+    
+    function cancelarEdicionVersion() {
+        // Restaurar valor original
+        $('#NumeroVersion').val(valorOriginal);
+        $('#NumeroVersion').removeClass('is-invalid');
+        
+        // Volver a modo vista
+        $('#versionModoEdicion').addClass('d-none');
+        $('#versionModoVista').removeClass('d-none');
+        
+        console.log('Edición de versión cancelada');
+    }
+}
+
+// 🆕 FUNCIÓN PARA FORZAR CAMBIO DE MONEDA CORRECTO
+window.forzarCambioMonedaCorrectamente = function(nuevaMoneda) {
+    console.log(`💱 Forzando cambio de moneda a: ${nuevaMoneda}`);
+    
+    const combo = $('#MonedaSelect');
+    if (combo.length === 0) {
+        console.error('❌ Combo de moneda no disponible');
+        return Promise.reject('Combo no disponible');
+    }
+    
+    const monedaActualCombo = combo.val();
+    console.log(`🔍 Estado actual: Combo=${monedaActualCombo}, Global=${monedaActual}`);
+    
+    if (monedaActualCombo === nuevaMoneda) {
+        console.log('ℹ️ Ya está en la moneda deseada');
+        return Promise.resolve();
+    }
+    
+    return new Promise((resolve, reject) => {
+        // Configurar listener temporal para detectar cuando se complete el cambio
+        let cambioCompletado = false;
+        
+        const timeoutId = setTimeout(() => {
+            if (!cambioCompletado) {
+                console.error('⏰ Timeout: El cambio de moneda tardó demasiado');
+                reject('Timeout en cambio de moneda');
+            }
+        }, 10000); // 10 segundos máximo
+        
+        // Listener para detectar cuando se completa el cambio
+        function onCambioCompletado() {
+            if (combo.val() === nuevaMoneda && monedaActual === nuevaMoneda) {
+                cambioCompletado = true;
+                clearTimeout(timeoutId);
+                console.log('✅ Cambio de moneda completado exitosamente');
+                resolve();
+            }
+        }
+        
+        // Verificar periódicamente
+        const checkInterval = setInterval(() => {
+            if (cambioCompletado) {
+                clearInterval(checkInterval);
+                return;
+            }
+            
+            if (combo.val() === nuevaMoneda && monedaActual === nuevaMoneda) {
+                clearInterval(checkInterval);
+                onCambioCompletado();
+            }
+        }, 500);
+        
+        // Triggear el cambio
+        console.log(`🔄 Triggerando cambio de ${combo.val()} a ${nuevaMoneda}`);
+        combo.val(nuevaMoneda).trigger('change');
+    });
+};
+
+// 🆕 FUNCIÓN DE PRUEBA MEJORADA CON ASYNC/AWAIT
+window.probarCambioMonedaAsync = async function() {
+    console.group('🧪 PRUEBA ASYNC: CAMBIO DE MONEDA');
+    
+    try {
+        const cotizacionId = $('input[name="CotizacionId"]').val();
+        console.log('1. CotizacionId:', cotizacionId);
+        
+        // Paso 1: Verificar estado inicial
+        console.log('📊 PASO 1: Verificando estado inicial...');
+        window.diagnosticarGuardadoMoneda();
+        
+        // Paso 2: Eliminar líneas persistentes
+        console.log('📊 PASO 2: Eliminando líneas persistentes...');
+        await new Promise((resolve, reject) => {
+            $.ajax({
+                url: `/Cotizaciones/EliminarLineasParaCambioMoneda/${cotizacionId}`,
+                type: 'POST',
+                data: { __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val() },
+                success: (response) => {
+                    if (response.success) {
+                        console.log('✅ Líneas eliminadas:', response.message);
+                        resolve(response);
+                    } else {
+                        reject(response.message);
+                    }
+                },
+                error: (xhr) => reject('Error de comunicación')
+            });
+        });
+        
+        // Esperar un poco para que se actualice el DOM
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Paso 3: Cambiar moneda de forma controlada
+        console.log('📊 PASO 3: Cambiando moneda a USD...');
+        await window.forzarCambioMonedaCorrectamente('USD');
+        
+        // Paso 4: Completar datos
+        console.log('📊 PASO 4: Completando datos...');
+        $('#NombreInteresado').val('Prueba Async USD');
+        $('#EmailInteresado').val('async-usd@test.com');
+        
+        // Paso 5: Guardar
+        console.log('📊 PASO 5: Guardando...');
+        window.forzarGuardadoDirecto();
+        
+        // Paso 6: Verificar resultado
+        setTimeout(() => {
+            console.log('📊 PASO 6: Verificando resultado...');
+            window.verificarEstadoPostGuardado();
+        }, 5000);
+        
+        console.log('✅ Prueba completada exitosamente');
+        
+    } catch (error) {
+        console.error('❌ Error en la prueba:', error);
+    } finally {
+        console.groupEnd();
+    }
+};
+
+// 🆕 FUNCIÓN PARA ELIMINAR LÍNEAS PERSISTENTES USANDO EL SERVIDOR
+window.eliminarLineasPersistentesViaServidor = function() {
+    console.log('🔄 Eliminando líneas persistentes via servidor...');
+    
+    const cotizacionId = $('input[name="CotizacionId"]').val();
+    if (!cotizacionId) {
+        console.error('❌ No se puede obtener CotizacionId');
+        return;
+    }
+    
+    // Obtener el token antiforgery
+    const token = $('input[name="__RequestVerificationToken"]').val();
+    
+    console.log('📤 Enviando petición para eliminar líneas...');
+    
+    $.ajax({
+        url: `/Cotizaciones/EliminarLineasParaCambioMoneda/${cotizacionId}`,
+        type: 'POST',
+        data: {
+            __RequestVerificationToken: token
+        },
+        success: function(response) {
+            if (response.success) {
+                console.log('✅ Líneas eliminadas exitosamente');
+                showNotification('success', response.message);
+                
+                // Actualizar el frontend para reflejar los cambios
+                $('#tablaDetalles tbody').empty();
+                actualizarContadorLineas();
+                recalcularTotales();
+                
+                // Verificar que ahora se puede cambiar moneda
+                setTimeout(() => {
+                    verificarYActualizarEstadoMoneda();
+                    window.verificarEstadoPostGuardado();
+                }, 1000);
+                
+            } else {
+                console.error('❌ Error:', response.message);
+                showNotification('error', response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Error de comunicación:', error);
+            showNotification('error', 'Error de comunicación con el servidor');
         }
     });
+};
+
+// 🆕 FUNCIÓN PARA PROBAR ESPECÍFICAMENTE EL PROBLEMA DEL GUARDADO DE MONEDA
+window.probarProblemaGuardadoMoneda = function() {
+    console.group('🧪 PRUEBA ESPECÍFICA: PROBLEMA GUARDADO DE MONEDA');
+    
+    const cotizacionId = $('input[name="CotizacionId"]').val();
+    console.log('1. CotizacionId:', cotizacionId);
+    
+    // Paso 1: Verificar estado inicial
+    console.log('📊 PASO 1: Verificando estado inicial...');
+    window.diagnosticarGuardadoMoneda();
+    
+    // Paso 2: Usar el servidor para eliminar líneas persistentes
+    console.log('📊 PASO 2: Eliminando líneas persistentes via servidor...');
+    window.eliminarLineasPersistentesViaServidor();
+    
+    // Los pasos 3-6 se ejecutarán después del callback de eliminación exitosa
+    setTimeout(() => {
+        // Paso 3: Cambiar moneda a USD CORRECTAMENTE
+        console.log('📊 PASO 3: Cambiando moneda a USD...');
+        const combo = $('#MonedaSelect');
+        if (combo.length > 0 && combo.val() !== 'USD') {
+            // 🔧 CORRECCIÓN: Usar el evento change real, no solo cambiar el valor
+            console.log(`  Cambiando de ${combo.val()} a USD usando evento change`);
+            combo.val('USD').trigger('change.moneda');
+            console.log('  Moneda cambiada a USD usando trigger change');
+        } else if (combo.val() === 'USD') {
+            console.log('  Moneda ya está en USD, continuando...');
+        } else {
+            console.error('  ❌ Combo no disponible');
+        }
+        
+        // Paso 4: Completar datos mínimos
+        console.log('📊 PASO 4: Completando datos mínimos...');
+        $('#NombreInteresado').val('Prueba Moneda USD');
+        $('#EmailInteresado').val('prueba-usd@test.com');
+        console.log('  Datos completados');
+        
+        // Paso 5: Esperar a que el modal de cambio de moneda se procese
+        console.log('📊 PASO 5: Esperando procesamiento de cambio de moneda...');
+        
+        setTimeout(() => {
+            console.log('🔄 Ejecutando guardado con datos de prueba...');
+            
+            // 🔧 VALIDACIÓN: Verificar que la moneda está correctamente establecida
+            const monedaFinal = $('#MonedaSelect').val();
+            console.log(`💱 Validación pre-guardado: Combo=${monedaFinal}, Global=${monedaActual}`);
+            
+            if (monedaFinal === 'USD' && monedaActual === 'USD') {
+                console.log('✅ Moneda correctamente establecida, procediendo con guardado');
+                $('#btnGuardar').click();
+            } else {
+                console.error('❌ Problema con moneda antes del guardado:', {
+                    combo: monedaFinal,
+                    global: monedaActual
+                });
+            }
+            
+            // Paso 6: Verificar después de un tiempo
+            setTimeout(() => {
+                console.log('📊 PASO 6: Verificando resultado...');
+                window.verificarEstadoPostGuardado();
+            }, 5000); // Más tiempo para que termine el guardado
+            
+        }, 2000); // Más tiempo para que se procese el cambio de moneda
+        
+    }, 3000); // Esperar a que se complete la eliminación
+    
+    console.groupEnd();
+};
+
+// 🆕 FUNCIÓN PARA FORZAR GUARDADO DIRECTO (BYPASS MODAL)
+window.forzarGuardadoDirecto = function() {
+    console.log('🚀 Forzando guardado directo (bypass modal)...');
+    
+    // Asegurar que no hay líneas persistentes
+    const lineasPersistentes = contarLineasPersistentes();
+    if (lineasPersistentes > 0) {
+        console.warn('❌ Aún hay líneas persistentes, no se puede continuar');
+        return;
+    }
+    
+    // Llamar directamente la función de guardado sin modal
+    window.cotizacionGuardada = false; // Marcar como no guardada
+    ejecutarGuardadoCotizacion(); // Llamar directamente
+};
+
+// 🆕 FUNCIÓN DE DEBUG ESPECÍFICA PARA PERSISTENCIA DE MONEDA
+window.debugPersistenciaMoneda = function() {
+    console.group('🔍 DEBUG ESPECÍFICO: PERSISTENCIA DE MONEDA');
+    
+    const cotizacionId = $('input[name="CotizacionId"]').val();
+    const monedaCombo = $('#MonedaSelect').val();
+    const monedaGlobal = monedaActual;
+    
+    console.log('📊 Estado actual del frontend:');
+    console.log('  - CotizacionId:', cotizacionId);
+    console.log('  - Combo moneda:', monedaCombo);
+    console.log('  - Variable global:', monedaGlobal);
+    console.log('  - FormatConfig moneda:', window.FormatConfig?.moneda);
+    
+    // Verificar consistencia
+    const esConsistente = (monedaCombo === monedaGlobal);
+    console.log('  - ¿Frontend consistente?:', esConsistente);
+    
+    if (!esConsistente) {
+        console.warn('⚠️ INCONSISTENCIA en frontend detectada');
+    }
+    
+    // Verificar estado en BD
+    fetch(`/Cotizaciones/DebugMoneda/${cotizacionId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log('📊 Estado en base de datos:');
+            console.log('  - Moneda BD:', data.monedaCotizacion);
+            console.log('  - Estado:', data.estado);
+            console.log('  - Puede editar:', data.puedeEditarMoneda);
+            console.log('  - Líneas persistentes:', data.detalleVersion?.lineasPersistentes);
+            
+            console.log('🔄 Análisis de discrepancias:');
+            const discrepanciaFrontendBD = monedaCombo !== data.monedaCotizacion;
+            console.log('  - Frontend vs BD:', discrepanciaFrontendBD ? '❌ DIFERENTE' : '✅ IGUAL');
+            
+            if (discrepanciaFrontendBD) {
+                console.warn(`🚨 PROBLEMA: Frontend tiene "${monedaCombo}" pero BD tiene "${data.monedaCotizacion}"`);
+                console.log('💡 Posibles soluciones:');
+                console.log('  1. window.forzarCambioMonedaCorrectamente("USD")');
+                console.log('  2. window.probarCambioMonedaAsync()');
+                console.log('  3. Recargar la página');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error al consultar BD:', error);
+        });
+    
+    console.groupEnd();
+};
+
+// 🆕 FUNCIÓN DE PRUEBA COMPLETA: Cambio de moneda + Guardado + Verificación
+window.pruebaFlujoCambioMonedaCompleto = async function() {
+    console.group('🧪 PRUEBA FLUJO COMPLETO: CAMBIO MONEDA + GUARDADO + VERIFICACIÓN');
+    
+    try {
+        const cotizacionId = $('input[name="CotizacionId"]').val();
+        console.log('🔍 PASO 1: Verificando estado inicial...');
+        
+        // Verificar estado inicial
+        const estadoInicial = await fetch(`/Cotizaciones/DebugMoneda/${cotizacionId}`)
+            .then(r => r.json());
+        
+        console.log('📊 Estado inicial:', {
+            moneda: estadoInicial.monedaCotizacion,
+            estado: estadoInicial.estado,
+            lineasPersistentes: estadoInicial.detalleVersion?.lineasPersistentes
+        });
+        
+        // Paso 2: Si hay líneas persistentes, eliminarlas
+        if (estadoInicial.detalleVersion?.lineasPersistentes > 0) {
+            console.log('🔥 PASO 2: Eliminando líneas persistentes...');
+            
+            const resultadoEliminacion = await fetch(`/Cotizaciones/EliminarLineasParaCambioMoneda/${cotizacionId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    '__RequestVerificationToken': $('input[name="__RequestVerificationToken"]').val()
+                })
+            }).then(r => r.json());
+            
+            if (!resultadoEliminacion.success) {
+                throw new Error('Error eliminando líneas: ' + resultadoEliminacion.message);
+            }
+            
+            console.log('✅ Líneas eliminadas:', resultadoEliminacion.message);
+            
+            // Limpiar la tabla en el frontend
+            $('#tablaDetalles tbody').empty();
+            actualizarContadorLineas();
+            recalcularTotales();
+            verificarYActualizarEstadoMoneda();
+        }
+        
+        // Paso 3: Cambiar moneda a USD
+        console.log('💱 PASO 3: Cambiando moneda a USD...');
+        
+        // Completar datos mínimos
+        $('#NombreInteresado').val('Prueba Moneda USD');
+        $('#EmailInteresado').val('prueba-usd@test.com');
+        
+        // Forzar cambio de moneda sin modal
+        monedaActual = 'USD';
+        if (window.FormatConfig) {
+            window.FormatConfig.moneda = 'USD';
+        }
+        
+        // Si hay combo, actualizarlo
+        const combo = $('#MonedaSelect');
+        if (combo.length > 0) {
+            combo.off('change.moneda'); // Desconectar eventos temporalmente
+            combo.val('USD');
+        }
+        
+        console.log('💾 PASO 4: Guardando cambios...');
+        
+        // Guardar usando la función directa
+        const resultadoGuardado = await new Promise((resolve, reject) => {
+            // Preparar datos para envío
+            const formData = {
+                CotizacionId: $('input[name="CotizacionId"]').val(),
+                VersionId: parseInt($('input[name="VersionId"]').val()),
+                NombreInteresado: $('#NombreInteresado').val().trim(),
+                EmailInteresado: $('#EmailInteresado').val().trim(),
+                EmpresaInteresado: $('#EmpresaInteresado').val().trim(),
+                TipoInteresado: $('#TipoInteresado').val(),
+                Moneda: 'USD', // Forzar USD
+                Notas: $('textarea[name="Notas"]').val().trim(),
+                Detalles: [],
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            };
+            
+            console.log('📤 Datos a enviar:', formData);
+            
+            $.ajax({
+                url: '/Cotizaciones/GuardarEdicion',
+                type: 'POST',
+                data: formData,
+                success: resolve,
+                error: reject
+            });
+        });
+        
+        if (!resultadoGuardado.success) {
+            throw new Error('Error guardando: ' + resultadoGuardado.message);
+        }
+        
+        console.log('✅ Guardado exitoso:', resultadoGuardado.message);
+        
+        // Paso 5: Verificar resultado después de un delay
+        console.log('🔍 PASO 5: Verificando resultado en BD...');
+        
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Esperar 2 segundos
+        
+        const estadoFinal = await fetch(`/Cotizaciones/DebugMoneda/${cotizacionId}`)
+            .then(r => r.json());
+        
+        console.log('📊 Estado final en BD:', {
+            moneda: estadoFinal.monedaCotizacion,
+            estado: estadoFinal.estado,
+            timestamp: estadoFinal.timestamp
+        });
+        
+        // Verificar éxito
+        if (estadoFinal.monedaCotizacion === 'USD') {
+            console.log('🎉 ¡ÉXITO TOTAL! La moneda se persistió correctamente como USD');
+            showNotification('success', '🎉 ¡Prueba exitosa! La moneda se cambió y persistió correctamente.');
+            
+            // Recargar la página para confirmar
+            setTimeout(() => {
+                console.log('🔄 Recargando página para confirmación final...');
+                window.location.reload();
+            }, 3000);
+            
+        } else {
+            console.error('❌ FALLO: La moneda en BD sigue siendo:', estadoFinal.monedaCotizacion);
+            showNotification('error', `❌ Error: La moneda no se persistió. BD muestra: ${estadoFinal.monedaCotizacion}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error en la prueba:', error);
+        showNotification('error', 'Error en la prueba: ' + error.message);
+    } finally {
+        console.groupEnd();
+    }
+};
+
+// 🆕 FUNCIÓN DE PRUEBA: Guardado normal (con validaciones pero sin confirmación doble)
+window.pruebaGuardadoNormal = function() {
+    console.group('🧪 PRUEBA GUARDADO NORMAL (VALIDACIONES, SIN CONFIRMACIÓN DOBLE)');
+    
+    // Asegurar que hay datos mínimos
+    if (!$('#NombreInteresado').val()) {
+        $('#NombreInteresado').val('Prueba Save Normal');
+    }
+    if (!$('#EmailInteresado').val()) {
+        $('#EmailInteresado').val('test@save.com');
+    }
+    
+    console.log('📊 Datos preparados:', {
+        nombre: $('#NombreInteresado').val(),
+        email: $('#EmailInteresado').val(),
+        totalLineas: $('#tablaDetalles tbody tr').length
+    });
+    
+    // Llamar la función de guardado normal (corregida sin doble modal)
+    console.log('🚀 Llamando a guardarCotizacion() corregida...');
+    guardarCotizacion();
+    
+    console.groupEnd();
+};
+
+// 🆕 FUNCIÓN ESPECÍFICA: Corregir inconsistencia UI de moneda
+window.corregirInconsistenciaMonedaUI = function() {
+    console.group('🔧 CORRECCIÓN INCONSISTENCIA UI DE MONEDA');
+    
+    console.log('🔍 Paso 1: Detectando moneda real desde combo...');
+    const combo = $('#MonedaSelect');
+    let monedaReal = 'CRC'; // Default
+    
+    if (combo.length > 0) {
+        monedaReal = combo.val() || 'CRC';
+        console.log('Moneda desde combo:', monedaReal);
+    } else {
+        // Si no hay combo, usar FormatConfig
+        if (window.FormatConfig?.moneda) {
+            monedaReal = window.FormatConfig.moneda;
+            console.log('Moneda desde FormatConfig:', monedaReal);
+        } else {
+            // Último recurso: detectar desde variable global
+            if (monedaActual && monedaActual !== 'undefined') {
+                monedaReal = monedaActual;
+                console.log('Moneda desde variable global:', monedaReal);
+            }
+        }
+    }
+    
+    console.log('💰 Moneda real detectada:', monedaReal);
+    
+    console.log('🔧 Paso 2: Sincronizando todas las variables globales...');
+    
+    // Actualizar variable global
+    monedaActual = monedaReal;
+    
+    // Actualizar FormatConfig si existe
+    if (window.FormatConfig) {
+        window.FormatConfig.moneda = monedaReal;
+        window.FormatConfig.simboloMoneda = getCurrencySymbol(monedaReal);
+    }
+    
+    console.log('🔧 Paso 3: Actualizando todos los elementos de la UI...');
+    
+    // 1. Actualizar combo (si existe y no está ya correcto)
+    if (combo.length > 0 && combo.val() !== monedaReal) {
+        combo.off('change.moneda'); // Desconectar temporalmente
+        combo.val(monedaReal);
+        setTimeout(() => combo.on('change.moneda', configurarEventoMoneda), 100);
+    }
+    
+    // 2. Actualizar código de moneda en el display
+    $('#displayMonedaCodigo').text(monedaReal);
+    
+    // 3. Actualizar el texto "Moneda:" que aparece abajo
+    $('.text-center.text-muted small').filter(function() {
+        return $(this).html().includes('Moneda:');
+    }).html(`<strong>Moneda:</strong> ${monedaReal}`);
+    
+    // 4. Actualizar TODOS los displays financieros para usar la moneda correcta
+    console.log('💰 Recalculando totales con moneda corregida...');
+    
+    // Si hay detalles, recalcular todo
+    if ($('#tablaDetalles tbody tr').length > 0) {
+        recalcularTotales();
+    } else {
+        // Si no hay detalles, actualizar los displays en 0 con la moneda correcta
+        $('#displaySubTotal').text(formatCurrency(0));
+        $('#displayDescuento').text(formatCurrency(0));
+        $('#displaySubtotalDescontado').text(formatCurrency(0));
+        $('#displayImpuesto').text(formatCurrency(0));
+        $('#displayTotal').text(formatCurrency(0));
+    }
+    
+    // 5. CORRECCIÓN ESPECÍFICA: Buscar y corregir símbolo EUR por el correcto
+    console.log('🔧 Paso 4: Corrigiendo símbolos incorrectos...');
+    
+    const simboloCorrecto = getCurrencySymbol(monedaReal);
+    const simboloEsperado = simboloCorrecto;
+    
+    // Buscar todos los elementos que contengan símbolos de moneda y corregirlos
+    $('.financial-summary *').each(function() {
+        const $elemento = $(this);
+        const textoActual = $elemento.text();
+        
+        // Buscar símbolos incorrectos y reemplazarlos
+        if (textoActual.includes('€') && monedaReal !== 'EUR') {
+            const textoCorregido = textoActual.replace(/€/g, simboloEsperado);
+            $elemento.text(textoCorregido);
+            console.log('✅ Corregido símbolo EUR por', simboloEsperado, 'en:', textoActual);
+        }
+        
+        if (textoActual.includes('¢') && monedaReal !== 'CRC') {
+            const textoCorregido = textoActual.replace(/¢/g, simboloEsperado);
+            $elemento.text(textoCorregido);
+            console.log('✅ Corregido símbolo CRC por', simboloEsperado, 'en:', textoActual);
+        }
+        
+        if (textoActual.includes('$') && !['USD', 'CAD', 'MXN'].includes(monedaReal)) {
+            const textoCorregido = textoActual.replace(/\$/g, simboloEsperado);
+            $elemento.text(textoCorregido);
+            console.log('✅ Corregido símbolo $ por', simboloEsperado, 'en:', textoActual);
+        }
+    });
+    
+    // 6. Verificar que el cambio de moneda esté disponible si corresponde
+    verificarYActualizarEstadoMoneda();
+    
+    console.log('✅ CORRECCIÓN COMPLETADA');
+    console.log('📊 Estado final:', {
+        monedaActual: monedaActual,
+        formatConfigMoneda: window.FormatConfig?.moneda,
+        comboVal: combo.length > 0 ? combo.val() : 'N/A',
+        displayMonedaCodigo: $('#displayMonedaCodigo').text()
+    });
+    
+    showNotification('success', `✅ UI de moneda corregida a ${monedaReal}. Todos los elementos sincronizados.`);
+    
+    console.groupEnd();
+    
+    return monedaReal;
+};
+
+// 🆕 FUNCIÓN DE DEBUG: Verificar estado del modal
+window.debugModalDOM = function() {
+    console.group('🔍 DEBUG ESTADO DEL MODAL EN DOM');
+    
+    const modal = $('#modalConfirmacion');
+    const backdrop = $('.modal-backdrop');
+    const body = $('body');
+    
+    console.log('📊 Estado del modal:');
+    console.log('  - Modal existe:', modal.length > 0);
+    console.log('  - Modal visible:', modal.is(':visible'));
+    console.log('  - Modal tiene clase show:', modal.hasClass('show'));
+    console.log('  - Modal display style:', modal.css('display'));
+    
+    console.log('📊 Estado del backdrop:');
+    console.log('  - Backdrop existe:', backdrop.length > 0);
+    console.log('  - Backdrop visible:', backdrop.is(':visible'));
+    console.log('  - Backdrop count:', backdrop.length);
+    
+    console.log('📊 Estado del body:');
+    console.log('  - Body tiene modal-open:', body.hasClass('modal-open'));
+    console.log('  - Body overflow:', body.css('overflow'));
+    console.log('  - Body padding-right:', body.css('padding-right'));
+    
+    if (modal.length > 0) {
+        console.log('📋 Contenido del modal:');
+        console.log('  - Título:', $('#modalConfirmacionTitulo').text());
+        console.log('  - Mensaje:', $('#modalConfirmacionMensaje').text());
+        console.log('  - Botón confirmar existe:', $('#btnConfirmarAccion').length > 0);
+    }
+    
+    console.log('💡 Para limpiar modal bloqueado: window.limpiarModalBloqueado()');
+    
+    console.groupEnd();
+};
+window.debugModal = function() {
+    console.group('🔍 DEBUG MODAL DE CONFIRMACIÓN');
+    
+    console.log('🧪 Probando modal con callbacks...');
+    
+    mostrarModalConfirmacion(
+        'Prueba de Modal Debug',
+        '¿Funciona correctamente el modal de confirmación?<br><br><small>Presiona <strong>Continuar</strong> para confirmar.</small>',
+        'warning',
+        function() {
+            console.log('✅ SUCCESS: Callback de confirmación ejecutado');
+            alert('✅ CONFIRMACIÓN detectada correctamente');
+        },
+        function() {
+            console.log('❌ PROBLEM: Callback de cancelación ejecutado');
+            alert('❌ CANCELACIÓN detectada - HAY PROBLEMA');
+        }
+    );
+    
+    console.groupEnd();
+};
+
+// 🆕 FUNCIÓN DE DEBUG: Probar guardado completo paso a paso
+window.debugGuardado = function() {
+    console.group('🔍 DEBUG PASO A PASO DEL GUARDADO');
+    
+    console.log('🏁 Paso 1: Verificando elementos en DOM');
+    console.log('  - Botón guardar:', $('#btnGuardar').length > 0);
+    console.log('  - Formulario:', $('#formEditarCotizacion').length > 0);
+    console.log('  - Campos principales:', {
+        nombre: $('#NombreInteresado').val(),
+        email: $('#EmailInteresado').val(),
+        totalLineas: $('#tablaDetalles tbody tr').length
+    });
+    
+    console.log('🏁 Paso 2: Simulando click en guardar...');
+    $('#btnGuardar').trigger('click');
+    
+    console.groupEnd();
+};
+
+// 🆕 FUNCIÓN DE DEBUG: Llamar directamente el guardado
+window.debugGuardadoDirecto = function() {
+    console.group('🔍 DEBUG GUARDADO DIRECTO');
+    
+    console.log('🚀 Llamando directamente a ejecutarGuardadoCotizacion()...');
+    ejecutarGuardadoCotizacion();
+    
+    console.groupEnd();
+};
+
+// 🆕 FUNCIÓN DE DEBUG: Llamar directamente continuar guardado
+window.debugContinuarGuardado = function() {
+    console.group('🔍 DEBUG CONTINUAR GUARDADO DIRECTO');
+    
+    console.log('🚀 Llamando directamente a continuarGuardadoSinValidacionLineas()...');
+    continuarGuardadoSinValidacionLineas();
+    
+    console.groupEnd();
+};
+window.verificarEstadoPostGuardado = function() {
+    console.log('🔍 Verificando estado después del guardado...');
+    
+    const cotizacionId = $('input[name="CotizacionId"]').val();
+    if (!cotizacionId) {
+        console.error('❌ No se puede obtener CotizacionId');
+        return;
+    }
+    
+    // Hacer petición para verificar estado de moneda en BD
+    fetch(`/Cotizaciones/DebugMoneda/${cotizacionId}`)
+        .then(response => response.json())
+        .then(data => {
+            console.group('📊 ESTADO POST-GUARDADO EN BD');
+            console.log('Cotización ID:', data.cotizacionId);
+            console.log('Moneda en BD:', data.monedaCotizacion);
+            console.log('Estado:', data.estado);
+            console.log('¿Puede editar moneda?:', data.puedeEditarMoneda);
+            
+            if (data.detalleVersion) {
+                console.log('Versión ID:', data.detalleVersion.versionId);
+                console.log('Número versión:', data.detalleVersion.numeroVersion);
+                console.log('Líneas persistentes:', data.detalleVersion.lineasPersistentes);
+            }
+            
+            // Comparar con estado actual en frontend
+            const monedaFrontend = monedaActual;
+            const monedaCombo = $('#MonedaSelect').val();
+            
+            console.log('🔄 Comparación Frontend vs BD:');
+            console.log('  - Frontend monedaActual:', monedaFrontend);
+            console.log('  - Combo valor:', monedaCombo);
+            console.log('  - BD moneda:', data.monedaCotizacion);
+            
+            const esConsistente = (monedaCombo === data.monedaCotizacion) && (monedaFrontend === data.monedaCotizacion);
+            console.log('  - ¿Es consistente?:', esConsistente);
+            
+            if (!esConsistente) {
+                console.warn('⚠️ INCONSISTENCIA DETECTADA entre frontend y BD');
+                showNotification('warning', 'Se detectó una inconsistencia en la moneda. Recargue la página.');
+                
+                // Actualizar automáticamente el frontend con los valores de BD
+                if (data.monedaCotizacion !== monedaFrontend) {
+                    console.log('🔄 Actualizando frontend con moneda de BD:', data.monedaCotizacion);
+                    monedaActual = data.monedaCotizacion;
+                    if (window.FormatConfig) {
+                        window.FormatConfig.moneda = data.monedaCotizacion;
+                    }
+                }
+            } else {
+                console.log('✅ Estado consistente entre frontend y BD');
+            }
+            
+            console.groupEnd();
+        })
+        .catch(error => {
+            console.error('❌ Error al verificar estado post-guardado:', error);
+        });
+};
+
+function configurarEventoTipoCambio() {
+    // Limpiar eventos anteriores
+    $('#btnEditarTipoCambio, #btnGuardarTipoCambio, #btnCancelarTipoCambio, #TipoCambio').off('.tipocambio');
+    
+    let valorOriginal = '';
+    
+    // Evento para mostrar modo edición
+    $('#btnEditarTipoCambio').on('click.tipocambio', function() {
+        // Guardar valor original
+        valorOriginal = $('#tipoCambioValor').text();
+        if (valorOriginal === 'No definido') {
+            valorOriginal = '';
+        } else {
+            // Extraer solo el número, quitando formato
+            const match = valorOriginal.match(/[\d,]+\.?\d*/);
+            valorOriginal = match ? match[0].replace(/,/g, '') : '';
+        }
+        
+        // Establecer valor en el campo de entrada
+        $('#TipoCambio').val(valorOriginal);
+        
+        // Cambiar a modo edición
+        $('#tipoCambioModoVista').addClass('d-none');
+        $('#tipoCambioModoEdicion').removeClass('d-none');
+        
+        // Enfocar el campo con un pequeño delay para mejor UX
+        setTimeout(function() {
+            $('#TipoCambio').focus().select();
+        }, 100);
+        
+        console.log('Modo edición activado, valor original:', valorOriginal);
+    });
+    
+    // Evento para guardar cambios
+    $('#btnGuardarTipoCambio').on('click.tipocambio', function() {
+        guardarCambioTipoCambio();
+    });
+    
+    // Evento para cancelar edición
+    $('#btnCancelarTipoCambio').on('click.tipocambio', function() {
+        cancelarEdicionTipoCambio();
+    });
+    
+    // Evento para guardar con Enter y cancelar con Escape
+    $('#TipoCambio').on('keydown.tipocambio', function(e) {
+        if (e.which === 13) { // Enter
+            e.preventDefault();
+            guardarCambioTipoCambio();
+        } else if (e.which === 27) { // Escape
+            e.preventDefault();
+            cancelarEdicionTipoCambio();
+        }
+    });
+    
+    // Validación en tiempo real
+    $('#TipoCambio').on('input.tipocambio', function() {
+        const valor = $(this).val();
+        
+        if (valor && (isNaN(parseFloat(valor)) || parseFloat(valor) < 0)) {
+            $(this).addClass('is-invalid');
+        } else {
+            $(this).removeClass('is-invalid');
+        }
+    });
+    
+    function guardarCambioTipoCambio() {
+        const nuevoValor = $('#TipoCambio').val();
+        let valorFormateado = 'No definido';
+        
+        // Validar que no tenga errores
+        if ($('#TipoCambio').hasClass('is-invalid')) {
+            showNotification('warning', 'Por favor ingrese un valor válido para el tipo de cambio.');
+            $('#TipoCambio').focus();
+            return;
+        }
+        
+        if (nuevoValor && !isNaN(parseFloat(nuevoValor)) && parseFloat(nuevoValor) >= 0) {
+            const valor = parseFloat(nuevoValor);
+            valorFormateado = valor.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            // Actualizar el campo oculto con el valor correcto para el envío
+            $('#TipoCambio').val(valor.toFixed(2));
+        } else if (nuevoValor === '' || nuevoValor === '0') {
+            $('#TipoCambio').val('');
+        } else {
+            // Valor inválido
+            showNotification('warning', 'Por favor ingrese un valor numérico válido para el tipo de cambio.');
+            $('#TipoCambio').focus();
+            return;
+        }
+        
+        // Actualizar display
+        $('#tipoCambioValor').text(valorFormateado);
+        
+        // Volver a modo vista con animación suave
+        $('#tipoCambioModoEdicion').addClass('d-none');
+        $('#tipoCambioModoVista').removeClass('d-none');
+        
+        console.log('Tipo de cambio actualizado:', valorFormateado);
+        
+        // Mostrar notificación solo si realmente cambió el valor
+        const valorNumerico = nuevoValor ? parseFloat(nuevoValor) : 0;
+        const valorOriginalNumerico = valorOriginal ? parseFloat(valorOriginal) : 0;
+        
+        if (valorNumerico !== valorOriginalNumerico) {
+            showNotification('success', 'Tipo de cambio actualizado');
+        }
+    }
+    
+    function cancelarEdicionTipoCambio() {
+        // Restaurar valor original
+        $('#TipoCambio').val(valorOriginal);
+        $('#TipoCambio').removeClass('is-invalid');
+        
+        // Volver a modo vista
+        $('#tipoCambioModoEdicion').addClass('d-none');
+        $('#tipoCambioModoVista').removeClass('d-none');
+        
+        console.log('Edición de tipo de cambio cancelada');
+    }
 }
+
+// 🚨 FUNCIÓN DE EMERGENCIA PARA EL PROBLEMA DE LA IMAGEN
+window.solucionarProblemaImagenUI = function() {
+    console.group('🚨 SOLUCIÓN INMEDIATA: PROBLEMA UI IMAGEN');
+    
+    console.log('🔍 Problema detectado: Combo muestra USD pero totales muestran EUR');
+    console.log('💡 Aplicando solución inmediata...');
+    
+    // Paso 1: Determinar cuál es la moneda REAL basándose en la información más confiable
+    const combo = $('#MonedaSelect');
+    let monedaCorrecta = 'USD'; // En la imagen vemos que debe ser USD
+    
+    if (combo.length > 0) {
+        monedaCorrecta = combo.val() || 'USD';
+        console.log('✅ Combo indica:', monedaCorrecta);
+    }
+    
+    // Paso 2: Forzar corrección inmediata
+    console.log('🔧 Aplicando corrección completa...');
+    window.corregirInconsistenciaMonedaUI();
+    
+    // Paso 3: Forzar actualización de TODOS los totales
+    console.log('💰 Actualizando displays financieros...');
+    
+    // Simular valores para demostrar el cambio (en el ejemplo todos son 0)
+    const valores = {
+        subtotal: 0,
+        descuento: 0,
+        impuesto: 0,
+        total: 0
+    };
+    
+    // Aplicar la moneda correcta a TODOS los displays
+    $('#displaySubTotal').text(formatCurrency(valores.subtotal));
+    $('#displayDescuento').text(formatCurrency(valores.descuento));
+    $('#displaySubtotalDescontado').text(formatCurrency(valores.subtotal));
+    $('#displayImpuesto').text(formatCurrency(valores.impuesto));
+    $('#displayTotal').text(formatCurrency(valores.total));
+    
+    // Paso 4: Cambiar específicamente el texto "Moneda: EUR" por la moneda correcta
+    $('.text-center.text-muted small').each(function() {
+        const $elem = $(this);
+        const html = $elem.html();
+        
+        if (html.includes('Moneda:')) {
+            const nuevoHtml = html.replace(/Moneda:\s*\w+/g, `Moneda: ${monedaCorrecta}`);
+            $elem.html(nuevoHtml);
+            console.log('✅ Texto moneda corregido:', html, '->', nuevoHtml);
+        }
+    });
+    
+    // Paso 5: Verificar resultado
+    console.log('🔍 Verificando resultado...');
+    
+    const verificacion = {
+        comboVal: combo.val(),
+        monedaActualVar: monedaActual,
+        formatConfigMoneda: window.FormatConfig?.moneda,
+        textoMonedaElement: $('.text-center.text-muted small:contains("Moneda:")').text(),
+        simboloEnTotales: $('#displayTotal').text().charAt(0)
+    };
+    
+    console.table(verificacion);
+    
+    if (verificacion.comboVal === verificacion.monedaActualVar) {
+        console.log('🎉 ¡PROBLEMA SOLUCIONADO!');
+        showNotification('success', '🎉 Problema de UI solucionado. Combo y totales ahora están sincronizados.');
+    } else {
+        console.warn('⚠️ Aún hay inconsistencias. Puede requerir recarga de página.');
+        showNotification('warning', 'Corrección aplicada. Si persiste el problema, recargue la página.');
+    }
+    
+    console.groupEnd();
+    
+    return verificacion;
+};

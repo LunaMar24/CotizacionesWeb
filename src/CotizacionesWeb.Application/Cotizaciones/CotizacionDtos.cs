@@ -95,6 +95,7 @@ public record ActualizarCotizacionRequest
 {
     public string CotizacionId { get; set; } = string.Empty;
     public int VersionId { get; set; }
+    public decimal? NumeroVersion { get; set; } // ?? NUEVO: Para guardar cambios en número de versión
     public string NombreInteresado { get; set; } = string.Empty;
     public string EmailInteresado { get; set; } = string.Empty;
     public string EmpresaInteresado { get; set; } = string.Empty;
@@ -102,6 +103,11 @@ public record ActualizarCotizacionRequest
     public string? Moneda { get; set; } // Nueva propiedad para cambio de moneda
     public decimal? TipoCambio { get; set; } // Nueva propiedad para tipo de cambio
     public string Notas { get; set; } = string.Empty;
+    // ?? NUEVO: Totales calculados para persistencia
+    public decimal? SubTotal { get; set; }
+    public decimal? TotalDescuentos { get; set; }
+    public decimal? Impuesto { get; set; }
+    public decimal? Total { get; set; }
     public List<ActualizarDetalleRequest> Detalles { get; set; } = new();
 }
 
