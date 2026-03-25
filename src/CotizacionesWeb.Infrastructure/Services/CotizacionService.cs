@@ -842,6 +842,48 @@ public class CotizacionService : ICotizacionService
         return (subtotal, totalDescuentos, impuesto, total);
     }
 
+    /// <summary>
+    /// ?? NUEVO: Calcula los totales directamente desde el request para evitar problemas de cache/timing con EF.
+    /// Esta es la forma correcta de calcular totales cuando se están actualizando líneas.
+    /// </summary>
+    private (decimal subtotal, decimal totalDescuentos, decimal impuesto, decimal total) CalcularTotalesDesdeRequest(List<ActualizarDetalleRequest>? detalles)
+    {
+        decimal subtotal = 0;
+        decimal totalDescuentos = 0;
+
+        if (detalles != null && detalles.Any())
+        {
+            foreach (var detalle in detalles)
+            {
+                // Subtotal = suma de (cantidad × precio unitario) sin descuentos
+                var subtotalLinea = detalle.Cantidad * detalle.PrecioUnitario;
+                subtotal += subtotalLinea;
+                
+                // Acumular descuentos
+                totalDescuentos += detalle.Descuento;
+            }
+        }
+
+        // Subtotal después de descuentos
+        var subtotalConDescuentos = subtotal - totalDescuentos;
+        
+        // Calcular impuesto sobre el subtotal con descuentos (13%)
+        var impuesto = subtotalConDescuentos * 0.13m;
+        
+        // Total final
+        var total = subtotalConDescuentos + impuesto;
+
+        _logger.LogInformation("?? Totales calculados DESDE REQUEST (sin consultar BD):");
+        _logger.LogInformation("  - Cantidad de líneas en request: {CantidadLineas}", detalles?.Count ?? 0);
+        _logger.LogInformation("  - Subtotal bruto: {Subtotal}", subtotal);
+        _logger.LogInformation("  - Total descuentos: {Descuentos}", totalDescuentos);
+        _logger.LogInformation("  - Subtotal con descuentos: {SubtotalConDescuentos}", subtotalConDescuentos);
+        _logger.LogInformation("  - Impuesto (13%): {Impuesto}", impuesto);
+        _logger.LogInformation("  - Total final: {Total}", total);
+
+        return (subtotal, totalDescuentos, impuesto, total);
+    }
+
     public async Task<ActualizarCotizacionResult> ActualizarCotizacionAsync(ActualizarCotizacionRequest request, int? userId = null)
     {
         try
@@ -1016,8 +1058,12 @@ public class CotizacionService : ICotizacionService
                     }
                 }
 
-                // Calcular totales después de la actualización de detalles
-                var (subtotal, totalDescuentos, impuesto, total) = await CalcularTotalesVersionAsync(version.VersionId);
+                // ?? CORRECCIÓN CRÍTICA: Calcular totales DESDE EL REQUEST, no desde BD
+                // Esto evita problemas de cache y timing con Entity Framework
+                var (subtotal, totalDescuentos, impuesto, total) = CalcularTotalesDesdeRequest(request.Detalles);
+
+                _logger.LogInformation("?? Totales calculados DESDE REQUEST: SubTotal={SubTotal}, Descuentos={Descuentos}, Impuesto={Impuesto}, Total={Total}", 
+                    subtotal, totalDescuentos, impuesto, total);
 
                 // Actualizar totales en la versión
                 version.SubTotal = subtotal;
@@ -1027,9 +1073,6 @@ public class CotizacionService : ICotizacionService
 
                 // Actualizar monto de la cotización
                 cotizacion.MontoCotizacion = total;
-
-                _logger.LogInformation("?? Totales calculados: SubTotal={SubTotal}, Impuesto={Impuesto}, Total={Total}", 
-                    subtotal, impuesto, total);
 
                 // SaveChanges final para el resto de cambios
                 await _context.SaveChangesAsync();
