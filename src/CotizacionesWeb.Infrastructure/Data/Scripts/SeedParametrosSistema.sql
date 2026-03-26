@@ -1,6 +1,6 @@
 -- ============================================
 -- Script para poblar parámetros del sistema
--- ACTUALIZADO: Para tabla Parametros expandida
+-- ACTUALIZADO: Sin redundancias ni parámetros obsoletos
 -- ============================================
 
 USE CotizacionesWeb;
@@ -13,117 +13,153 @@ BEGIN
     RETURN;
 END
 
--- Limpiar parámetros existentes (solo para desarrollo/testing)
--- DELETE FROM Parametros;
+-- Verificar si ya existen parámetros
+IF EXISTS (SELECT 1 FROM Parametros)
+BEGIN
+    PRINT 'ADVERTENCIA: Ya existen parámetros en la base de datos.';
+    PRINT 'Si desea recrearlos, primero ejecute: DELETE FROM Parametros;';
+    PRINT 'Saltando inserción para evitar duplicados.';
+    RETURN;
+END
 
 -- ============================================
--- PARÁMETROS GENERALES DEL SISTEMA
+-- PARÁMETROS DEL SISTEMA
 -- ============================================
 
-INSERT INTO Parametros (Codigo, Descripcion, Valor, TipoValor, Categoria, EsModificable, ValorPorDefecto) VALUES
--- Parámetros financieros (usando enum: N=Decimal, S=Texto)
-('TASA_IMPUESTO', 'Tasa de impuesto por defecto (%)', '19', 'N', 'Financiero', 1, '19'),
-('MONEDA_DEFECTO', 'Moneda por defecto del sistema', 'CLP', 'S', 'Financiero', 1, 'CLP'),
-('TIPO_CAMBIO_BASE', 'Tipo de cambio base USD/CLP', '850.50', 'N', 'Financiero', 1, '800.00'),
+INSERT INTO Parametros (Codigo, Descripcion, Valor, TipoValor, Categoria, EsModificable, ValorPorDefecto, Notas) VALUES
 
--- Parámetros de notificaciones
-('EMAIL_NOTIFICACIONES', 'Email para notificaciones del sistema', 'admin@cotizaciones.com', 'S', 'Notificaciones', 1, 'admin@sistema.com'),
-('TIEMPO_EXPIRACION_COTIZACION', 'Días para expiración de cotización', '30', 'E', 'Negocio', 1, '30'),
-
--- Parámetros de formato y presentación
-('FORMATO_COTIZACION', 'Formato de exportación por defecto', 'PDF', 'S', 'Formato', 1, 'PDF'),
+-- ============================================
+-- PARÁMETROS FINANCIEROS
+-- ============================================
+('TASA_IMPUESTO', 'Tasa de impuesto por defecto (%)', '19', 'N', 'Financiero', 1, '19', 'Impuesto aplicado a cotizaciones'),
+('MONEDA_DEFECTO', 'Moneda por defecto del sistema', 'CRC', 'S', 'Financiero', 1, 'CRC', 'Código ISO 4217 de 3 letras'),
+('TIPO_CAMBIO_BASE', 'Tipo de cambio base USD/CRC', '540.00', 'N', 'Financiero', 1, '540.00', 'Tipo de cambio de referencia'),
 
 -- ============================================
 -- PARÁMETROS DE CONSECUTIVOS
 -- ============================================
-
--- Máscara para generación de IDs de cotización
-('MASCARA_CONSECUTIVO_COTIZACION', 'Máscara para generar IDs de cotización (A=letra, 9=número, -=separador)', 'COT-9999', 'S', 'Consecutivos', 1, 'COT-9999'),
-
--- Consecutivo actual de cotizaciones
-('CONSECUTIVO_COTIZACION', 'Consecutivo actual para nuevas cotizaciones', 'COT-0007', 'S', 'Consecutivos', 1, 'COT-0001'),
+('MASCARA_CONSECUTIVO_COTIZACION', 'Máscara para generar IDs de cotización', 'COT-9999', 'S', 'Consecutivos', 1, 'COT-9999', 'A=letra, 9=número, -=separador'),
+('CONSECUTIVO_COTIZACION', 'Consecutivo actual para nuevas cotizaciones', 'COT-0007', 'S', 'Consecutivos', 1, 'COT-0001', 'Se actualiza automáticamente'),
 
 -- ============================================
--- PARÁMETROS DE INTEGRACIÓN
+-- PARÁMETROS DE INTEGRACIÓN HUBSPOT
 -- ============================================
+('HUBSPOT_ENABLED', 'Activa integración con HubSpot', '0', 'B', 'Integracion_HubSpot', 1, '0', 'Activar solo después de configurar token'),
+('HUBSPOT_AUTH_TYPE', 'Tipo de autenticación HubSpot', 'PRIVATE_APP', 'S', 'Integracion_HubSpot', 1, 'PRIVATE_APP', 'PRIVATE_APP o OAUTH'),
+('HUBSPOT_API_BASE_URL', 'URL base del API de HubSpot', 'https://api.hubapi.com', 'S', 'Integracion_HubSpot', 1, 'https://api.hubapi.com', NULL),
+('HUBSPOT_ACCESS_TOKEN', 'Token de acceso HubSpot', '', 'S', 'Integracion_HubSpot', 0, '', 'Configurar directamente en BD'),
+('HUBSPOT_OBJECT_CONTACT', 'Objeto contacto HubSpot', 'contacts', 'S', 'Integracion_HubSpot', 1, 'contacts', NULL),
+('HUBSPOT_OBJECT_COMPANY', 'Objeto compañía HubSpot', 'companies', 'S', 'Integracion_HubSpot', 1, 'companies', NULL),
+('HUBSPOT_PAGE_SIZE', 'Cantidad máxima por consulta', '100', 'N', 'Integracion_HubSpot', 1, '100', 'Límite API: 100'),
+('HUBSPOT_TIMEOUT_SECONDS', 'Timeout en segundos', '30', 'N', 'Integracion_HubSpot', 1, '30', NULL),
+('HUBSPOT_RETRY_COUNT', 'Cantidad de reintentos', '3', 'N', 'Integracion_HubSpot', 1, '3', NULL),
+('HUBSPOT_ACCOUNT_NAME', 'Nombre de la cuenta HubSpot', 'Cuenta Principal', 'S', 'Integracion_HubSpot', 1, 'Mi Cuenta', NULL),
+--('HUBSPOT_LAST_SYNC_CONTACTS', 'Última sincronización contactos', '', 'S', 'Integracion_HubSpot', 1, '', 'Actualizado automáticamente'),
+--('HUBSPOT_LAST_SYNC_COMPANIES', 'Última sincronización compañías', '', 'S', 'Integracion_HubSpot', 1, '', 'Actualizado automáticamente'),
+('HUBSPOT_CONTACT_SEARCH_FIELD', 'Campo de búsqueda contacto', 'email', 'S', 'Integracion_HubSpot', 1, 'email', NULL),
+('HUBSPOT_COMPANY_SEARCH_FIELD', 'Campo de búsqueda compañía', 'name', 'S', 'Integracion_HubSpot', 1, 'name', NULL),
 
--- Configuración ERP
-('ERP_ENDPOINT', 'URL del endpoint del ERP', 'https://api.erp.empresa.com', 'S', 'Integracion', 1, 'https://api.erp.local'),
-('ERP_TIMEOUT_SEGUNDOS', 'Timeout para conexiones al ERP (segundos)', '30', 'E', 'Integracion', 1, '30'),
-
--- Configuración HubSpot
-('HUBSPOT_API_KEY', 'Clave API de HubSpot', '', 'S', 'Integracion', 0, ''),
-('HUBSPOT_SYNC_ENABLED', 'Sincronización con HubSpot habilitada (S/N)', 'N', 'B', 'Integracion', 1, 'N'),
+-- ============================================
+-- PARÁMETROS DE NOTIFICACIONES
+-- ============================================
+('EMAIL_NOTIFICACIONES', 'Email para notificaciones del sistema', 'admin@cotizaciones.com', 'S', 'Notificaciones', 1, 'admin@sistema.com', NULL),
 
 -- ============================================
 -- PARÁMETROS DE SEGURIDAD
 -- ============================================
-
-('SESSION_TIMEOUT_MINUTOS', 'Timeout de sesión en minutos', '60', 'E', 'Seguridad', 1, '60'),
-('MAX_INTENTOS_LOGIN', 'Máximo intentos de login fallidos', '5', 'E', 'Seguridad', 1, '5'),
-('BLOQUEO_CUENTA_MINUTOS', 'Minutos de bloqueo tras intentos fallidos', '15', 'E', 'Seguridad', 1, '15'),
+('SESSION_TIMEOUT_MINUTOS', 'Timeout de sesión en minutos', '60', 'N', 'Seguridad', 1, '60', NULL),
+('MAX_INTENTOS_LOGIN', 'Máximo intentos de login fallidos', '5', 'N', 'Seguridad', 1, '5', NULL),
+('BLOQUEO_CUENTA_MINUTOS', 'Minutos de bloqueo tras intentos fallidos', '15', 'N', 'Seguridad', 1, '15', NULL),
 
 -- ============================================
--- PARÁMETROS DE ARCHIVOS Y ALMACENAMIENTO
+-- PARÁMETROS DE ARCHIVOS
 -- ============================================
-
-('MAX_SIZE_ARCHIVO_MB', 'Tamaño máximo de archivo en MB', '10', 'E', 'Archivos', 1, '10'),
-('FORMATOS_PERMITIDOS', 'Formatos de archivo permitidos (separados por coma)', 'pdf,doc,docx,xls,xlsx,jpg,png', 'S', 'Archivos', 1, 'pdf,doc,xls,jpg'),
-('RUTA_ALMACENAMIENTO', 'Ruta base para almacenar archivos', '/uploads/cotizaciones/', 'S', 'Archivos', 1, '/uploads/'),
+('MAX_SIZE_ARCHIVO_MB', 'Tamaño máximo de archivo en MB', '10', 'N', 'Archivos', 1, '10', NULL),
+('FORMATOS_PERMITIDOS', 'Formatos de archivo permitidos (separados por coma)', 'pdf,doc,docx,xls,xlsx,jpg,png', 'S', 'Archivos', 1, 'pdf,doc,xls,jpg', NULL),
+('RUTA_ALMACENAMIENTO', 'Ruta base para almacenar archivos', '/uploads/cotizaciones/', 'S', 'Archivos', 1, '/uploads/', NULL),
 
 -- ============================================
 -- PARÁMETROS DE REPORTES
 -- ============================================
-
-('LOGO_EMPRESA_URL', 'URL del logo de la empresa para reportes', '/images/logo-empresa.png', 'S', 'Reportes', 1, '/images/logo.png'),
-('NOMBRE_EMPRESA', 'Nombre de la empresa para reportes', 'Mi Empresa S.A.', 'S', 'Reportes', 1, 'Empresa'),
-('DIRECCION_EMPRESA', 'Dirección de la empresa', 'Av. Principal 123, Santiago', 'S', 'Reportes', 1, 'Dirección no configurada'),
-('TELEFONO_EMPRESA', 'Teléfono de contacto empresa', '+56 2 2345 6789', 'S', 'Reportes', 1, '+56 2 0000 0000'),
+('LOGO_EMPRESA_URL', 'URL del logo de la empresa para reportes', '/images/logo-empresa.png', 'S', 'Reportes', 1, '/images/logo.png', NULL),
+('NOMBRE_EMPRESA', 'Nombre de la empresa para reportes', 'Mi Empresa S.A.', 'S', 'Reportes', 1, 'Empresa', NULL),
+('DIRECCION_EMPRESA', 'Dirección de la empresa', 'Av. Principal 123, Santiago', 'S', 'Reportes', 1, 'Dirección no configurada', NULL),
+('TELEFONO_EMPRESA', 'Teléfono de contacto empresa', '+56 2 2345 6789', 'S', 'Reportes', 1, '+56 2 0000 0000', NULL),
 
 -- ============================================
 -- PARÁMETROS DE WORKFLOW
 -- ============================================
+('APROBACION_AUTOMATICA_MONTO', 'Monto máximo para aprobación automática', '0', 'N', 'Workflow', 1, '0', 'Si es 0, no hay aprobación automática'),
+('REQUIERE_APROBACION_DESCUENTO', 'Porcentaje de descuento que requiere aprobación', '10', 'N', 'Workflow', 1, '15', NULL),
+('DIAS_VIGENCIA_COTIZACION', 'Días de vigencia por defecto de cotización', '15', 'N', 'Workflow', 1, '15', NULL),
 
-('APROBACION_AUTOMATICA_MONTO', 'Monto máximo para aprobación automática', '0', 'N', 'Workflow', 1, '0'),
-('REQUIERE_APROBACION_DESCUENTO', 'Porcentaje de descuento que requiere aprobación', '10', 'N', 'Workflow', 1, '15'),
-('DIAS_VIGENCIA_COTIZACION', 'Días de vigencia por defecto de cotización', '15', 'E', 'Workflow', 1, '15');
+-- ============================================
+-- PARÁMETROS DE FORMATO
+-- ============================================
+('FORMATO_COTIZACION', 'Formato de exportación por defecto', 'PDF', 'S', 'Formato', 1, 'PDF', 'Valores: PDF, EXCEL, WORD'),
+
+-- ============================================
+-- PARÁMETROS DE NEGOCIO
+-- ============================================
+('TIEMPO_EXPIRACION_COTIZACION', 'Días para expiración de cotización', '30', 'N', 'Negocio', 1, '30', 'Días hasta que expira una cotización enviada');
 
 GO
 
--- Verificar parámetros creados
+-- ============================================
+-- VERIFICACIÓN
+-- ============================================
+
 PRINT '==============================================';
 PRINT 'PARÁMETROS DEL SISTEMA CREADOS EXITOSAMENTE';
 PRINT '==============================================';
+PRINT '';
 
 SELECT 
     ParametroId,
     Codigo,
-    Descripcion,
+    LEFT(Descripcion, 50) AS Descripcion,
     Valor,
     TipoValor,
     Categoria,
     CASE WHEN EsModificable = 1 THEN 'Sí' ELSE 'No' END as Modificable
 FROM Parametros
-WHERE Codigo NOT LIKE 'PARAM_%'  -- Excluir parámetros legacy temporales
 ORDER BY Categoria, Codigo;
 
 -- Mostrar resumen por categoría
 PRINT '';
 PRINT 'RESUMEN POR CATEGORÍA:';
 PRINT '----------------------';
+
 SELECT 
     Categoria,
-    COUNT(*) as TotalParametros,
+    COUNT(*) as Total,
     SUM(CASE WHEN EsModificable = 1 THEN 1 ELSE 0 END) as Modificables,
     SUM(CASE WHEN EsModificable = 0 THEN 1 ELSE 0 END) as NoModificables
 FROM Parametros
-WHERE Codigo NOT LIKE 'PARAM_%'
 GROUP BY Categoria
 ORDER BY Categoria;
 
 PRINT '';
+PRINT '==============================================';
+PRINT 'CATEGORÍAS ACTIVAS:';
+PRINT '==============================================';
+PRINT '  • Consecutivos (2 parámetros)';
+PRINT '  • Financiero (3 parámetros)';
+PRINT '  • Integracion_HubSpot (14 parámetros)';
+PRINT '  • Notificaciones (1 parámetro)';
+PRINT '  • Seguridad (3 parámetros)';
+PRINT '  • Archivos (3 parámetros)';
+PRINT '  • Reportes (4 parámetros)';
+PRINT '  • Workflow (3 parámetros)';
+PRINT '  • Formato (1 parámetro)';
+PRINT '  • Negocio (1 parámetro)';
+PRINT '';
+PRINT 'TOTAL: 35 parámetros activos';
+PRINT '==============================================';
+PRINT '';
 PRINT 'PARÁMETROS CRÍTICOS DE CONSECUTIVOS:';
 PRINT '------------------------------------';
+
 SELECT 
     Codigo,
     Valor,
@@ -135,8 +171,31 @@ ORDER BY Codigo;
 PRINT '';
 PRINT '==============================================';
 PRINT 'NOTAS IMPORTANTES:';
-PRINT '- MASCARA_CONSECUTIVO_COTIZACION: A=letra, 9=número, -=separador';
-PRINT '- CONSECUTIVO_COTIZACION: Se debe actualizar automáticamente';
-PRINT '- Parámetros marcados como no modificables requieren migración';
-PRINT '- Configurar CONSECUTIVO_COTIZACION según último ID existente';
 PRINT '==============================================';
+PRINT '• MASCARA_CONSECUTIVO_COTIZACION:';
+PRINT '  - A = letra, 9 = número, - = separador';
+PRINT '';
+PRINT '• CONSECUTIVO_COTIZACION:';
+PRINT '  - Se actualiza automáticamente al crear cotizaciones';
+PRINT '  - Configurar según último ID existente';
+PRINT '';
+PRINT '• HUBSPOT_ACCESS_TOKEN:';
+PRINT '  - Debe configurarse con el token real';
+PRINT '  - No modificable desde UI por seguridad';
+PRINT '';
+PRINT '• HUBSPOT_ENABLED:';
+PRINT '  - Mantener en 0 hasta configurar token';
+PRINT '  - Activar a 1 cuando esté listo';
+PRINT '';
+PRINT '• TIPOS DE VALOR:';
+PRINT '  - S = Texto (String)';
+PRINT '  - N = Decimal/Numérico';
+PRINT '  - B = Booleano (0/1)';
+PRINT '  - D = Fecha (Date)';
+PRINT '';
+PRINT '• CATEGORÍAS ELIMINADAS:';
+PRINT '  - Legacy (obsoleta)';
+PRINT '  - Integracion genérica (consolidada en específicas)';
+PRINT '==============================================';
+
+GO

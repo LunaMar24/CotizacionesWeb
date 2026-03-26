@@ -34,13 +34,12 @@ public class ConfiguracionService : IConfiguracionService
         { "Financiero", ("Parámetros financieros y monetarios", "fas fa-dollar-sign") },
         { "Notificaciones", ("Configuración de emails y alertas", "fas fa-envelope") },
         { "Seguridad", ("Configuración de seguridad y autenticación", "fas fa-shield-alt") },
-        { "Integracion", ("Configuración de APIs externas", "fas fa-plug") },
+        { "Integracion_HubSpot", ("Configuración de integración con HubSpot CRM", "fab fa-hubspot") },
         { "Workflow", ("Reglas de flujo de trabajo", "fas fa-project-diagram") },
         { "Archivos", ("Configuración de almacenamiento", "fas fa-folder") },
         { "Reportes", ("Configuración de informes", "fas fa-chart-bar") },
         { "Negocio", ("Reglas generales del negocio", "fas fa-briefcase") },
-        { "Formato", ("Configuración de formatos", "fas fa-file-alt") },
-        { "Legacy", ("Parámetros heredados del sistema anterior", "fas fa-archive") }
+        { "Formato", ("Configuración de formatos", "fas fa-file-alt") }
     };
 
     public ConfiguracionService(
@@ -308,6 +307,36 @@ public class ConfiguracionService : IConfiguracionService
                     var formatosValidos = new[] { "PDF", "EXCEL", "WORD" };
                     if (!formatosValidos.Contains(valor.ToUpper()))
                         return new ValidacionParametroResult(false, "Formato debe ser: PDF, EXCEL o WORD", null);
+                    break;
+
+                // Validaciones de HubSpot
+                case "HUBSPOT_AUTH_TYPE":
+                    var authTypesValidos = new[] { "PRIVATE_APP", "OAUTH" };
+                    if (!authTypesValidos.Contains(valor.ToUpper()))
+                        return new ValidacionParametroResult(false, "Tipo de autenticación debe ser: PRIVATE_APP o OAUTH", null);
+                    break;
+
+                case "HUBSPOT_API_BASE_URL":
+                    if (!Uri.TryCreate(valor, UriKind.Absolute, out _))
+                        return new ValidacionParametroResult(false, "Debe ser una URL válida", null);
+                    break;
+
+                case "HUBSPOT_ACCESS_TOKEN":
+                    if (string.IsNullOrWhiteSpace(valor))
+                        return new ValidacionParametroResult(false, "El token de acceso no puede estar vacío", null);
+                    if (valor.Length < 20)
+                        return new ValidacionParametroResult(false, "El token parece demasiado corto para ser válido", null);
+                    break;
+
+                case "HUBSPOT_PAGE_SIZE":
+                    if (!int.TryParse(valor, out var pageSize) || pageSize < 1 || pageSize > 100)
+                        return new ValidacionParametroResult(false, "El tamaño de página debe estar entre 1 y 100", null);
+                    break;
+
+                case "HUBSPOT_TIMEOUT_SECONDS":
+                case "HUBSPOT_RETRY_COUNT":
+                    if (!int.TryParse(valor, out var intValue) || intValue < 1)
+                        return new ValidacionParametroResult(false, "Debe ser un número entero mayor a 0", null);
                     break;
             }
 

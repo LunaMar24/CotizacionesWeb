@@ -58,16 +58,19 @@ INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
 
 -- Permisos de Configuración
 INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
-('CFG_VIEW', 'Configuración', 'Ver configuración del sistema'),
-('CFG_EDIT', 'Configuración', 'Editar configuración del sistema'),
-('CFG_LOGS', 'Configuración', 'Ver logs del sistema'),
-('CFG_PARAMS', 'Configuración', 'Gestionar parámetros del sistema');
+('CFG_PARAMS_VIEW', 'Configuracion', 'Ver parámetros del sistema'),
+('CFG_PARAMS_EDIT', 'Configuracion', 'Editar parámetros del sistema'),
+('CFG_PARAMS_RESET', 'Configuracion', 'Resetear parámetros a valores por defecto'),
+('CFG_LOGS', 'Configuracion', 'Ver logs del sistema');
 
 -- Permisos de Integraciones
 INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
-('INT_HUBSPOT', 'Integraciones', 'Gestionar integración con HubSpot'),
-('INT_ERP', 'Integraciones', 'Gestionar integración con ERP'),
-('INT_CONFIG', 'Integraciones', 'Configurar integraciones');
+('INT_HUBSPOT_VIEW', 'Integraciones', 'Ver configuración de HubSpot'),
+('INT_HUBSPOT_CONFIG', 'Integraciones', 'Configurar integración con HubSpot'),
+('INT_HUBSPOT_SYNC', 'Integraciones', 'Sincronizar datos con HubSpot'),
+('INT_ERP_VIEW', 'Integraciones', 'Ver configuración de ERP'),
+('INT_ERP_CONFIG', 'Integraciones', 'Configurar integración con ERP'),
+('INT_ERP_SEND', 'Integraciones', 'Enviar datos al ERP');
 
 GO
 
