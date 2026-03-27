@@ -298,15 +298,21 @@
                             <span class="h5">Total:</span>
                             <strong class="h5 text-success">@FormatHelper.FormatCurrency(Model.Total, Model.Moneda)</strong>
                         </div>
+                        <hr class="my-3">
                         <div class="text-center text-muted">
                             <small>
                                 <strong>Moneda:</strong> @Model.Moneda
-                                @if (Model.TipoCambio.HasValue && Model.TipoCambio > 0)
-                                {
-                                    <br><strong>Tipo de Cambio:</strong> @Model.TipoCambio.Value.ToString("N2")
-                                }
                             </small>
                         </div>
+                        
+                        @if (Model.TipoCambio.HasValue && Model.TipoCambio > 0)
+                        {
+                            <div class="text-center text-muted mt-1">
+                                <small>
+                                    <strong>Tipo de Cambio:</strong> @Model.TipoCambio.Value.ToString("N2")
+                                </small>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>

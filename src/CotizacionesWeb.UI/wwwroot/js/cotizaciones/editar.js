@@ -954,7 +954,7 @@ function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel = n
     let accionConfirmada = false;
     let modalCerrandose = false;
     
-    const config = obtenerConfiguracionModal(tipo);
+    const config = obtenerConfiguracionModal(tipo); // Ya no necesita parámetro adicional porque está en la función
     elementos.header.removeClass('bg-info bg-warning bg-danger bg-success text-white text-dark').addClass(config.headerClass);
     elementos.titulo.html(`<i class="fas ${config.icono}"></i> ${titulo}`);
     elementos.mensaje.html(mensaje);
@@ -1035,15 +1035,23 @@ function usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel) {
     }, 10);
 }
 
-function obtenerConfiguracionModal(tipo) {
+function obtenerConfiguracionModal(tipo, btnTextoPersonalizado = null) {
     const configuraciones = {
         'info': { headerClass: 'bg-info text-white', icono: 'fa-info-circle', btnClass: 'btn-info', btnTexto: 'Aceptar' },
         'warning': { headerClass: 'bg-warning text-dark', icono: 'fa-exclamation-triangle', btnClass: 'btn-warning', btnTexto: 'Continuar' },
         'danger': { headerClass: 'bg-danger text-white', icono: 'fa-exclamation-circle', btnClass: 'btn-danger', btnTexto: 'Eliminar' },
-        'success': { headerClass: 'bg-success text-white', icono: 'fa-check-circle', btnClass: 'btn-success', btnTexto: 'Aceptar' }
+        'success': { headerClass: 'bg-success text-white', icono: 'fa-check-circle', btnClass: 'btn-success', btnTexto: 'Aceptar' },
+        'exit': { headerClass: 'bg-warning text-dark', icono: 'fa-sign-out-alt', btnClass: 'btn-warning', btnTexto: 'Regresar' }
     };
     
-    return configuraciones[tipo] || configuraciones['info'];
+    const config = configuraciones[tipo] || configuraciones['info'];
+    
+    // Si se proporciona texto personalizado, usarlo
+    if (btnTextoPersonalizado) {
+        config.btnTexto = btnTextoPersonalizado;
+    }
+    
+    return config;
 }
 
 function showNotification(type, message) {
@@ -1191,7 +1199,7 @@ function confirmarSalidaConCambios() {
         'Cambios Sin Guardar',
         '¿Está seguro de que desea salir sin guardar los cambios?<br><br>' +
         '<strong class="text-danger">Se perderán todos los cambios realizados.</strong>',
-        'danger',
+        'exit', // Usar tipo 'exit' en lugar de 'danger'
         function() {
             window.location.href = '/Cotizaciones';
         }
