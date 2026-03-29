@@ -4,12 +4,11 @@
 
 // Variables globales
 let productosDisponibles = [];
-let interesadosDisponibles = [];
 let monedaActual = 'CRC';
 let detalleEditandoIndex = -1;
 let estadoActual = 'B'; // Estado actual de la cotización
 
-// Datos temporales (simulando integración con ERP y HubSpot)
+// Datos temporales de productos (pendiente integración con ERP)
 const PRODUCTOS_TEMP = [
     { id: 'PROD001', nombre: 'Laptop Dell Inspiron 15', precio: 450000 },
     { id: 'PROD002', nombre: 'Monitor Samsung 24" Full HD', precio: 125000 },
@@ -21,44 +20,6 @@ const PRODUCTOS_TEMP = [
     { id: 'SERV001', nombre: 'Servicio de Instalación', precio: 25000 },
     { id: 'SERV002', nombre: 'Soporte Técnico Mensual', precio: 40000 },
     { id: 'SERV003', nombre: 'Configuración de Red', precio: 75000 }
-];
-
-const INTERESADOS_TEMP = [
-    { 
-        id: 1, 
-        nombre: 'Juan Carlos Rodríguez', 
-        email: 'juan.rodriguez@email.com', 
-        empresa: 'Tecnología Avanzada S.A.', 
-        tipo: 'P' 
-    },
-    { 
-        id: 2, 
-        nombre: 'María José Fernández', 
-        email: 'maria.fernandez@empresa.com', 
-        empresa: 'Soluciones Empresariales Ltda.', 
-        tipo: 'P' 
-    },
-    { 
-        id: 3, 
-        nombre: 'Carlos Alberto Méndez', 
-        email: 'carlos.mendez@corporativo.co.cr', 
-        empresa: 'Corporativo Internacional', 
-        tipo: 'E' 
-    },
-    { 
-        id: 4, 
-        nombre: 'Ana Lucía Vargas', 
-        email: 'ana.vargas@consultora.com', 
-        empresa: 'Consultora Estratégica', 
-        tipo: 'P' 
-    },
-    { 
-        id: 5, 
-        nombre: 'Roberto Silva', 
-        email: 'roberto.silva@innovacion.cr', 
-        empresa: 'Innovación y Desarrollo S.A.', 
-        tipo: 'E' 
-    }
 ];
 
 $(document).ready(function() {
@@ -99,7 +60,8 @@ $(document).ready(function() {
         }
     });
     
-    $('#NombreInteresado, #EmailInteresado, #EmpresaInteresado, textarea[name="Notas"]').on('input', function() {
+    // Detectar cambios en campos editables
+    $('textarea[name="Notas"]').on('input', function() {
         window.cotizacionGuardada = false;
     });
     
@@ -111,6 +73,10 @@ $(document).ready(function() {
     configurarEventos();
     cargarDatosTemporales();
 });
+
+// ========================================
+// INICIALIZACIÓN Y CONFIGURACIÓN
+// ========================================
 
 function inicializarVista() {
     if (window.FormatConfig) {
@@ -146,6 +112,34 @@ function inicializarVista() {
     
     if (!esEditable) {
         mostrarAvisoNoEditable();
+    }
+    
+    // Almacenar valores originales para detección de cambios
+    const $notas = $('textarea[name="Notas"]');
+    if ($notas.length > 0) {
+        $notas.data('original-value', $notas.val().trim());
+    }
+    
+    // Almacenar valor original de la versión
+    const versionTexto = $('#versionValor').text().trim();
+    const matchVersion = versionTexto.match(/v?(\d+\.\d+)/);
+    window._versionOriginal = matchVersion ? matchVersion[1] : '1.0';
+    
+    // Almacenar valor original del tipo de cambio
+    const $tipoCambio = $('#TipoCambio');
+    if ($tipoCambio.length > 0) {
+        $tipoCambio.data('original-value', $tipoCambio.val());
+    } else {
+        // Si no existe el input, leer del display
+        const tipoCambioTexto = $('#tipoCambioValor').text().trim();
+        if (tipoCambioTexto && tipoCambioTexto !== 'No definido') {
+            const match = tipoCambioTexto.match(/[\d,]+\.?\d*/);
+            const valor = match ? match[0].replace(/,/g, '') : '';
+            // Guardar en una variable global temporal
+            window._tipoCambioOriginal = valor;
+        } else {
+            window._tipoCambioOriginal = '';
+        }
     }
     
     setTimeout(function() {
@@ -228,28 +222,6 @@ function configurarEventos() {
             }
         });
         
-        $('#selectInteresado').on('change', function() {
-            const interesadoId = parseInt($(this).val());
-            const interesado = interesadosDisponibles.find(i => i.id === interesadoId);
-            if (interesado) {
-                $('#NombreInteresado').val(interesado.nombre);
-                $('#EmailInteresado').val(interesado.email);
-                $('#EmpresaInteresado').val(interesado.empresa);
-                $('#TipoInteresado').val(interesado.tipo);
-            }
-        });
-        
-        $(document).on('select2:select', '#selectInteresado', function() {
-            const interesadoId = parseInt($(this).val());
-            const interesado = interesadosDisponibles.find(i => i.id === interesadoId);
-            if (interesado) {
-                $('#NombreInteresado').val(interesado.nombre);
-                $('#EmailInteresado').val(interesado.email);
-                $('#EmpresaInteresado').val(interesado.empresa);
-                $('#TipoInteresado').val(interesado.tipo);
-            }
-        });
-        
         $('#modalEditarDetalle').on('hidden.bs.modal', limpiarModalDetalle);
     } else {
         $('.form-control, .btn-success, .btn-warning, .btn-danger').on('click', function(e) {
@@ -266,7 +238,6 @@ function configurarEventos() {
 
 function cargarDatosTemporales() {
     productosDisponibles = PRODUCTOS_TEMP;
-    interesadosDisponibles = INTERESADOS_TEMP;
     
     const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
         window.FormatUtils.isEditable(estadoActual) : 
@@ -283,35 +254,12 @@ function cargarDatosTemporales() {
                 </option>`
             );
         });
-        
-        const $selectInteresado = $('#selectInteresado');
-        $selectInteresado.empty().append('<option value="">Seleccione un interesado...</option>');
-        
-        interesadosDisponibles.forEach(interesado => {
-            const tipoTexto = interesado.tipo === 'P' ? 'Persona' : 
-                             interesado.tipo === 'E' ? 'Empresa' : 'Otro';
-            $selectInteresado.append(
-                `<option value="${interesado.id}">
-                    ${interesado.nombre} - ${interesado.empresa} (${tipoTexto})
-                </option>`
-            );
-        });
-        
-        if ($('#selectInteresado').length && !$('#selectInteresado').prop('disabled')) {
-            if ($('#selectInteresado').hasClass('select2-hidden-accessible')) {
-                $('#selectInteresado').select2('destroy');
-            }
-            
-            if (typeof $.fn.select2 !== 'undefined') {
-                $('#selectInteresado').select2({
-                    placeholder: 'Busque por nombre o empresa...',
-                    allowClear: true,
-                    width: '100%'
-                });
-            }
-        }
     }
 }
+
+// ========================================
+// GESTIÓN DE LÍNEAS DE DETALLE
+// ========================================
 
 function abrirModalDetalle(index) {
     detalleEditandoIndex = index;
@@ -681,6 +629,10 @@ function configurarContadorCaracteres() {
     textarea.on('input', actualizarContador);
 }
 
+// ========================================
+// GUARDADO DE COTIZACIÓN
+// ========================================
+
 function guardarCotizacion() {
     if (estadoActual !== 'B') {
         showNotification('error', 'No se puede guardar. Solo las cotizaciones en estado Borrador pueden ser editadas.');
@@ -691,20 +643,21 @@ function guardarCotizacion() {
 }
 
 function ejecutarGuardadoCotizacion() {
-    const btn = $('#btnGuardar');
-    const nombreInteresado = $('#NombreInteresado').val().trim();
-    const emailInteresado = $('#EmailInteresado').val().trim();
-    const totalLineas = $('#tablaDetalles tbody tr').length;
+const btn = $('#btnGuardar');
     
-    const erroresValidacion = [];
+// Leer valores desde los spans de solo lectura
+let nombreInteresado = $('#NombreInteresado').text().trim();
+if (nombreInteresado === 'No asignado') {
+    nombreInteresado = '';
+}
     
-    if (!nombreInteresado) {
-        erroresValidacion.push('• El nombre del interesado es obligatorio');
-    }
+const totalLineas = $('#tablaDetalles tbody tr').length;
+const erroresValidacion = [];
     
-    if (!emailInteresado) {
-        erroresValidacion.push('• El email del interesado es obligatorio');
-    }
+// Validar solo el nombre del interesado (el email no es obligatorio)
+if (!nombreInteresado) {
+    erroresValidacion.push('• El nombre del interesado es obligatorio');
+}
     
     if (totalLineas === 0) {
         mostrarModalConfirmacion(
@@ -729,11 +682,7 @@ function ejecutarGuardadoCotizacion() {
             mensajeError,
             'danger',
             function() {
-                if (erroresValidacion.some(e => e.includes('nombre'))) {
-                    $('#NombreInteresado').focus();
-                } else if (erroresValidacion.some(e => e.includes('email'))) {
-                    $('#EmailInteresado').focus();
-                }
+                $('#NombreInteresado').focus();
             }
         );
         return;
@@ -743,23 +692,39 @@ function ejecutarGuardadoCotizacion() {
 }
 
 function continuarGuardadoSinValidacionLineas() {
-    const btn = $('#btnGuardar');
-    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Guardando...');
+const btn = $('#btnGuardar');
+btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Guardando...');
     
-    try {
-        const formData = {
-            CotizacionId: $('input[name="CotizacionId"]').val(),
-            VersionId: parseInt($('input[name="VersionId"]').val()),
-            NombreInteresado: $('#NombreInteresado').val().trim(),
-            EmailInteresado: $('#EmailInteresado').val().trim(),
-            EmpresaInteresado: $('#EmpresaInteresado').val().trim(),
-            TipoInteresado: $('#TipoInteresado').val(),
-            Notas: $('textarea[name="Notas"]').val().trim(),
-            Detalles: [],
-            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
-        };
+try {
+    // Leer valores desde los spans de solo lectura
+    let nombreInteresado = $('#NombreInteresado').text().trim();
+    if (nombreInteresado === 'No asignado') {
+        nombreInteresado = '';
+    }
         
-        $('#tablaDetalles tbody tr').each(function(index) {
+    let emailInteresado = $('#EmailInteresado').text().trim();
+    if (emailInteresado === 'No asignado') {
+        emailInteresado = '';
+    }
+        
+    let empresaInteresado = $('#EmpresaInteresado').text().trim();
+    if (empresaInteresado === 'No asignado') {
+        empresaInteresado = '';
+    }
+        
+    const formData = {
+        CotizacionId: $('input[name="CotizacionId"]').val(),
+        VersionId: parseInt($('input[name="VersionId"]').val()),
+        NombreInteresado: nombreInteresado,
+        EmailInteresado: emailInteresado,
+        EmpresaInteresado: empresaInteresado,
+        TipoInteresado: $('#TipoInteresado').val(),
+        Notas: $('textarea[name="Notas"]').val().trim(),
+        Detalles: [],
+        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+    };
+        
+    $('#tablaDetalles tbody tr').each(function(index) {
             const fila = $(this);
             const inputDetalleId = fila.find('input[name$=".DetalleVersionId"]');
             const inputProductoId = fila.find('input[name$=".ProductoId"]');
@@ -857,7 +822,10 @@ function mostrarAvisoNoEditable() {
     $('.form-control[readonly]').addClass('readonly-field');
 }
 
-// Funciones de utilidad
+// ========================================
+// UTILIDADES Y FORMATEO
+// ========================================
+
 function formatCurrency(value) {
     // Usar función centralizada si está disponible
     if (typeof window.FormatUtils !== 'undefined') {
@@ -1208,18 +1176,28 @@ function confirmarSalidaConCambios() {
     return false;
 }
 
+// ========================================
+// GESTIÓN DE CAMBIOS SIN GUARDAR
+// ========================================
+
 function verificarCambiosSinGuardar() {
     if (seGuardoRecientemente()) {
         return false;
     }
     
-    const nombreActual = $('#NombreInteresado').val().trim();
-    const emailActual = $('#EmailInteresado').val().trim();
-    const empresaActual = $('#EmpresaInteresado').val().trim();
+    // Verificar solo cambios reales que requieren guardado
     const notasActuales = $('textarea[name="Notas"]').val().trim();
+    const notasOriginales = $('textarea[name="Notas"]').data('original-value') || '';
+    
     const monedaCombo = $('#MonedaSelect').val();
+    
+    // Obtener valor actual y original de la versión
     const versionEditada = $('#NumeroVersion').val();
-    const tipoCambioEditado = $('#TipoCambio').val();
+    const versionOriginal = window._versionOriginal || $('#versionValor').text().replace('v', '');
+    
+    // Obtener valor actual y original del tipo de cambio
+    const tipoCambioActual = $('#TipoCambio').val();
+    const tipoCambioOriginal = $('#TipoCambio').data('original-value') || window._tipoCambioOriginal || '';
     
     let lineasNuevas = 0;
     $('#tablaDetalles tbody tr').each(function() {
@@ -1230,50 +1208,36 @@ function verificarCambiosSinGuardar() {
     });
     
     const hayCambios = (
-        nombreActual.length > 0 ||
-        emailActual.length > 0 ||
-        empresaActual.length > 0 ||
-        notasActuales.length > 0 ||
+        notasActuales !== notasOriginales ||
         lineasNuevas > 0 ||
         (monedaCombo && monedaCombo !== monedaActual) ||
-        (versionEditada && versionEditada !== $('#versionValor').text().replace('v', '')) ||
-        (tipoCambioEditado && tipoCambioEditado.length > 0)
+        (versionEditada && versionEditada !== versionOriginal) ||
+        (tipoCambioActual !== tipoCambioOriginal)
     );
     
     return hayCambios;
 }
 
-function eliminarTodasLasLineasPersistentes() {
-    const lineasAEliminar = [];
-    
-    $('#tablaDetalles tbody tr').each(function() {
-        const index = parseInt($(this).attr('data-index'));
-        const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
-        
-        if (detalleVersionId > 0) {
-            lineasAEliminar.push(index);
-        }
-    });
-    
-    if (lineasAEliminar.length === 0) {
-        showNotification('info', 'No hay líneas persistentes que eliminar.');
-        return;
-    }
-    
-    lineasAEliminar.reverse().forEach(index => {
-        const fila = $(`tr[data-index="${index}"]`);
-        fila.remove();
-    });
-    
-    reindexarFilasDetalle();
-    recalcularTotales();
-    
-    showNotification('success', `${lineasAEliminar.length} líneas persistentes eliminadas. Ahora puede cambiar la moneda.`);
-    verificarYActualizarEstadoMoneda();
-}
-
 function marcarComoGuardado() {
     window.cotizacionGuardada = true;
+    
+    // Actualizar valores originales después de guardar exitosamente
+    const $notas = $('textarea[name="Notas"]');
+    if ($notas.length > 0) {
+        $notas.data('original-value', $notas.val().trim());
+    }
+    
+    // Actualizar valor original de la versión
+    const versionTexto = $('#versionValor').text().trim();
+    const matchVersion = versionTexto.match(/v?(\d+\.\d+)/);
+    window._versionOriginal = matchVersion ? matchVersion[1] : '1.0';
+    
+    // Actualizar valor original del tipo de cambio
+    const tipoCambioActual = $('#TipoCambio').val();
+    if (tipoCambioActual) {
+        $('#TipoCambio').data('original-value', tipoCambioActual);
+        window._tipoCambioOriginal = tipoCambioActual;
+    }
 }
 
 function seGuardoRecientemente() {
@@ -1304,6 +1268,10 @@ function obtenerNombreMoneda(codigo) {
     return nombres[codigo] || codigo;
 }
 
+// ========================================
+// GESTIÓN DE MONEDA
+// ========================================
+
 function aplicarCambioMoneda(nuevaMoneda) {
     const monedaAnterior = monedaActual;
     monedaActual = nuevaMoneda;
@@ -1329,7 +1297,7 @@ function aplicarCambioMoneda(nuevaMoneda) {
     
     showNotification('success', 
         `Moneda cambiada a ${obtenerNombreMoneda(nuevaMoneda)}. ` +
-        `Debe GUARDAR la cotización para persistir el cambio.`);
+        `Debe Guardar la cotización para aplicar el cambio.`);
 }
 
 function actualizarDisplaysMoneda() {
@@ -1505,18 +1473,6 @@ function configurarEventoMoneda() {
     });
 }
 
-function obtenerVersionActual() {
-    const versionBadge = $('.badge-version').text().trim();
-    if (versionBadge) {
-        const match = versionBadge.match(/v?(\d+\.\d+)/);
-        if (match) {
-            return parseFloat(match[1]);
-        }
-    }
-    
-    return 1.0;
-}
-
 function obtenerEstadoActual() {
     if (typeof estadoActual !== 'undefined') {
         return estadoActual;
@@ -1580,33 +1536,6 @@ function obtenerMonedaActual() {
     
     monedaActual = 'CRC';
     return 'CRC';
-}
-
-function obtenerTipoCambioActual() {
-    if (window.FormatConfig && window.FormatConfig.tipoCambio && window.FormatConfig.tipoCambio > 0) {
-        return parseFloat(window.FormatConfig.tipoCambio);
-    }
-    
-    const tipoCambioTexto = $('.text-center.text-muted small').filter(function() {
-        return $(this).html().includes('Tipo de Cambio:');
-    }).text();
-    
-    if (tipoCambioTexto) {
-        const match = tipoCambioTexto.match(/Tipo de Cambio:\s*([0-9]+\.?[0-9]*)/);
-        if (match && match[1]) {
-            return parseFloat(match[1]);
-        }
-    }
-    
-    const inputTipoCambio = $('input[name="TipoCambio"]');
-    if (inputTipoCambio.length > 0) {
-        const valor = parseFloat(inputTipoCambio.val());
-        if (valor && valor > 0) {
-            return valor;
-        }
-    }
-    
-    return null;
 }
 
 function configurarEventoVersion() {
@@ -1696,10 +1625,13 @@ function configurarEventoVersion() {
         $('#versionValor').text(displayFormateado);
         $('#versionModoEdicion').addClass('d-none');
         $('#versionModoVista').removeClass('d-none');
+        
         const valorOriginalNumerico = parseFloat(valorOriginal);
         
         if (numero !== valorOriginalNumerico) {
-            showNotification('success', `Versión actualizada a ${displayFormateado}`);
+            showNotification('success', `Versión actualizada a ${displayFormateado}. Recuerde Guardar la cotización para aplicar el cambio.`);
+            // Marcar que hay cambios sin guardar
+            window.cotizacionGuardada = false;
         }
     }
     
@@ -1711,6 +1643,11 @@ function configurarEventoVersion() {
         $('#versionModoVista').removeClass('d-none');
     }
 }
+
+// ========================================
+// CONFIGURACIÓN DE VERSIÓN Y TIPO DE CAMBIO
+// ========================================
+
 function configurarEventoTipoCambio() {
     $('#btnEditarTipoCambio, #btnGuardarTipoCambio, #btnCancelarTipoCambio, #TipoCambio').off('.tipocambio');
     
@@ -1795,7 +1732,9 @@ function configurarEventoTipoCambio() {
         const valorOriginalNumerico = valorOriginal ? parseFloat(valorOriginal) : 0;
         
         if (valorNumerico !== valorOriginalNumerico) {
-            showNotification('success', 'Tipo de cambio actualizado');
+            showNotification('success', 'Tipo de cambio actualizado. Recuerde Guardar la cotización para aplicar el cambio.');
+            // Marcar que hay cambios sin guardar
+            window.cotizacionGuardada = false;
         }
     }
     
@@ -1815,13 +1754,15 @@ function configurarEventoTipoCambio() {
  * Configurar eventos del modal de búsqueda de HubSpot
  */
 function configurarEventosHubSpot() {
-    // Botón para abrir el modal
-    $('#btnBuscarHubSpot').on('click', function() {
+    // Botón para abrir el modal (en el header del card)
+    $('#btnBuscarHubSpot').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation(); // Prevenir que el evento llegue al card-header y lo colapse
         abrirModalBuscarHubSpot();
     });
     
     // Botón de búsqueda dentro del modal
-    $('#btnBuscarHubSpot').on('click', function() {
+    $('#btnBuscarHubSpotModal').on('click', function() {
         ejecutarBusquedaHubSpot();
     });
     
@@ -1947,26 +1888,26 @@ function mostrarResultadosHubSpot(resultados) {
         const fila = `
             <tr>
                 <td>
-                    <strong>${escapeHtml(interesado.nombreInteresado || '')}</strong>
+                    <strong>${escapeHtml(interesado.nombreInteresado || interesado.NombreInteresado || '')}</strong>
                 </td>
                 <td>
                     <span class="text-muted">
-                        <i class="fas fa-envelope"></i> ${escapeHtml(interesado.emailInteresado || 'N/A')}
+                        <i class="fas fa-envelope"></i> ${escapeHtml(interesado.emailInteresado || interesado.EmailInteresado || 'N/A')}
                     </span>
                 </td>
                 <td>
                     <span class="text-info">
-                        <i class="fas fa-building"></i> ${escapeHtml(interesado.empresaInteresado || 'N/A')}
+                        <i class="fas fa-building"></i> ${escapeHtml(interesado.empresaInteresado || interesado.EmpresaInteresado || 'N/A')}
                     </span>
                 </td>
                 <td class="text-center">
                     <button type="button" class="btn btn-sm btn-success btn-seleccionar-interesado" 
-                            data-hubspot-id="${escapeHtml(interesado.hubSpotObjectId || '')}"
-                            data-hubspot-type="${escapeHtml(interesado.hubSpotObjectType || '')}"
-                            data-tipo="${escapeHtml(interesado.tipoInteresado || 'P')}"
-                            data-nombre="${escapeHtml(interesado.nombreInteresado || '')}"
-                            data-email="${escapeHtml(interesado.emailInteresado || '')}"
-                            data-empresa="${escapeHtml(interesado.empresaInteresado || '')}"
+                            data-hubspot-id="${escapeHtml(interesado.hubSpotObjectId || interesado.HubSpotObjectId || '')}"
+                            data-hubspot-type="${escapeHtml(interesado.hubSpotObjectType || interesado.HubSpotObjectType || '')}"
+                            data-tipo="${escapeHtml(interesado.tipoInteresado || interesado.TipoInteresado || 'P')}"
+                            data-nombre="${escapeHtml(interesado.nombreInteresado || interesado.NombreInteresado || '')}"
+                            data-email="${escapeHtml(interesado.emailInteresado || interesado.EmailInteresado || '')}"
+                            data-empresa="${escapeHtml(interesado.empresaInteresado || interesado.EmpresaInteresado || '')}"
                             title="Seleccionar este interesado">
                         <i class="fas fa-check"></i> Seleccionar
                     </button>
@@ -2020,23 +1961,57 @@ function seleccionarInteresadoHubSpot($btn) {
         data: datosInteresado,
         success: function(response) {
             if (response.success) {
-                // Actualizar campos en la interfaz
-                $('#NombreInteresado    ').val(response.data.nombreInteresado || '');
-                $('#EmailInteresado').val(response.data.emailInteresado || '');
-                $('#EmpresaInteresado').val(response.data.empresaInteresado || '');
-                
-                // Actualizar el tipo de interesado
+                // Extraer datos de la respuesta
+                const nombre = response.data.nombreInteresado || '';
+                const email = response.data.emailInteresado || '';
+                const empresa = response.data.empresaInteresado || '';
                 const tipo = datosInteresado.tipoInteresado || 'P';
+                
+                // Actualizar SPAN de nombre (solo lectura visual)
+                $('#NombreInteresado').text(nombre || 'No asignado');
+                
+                // Actualizar SPAN de email con formato HTML (SIN link mailto)
+                const $emailSpan = $('#EmailInteresado');
+                if (email && email !== 'N/A') {
+                    $emailSpan.html(`<span class="text-info"><i class="fas fa-envelope"></i> ${escapeHtml(email)}</span>`);
+                } else {
+                    $emailSpan.html('<span class="text-muted">No asignado</span>');
+                }
+                
+                // Actualizar SPAN de empresa con formato HTML
+                const $empresaSpan = $('#EmpresaInteresado');
+                if (empresa) {
+                    $empresaSpan.html(`<span><i class="fas fa-building text-info"></i> ${escapeHtml(empresa)}</span>`);
+                } else {
+                    $empresaSpan.html('<span class="text-muted">No asignado</span>');
+                }
+                
+                // Actualizar SPAN de tipo con badge
+                const $tipoDisplay = $('#TipoInteresadoDisplay');
+                let tipoBadge = '';
+                switch(tipo) {
+                    case 'P':
+                        tipoBadge = '<span class="badge badge-info"><i class="fas fa-user"></i> Persona</span>';
+                        break;
+                    case 'E':
+                        tipoBadge = '<span class="badge badge-primary"><i class="fas fa-building"></i> Empresa</span>';
+                        break;
+                    default:
+                        tipoBadge = '<span class="badge badge-secondary"><i class="fas fa-question"></i> No definido</span>';
+                }
+                $tipoDisplay.html(tipoBadge);
+                
+                // Actualizar INPUT HIDDEN del tipo (para envío del formulario)
                 $('#TipoInteresado').val(tipo);
+                
+                // Ocultar alerta de sugerencia si existe
+                $('.card-info .alert-info').fadeOut();
                 
                 // Cerrar modal
                 $('#modalBuscarInteresadoHubSpot').modal('hide');
                 
                 // Notificar éxito
                 showNotification('success', 'Interesado asignado correctamente desde HubSpot');
-                
-                // Marcar que hay cambios sin guardar
-                window.cotizacionGuardada = false;
             } else {
                 mostrarAlertaModal('danger', response.message || 'Error al asignar el interesado');
                 $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Seleccionar');

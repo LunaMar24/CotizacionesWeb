@@ -622,11 +622,6 @@ public class CotizacionesController : Controller
         return Json(new { success = false, message = "El nombre del interesado es obligatorio" });
       }
 
-      if (string.IsNullOrWhiteSpace(viewModel.EmailInteresado))
-      {
-        return Json(new { success = false, message = "El email del interesado es obligatorio" });
-      }
-
       if (viewModel.Detalles == null || !viewModel.Detalles.Any())
       {
         _logger.LogInformation("Guardando cotización {CotizacionId} sin líneas de detalle (estado borrador)", viewModel.CotizacionId);
@@ -655,7 +650,7 @@ public class CotizacionesController : Controller
         VersionId = viewModel.VersionId,
         NumeroVersion = viewModel.NumeroVersion,
         NombreInteresado = viewModel.NombreInteresado.Trim(),
-        EmailInteresado = viewModel.EmailInteresado.Trim(),
+        EmailInteresado = viewModel.EmailInteresado?.Trim() ?? "",
         EmpresaInteresado = viewModel.EmpresaInteresado?.Trim() ?? "",
         TipoInteresado = viewModel.TipoInteresado,
         Moneda = viewModel.Moneda,
