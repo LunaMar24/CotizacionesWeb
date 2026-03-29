@@ -1806,3 +1806,332 @@ function configurarEventoTipoCambio() {
         $('#tipoCambioModoVista').removeClass('d-none');
     }
 }
+
+// ========================================
+// BÚSQUEDA DE INTERESADOS EN HUBSPOT
+// ========================================
+
+/**
+ * Configurar eventos del modal de búsqueda de HubSpot
+ */
+function configurarEventosHubSpot() {
+    // Botón para abrir el modal
+    $('#btnBuscarHubSpot').on('click', function() {
+        abrirModalBuscarHubSpot();
+    });
+    
+    // Botón de búsqueda dentro del modal
+    $('#btnBuscarHubSpot').on('click', function() {
+        ejecutarBusquedaHubSpot();
+    });
+    
+    // Búsqueda al presionar Enter en el input
+    $('#textoBusquedaHubSpot').on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            ejecutarBusquedaHubSpot();
+        }
+    });
+    
+    // Cambio de tipo de interesado - limpiar resultados
+    $('input[name="tipoInteresadoHubSpot"]').on('change', function() {
+        limpiarResultadosHubSpot();
+    });
+    
+    // Limpiar al cerrar el modal
+    $('#modalBuscarInteresadoHubSpot').on('hidden.bs.modal', function() {
+        limpiarModalBusquedaHubSpot();
+    });
+}
+
+/**
+ * Abre el modal de búsqueda de HubSpot
+ */
+function abrirModalBuscarHubSpot() {
+    limpiarModalBusquedaHubSpot();
+    
+    // Pre-seleccionar el tipo de interesado según lo que está en el formulario
+    const tipoActual = $('#TipoInteresado').val();
+    if (tipoActual === 'E') {
+        $('#radioEmpresa').prop('checked', true);
+    } else {
+        $('#radioContacto').prop('checked', true);
+    }
+    
+    $('#modalBuscarInteresadoHubSpot').modal('show');
+}
+
+/**
+ * Ejecuta la búsqueda de interesados en HubSpot
+ */
+function ejecutarBusquedaHubSpot() {
+    const textoBusqueda = $('#textoBusquedaHubSpot').val().trim();
+    
+    // Validar mínimo de caracteres
+    if (textoBusqueda.length < 3) {
+        mostrarAlertaModal('warning', 'Por favor ingrese al menos 3 caracteres para buscar.');
+        $('#textoBusquedaHubSpot').focus();
+        return;
+    }
+    
+    // Obtener tipo seleccionado
+    const tipoInteresado = $('input[name="tipoInteresadoHubSpot"]:checked').val();
+    
+    // Mostrar spinner y ocultar resultados anteriores
+    $('#spinnerBusquedaHubSpot').removeClass('d-none');
+    $('#resultadosBusquedaHubSpot').addClass('d-none');
+    $('#sinResultadosHubSpot').addClass('d-none');
+    ocultarAlertaModal();
+    
+    // Obtener token antiforgery
+    const token = $('input[name="__RequestVerificationToken"]').val();
+    
+    // Realizar búsqueda vía AJAX
+    $.ajax({
+        url: '/Cotizaciones/BuscarInteresadosHubSpot',
+        type: 'POST',
+        data: {
+            tipoInteresado: tipoInteresado,
+            textoBusqueda: textoBusqueda,
+            __RequestVerificationToken: token
+        },
+        success: function(response) {
+            $('#spinnerBusquedaHubSpot').addClass('d-none');
+            
+            if (response.success) {
+                mostrarResultadosHubSpot(response.data);
+            } else {
+                mostrarAlertaModal('danger', response.message || 'Error al buscar interesados');
+            }
+        },
+        error: function(xhr, status, error) {
+            $('#spinnerBusquedaHubSpot').addClass('d-none');
+            
+            let errorMessage = 'Error de comunicación con el servidor';
+            
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            } else if (xhr.status === 403) {
+                errorMessage = 'No tiene permisos para realizar esta operación';
+            } else if (xhr.status === 404) {
+                errorMessage = 'Servicio no disponible';
+            } else if (xhr.status >= 500) {
+                errorMessage = 'Error interno del servidor';
+            }
+            
+            mostrarAlertaModal('danger', errorMessage);
+        }
+    });
+}
+
+/**
+ * Muestra los resultados de búsqueda en la tabla
+ */
+function mostrarResultadosHubSpot(resultados) {
+    const tbody = $('#tablaResultadosHubSpot tbody');
+    tbody.empty();
+    
+    if (!resultados || resultados.length === 0) {
+        $('#sinResultadosHubSpot').removeClass('d-none');
+        $('#resultadosBusquedaHubSpot').addClass('d-none');
+        $('#contadorResultados').text('0');
+        return;
+    }
+    
+    // Mostrar resultados
+    $('#sinResultadosHubSpot').addClass('d-none');
+    $('#resultadosBusquedaHubSpot').removeClass('d-none');
+    $('#contadorResultados').text(resultados.length);
+    
+    resultados.forEach(function(interesado) {
+        const fila = `
+            <tr>
+                <td>
+                    <strong>${escapeHtml(interesado.nombreInteresado || '')}</strong>
+                </td>
+                <td>
+                    <span class="text-muted">
+                        <i class="fas fa-envelope"></i> ${escapeHtml(interesado.emailInteresado || 'N/A')}
+                    </span>
+                </td>
+                <td>
+                    <span class="text-info">
+                        <i class="fas fa-building"></i> ${escapeHtml(interesado.empresaInteresado || 'N/A')}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-success btn-seleccionar-interesado" 
+                            data-hubspot-id="${escapeHtml(interesado.hubSpotObjectId || '')}"
+                            data-hubspot-type="${escapeHtml(interesado.hubSpotObjectType || '')}"
+                            data-tipo="${escapeHtml(interesado.tipoInteresado || 'P')}"
+                            data-nombre="${escapeHtml(interesado.nombreInteresado || '')}"
+                            data-email="${escapeHtml(interesado.emailInteresado || '')}"
+                            data-empresa="${escapeHtml(interesado.empresaInteresado || '')}"
+                            title="Seleccionar este interesado">
+                        <i class="fas fa-check"></i> Seleccionar
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.append(fila);
+    });
+    
+    // Configurar evento de selección
+    $('.btn-seleccionar-interesado').on('click', function() {
+        seleccionarInteresadoHubSpot($(this));
+    });
+}
+
+/**
+ * Selecciona un interesado y lo asigna a la cotización
+ */
+function seleccionarInteresadoHubSpot($btn) {
+    const cotizacionId = $('input[name="CotizacionId"]').val();
+    
+    const datosInteresado = {
+        cotizacionId: cotizacionId,
+        hubSpotObjectId: $btn.attr('data-hubspot-id'),
+        hubSpotObjectType: $btn.attr('data-hubspot-type'),
+        tipoInteresado: $btn.attr('data-tipo'),
+        nombreInteresado: $btn.attr('data-nombre'),
+        emailInteresado: $btn.attr('data-email'),
+        empresaInteresado: $btn.attr('data-empresa'),
+        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+    };
+    
+    // Validaciones básicas
+    if (!datosInteresado.hubSpotObjectId) {
+        mostrarAlertaModal('danger', 'ID de HubSpot no disponible');
+        return;
+    }
+    
+    if (!datosInteresado.nombreInteresado) {
+        mostrarAlertaModal('danger', 'Nombre del interesado no disponible');
+        return;
+    }
+    
+    // Deshabilitar botón mientras procesa
+    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Asignando...');
+    
+    // Realizar asignación vía AJAX
+    $.ajax({
+        url: '/Cotizaciones/AsignarInteresadoHubSpot',
+        type: 'POST',
+        data: datosInteresado,
+        success: function(response) {
+            if (response.success) {
+                // Actualizar campos en la interfaz
+                $('#NombreInteresado    ').val(response.data.nombreInteresado || '');
+                $('#EmailInteresado').val(response.data.emailInteresado || '');
+                $('#EmpresaInteresado').val(response.data.empresaInteresado || '');
+                
+                // Actualizar el tipo de interesado
+                const tipo = datosInteresado.tipoInteresado || 'P';
+                $('#TipoInteresado').val(tipo);
+                
+                // Cerrar modal
+                $('#modalBuscarInteresadoHubSpot').modal('hide');
+                
+                // Notificar éxito
+                showNotification('success', 'Interesado asignado correctamente desde HubSpot');
+                
+                // Marcar que hay cambios sin guardar
+                window.cotizacionGuardada = false;
+            } else {
+                mostrarAlertaModal('danger', response.message || 'Error al asignar el interesado');
+                $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Seleccionar');
+            }
+        },
+        error: function(xhr, status, error) {
+            let errorMessage = 'Error de comunicación con el servidor';
+            
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            } else if (xhr.status === 403) {
+                errorMessage = 'No tiene permisos para realizar esta operación';
+            } else if (xhr.status === 404) {
+                errorMessage = 'Servicio no disponible';
+            } else if (xhr.status >= 500) {
+                errorMessage = 'Error interno del servidor';
+            }
+            
+            mostrarAlertaModal('danger', errorMessage);
+            $btn.prop('disabled', false).html('<i class="fas fa-check"></i> Seleccionar');
+        }
+    });
+}
+
+/**
+ * Limpia todos los campos y resultados del modal de HubSpot
+ */
+function limpiarModalBusquedaHubSpot() {
+    $('#textoBusquedaHubSpot').val('');
+    $('#radioContacto').prop('checked', true);
+    limpiarResultadosHubSpot();
+    ocultarAlertaModal();
+}
+
+/**
+ * Limpia solo los resultados de búsqueda
+ */
+function limpiarResultadosHubSpot() {
+    $('#tablaResultadosHubSpot tbody').empty();
+    $('#resultadosBusquedaHubSpot').addClass('d-none');
+    $('#sinResultadosHubSpot').addClass('d-none');
+    $('#spinnerBusquedaHubSpot').addClass('d-none');
+    $('#contadorResultados').text('0');
+}
+
+/**
+ * Muestra una alerta dentro del modal
+ */
+function mostrarAlertaModal(tipo, mensaje) {
+    const alert = $('#alertBuscarInteresado');
+    
+    // Mapeo de tipos a clases de Bootstrap
+    const clases = {
+        'success': 'alert-success',
+        'danger': 'alert-danger',
+        'warning': 'alert-warning',
+        'info': 'alert-info'
+    };
+    
+    const clase = clases[tipo] || 'alert-info';
+    
+    alert.removeClass('alert-success alert-danger alert-warning alert-info d-none')
+         .addClass(clase)
+         .html(`<i class="fas fa-exclamation-circle"></i> ${mensaje}`)
+         .removeClass('d-none');
+    
+    // Scroll al inicio del modal para que se vea la alerta
+    $('#modalBuscarInteresadoHubSpot .modal-body').scrollTop(0);
+}
+
+/**
+ * Oculta la alerta del modal
+ */
+function ocultarAlertaModal() {
+    $('#alertBuscarInteresado').addClass('d-none');
+}
+
+/**
+ * Escapa caracteres HTML para evitar XSS
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    
+    return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+// Configurar eventos de HubSpot al cargar el documento
+$(document).ready(function() {
+    configurarEventosHubSpot();
+});

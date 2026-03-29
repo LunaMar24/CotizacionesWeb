@@ -195,11 +195,22 @@
                                 <label for="selectInteresado" class="form-label">
                                     <i class="fas fa-search"></i> Buscar Interesado
                                 </label>
-                                <select class="form-control select2" id="selectInteresado" name="InteresadoId" 
-                                        @(Model.EstadoActual != 'B' ? "disabled" : "")>
-                                    <option value="">Seleccione un interesado...</option>
-                                    @* Los datos se cargarán dinámicamente desde JavaScript *@
-                                </select>
+                                <div class="input-group">
+                                    <select class="form-control select2" id="selectInteresado" name="InteresadoId" 
+                                            @(Model.EstadoActual != 'B' ? "disabled" : "")>
+                                        <option value="">Seleccione un interesado...</option>
+                                        @* Los datos se cargarán dinámicamente desde JavaScript *@
+                                    </select>
+                                    @if (Model.EstadoActual == 'B')
+                                    {
+                                        <div class="input-group-append">
+                                            <button type="button" class="btn btn-info" id="btnBuscarHubSpot" 
+                                                    title="Buscar en HubSpot">
+                                                <i class="fas fa-search"></i> HubSpot
+                                            </button>
+                                        </div>
+                                    }
+                                </div>
                             </div>
                         </div>
                         <div class="row">
@@ -610,6 +621,107 @@
                 </button>
                 <button type="button" class="btn btn-primary" id="btnConfirmarAccion">
                     <i class="fas fa-check"></i> Aceptar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Búsqueda de Interesados HubSpot -->
+<div class="modal fade" id="modalBuscarInteresadoHubSpot" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-search"></i> Buscar Interesado en HubSpot
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Alerta para mensajes -->
+                <div id="alertBuscarInteresado" class="alert d-none" role="alert"></div>
+                
+                <!-- Filtros de búsqueda -->
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="d-block mb-2">
+                            <strong>Tipo de Interesado:</strong>
+                        </label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="tipoInteresadoHubSpot" 
+                                   id="radioContacto" value="P" checked>
+                            <label class="form-check-label" for="radioContacto">
+                                <i class="fas fa-user"></i> Contacto
+                            </label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="tipoInteresadoHubSpot" 
+                                   id="radioEmpresa" value="E">
+                            <label class="form-check-label" for="radioEmpresa">
+                                <i class="fas fa-building"></i> Empresa
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <label for="textoBusquedaHubSpot">
+                            <strong>Buscar:</strong>
+                        </label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="textoBusquedaHubSpot" 
+                                   placeholder="Ingrese nombre, email o empresa...">
+                            <div class="input-group-append">
+                                <button class="btn btn-primary" type="button" id="btnBuscarHubSpot">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted">Mínimo 3 caracteres para buscar</small>
+                    </div>
+                </div>
+
+                <!-- Spinner de carga -->
+                <div id="spinnerBusquedaHubSpot" class="text-center py-5 d-none">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="sr-only">Buscando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Buscando en HubSpot...</p>
+                </div>
+
+                <!-- Tabla de resultados -->
+                <div id="resultadosBusquedaHubSpot" class="d-none">
+                    <hr>
+                    <h6 class="mb-3">
+                        <i class="fas fa-list"></i> Resultados de Búsqueda
+                        <span class="badge badge-info ml-2" id="contadorResultados">0</span>
+                    </h6>
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm table-hover" id="tablaResultadosHubSpot">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Empresa</th>
+                                    <th class="text-center" style="width: 100px;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Resultados dinámicos -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Mensaje cuando no hay resultados -->
+                <div id="sinResultadosHubSpot" class="text-center py-4 d-none">
+                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No se encontraron resultados</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cerrar
                 </button>
             </div>
         </div>
