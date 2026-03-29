@@ -680,7 +680,7 @@ if (!nombreInteresado) {
         mostrarModalConfirmacion(
             'Errores de Validación',
             mensajeError,
-            'danger',
+            'warning',
             function() {
                 $('#NombreInteresado').focus();
             }
