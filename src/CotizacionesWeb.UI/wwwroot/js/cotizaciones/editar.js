@@ -32,30 +32,39 @@ $(document).ready(function() {
         console.warn('AdminLTE CardWidget no está disponible');
     }
     
+    // ⚠️ LIMITACIÓN DEL NAVEGADOR: beforeunload requiere mensaje nativo
+    // Los navegadores modernos NO permiten usar modales personalizados en beforeunload
+    // Este evento solo se dispara para: cerrar tab, cerrar ventana, refresh (F5)
+    // Para navegación interna (links, botones), usamos modal Bootstrap más abajo
     $(window).on('beforeunload', function(e) {
         if (verificarCambiosSinGuardar()) {
-            const mensaje = '¿Está seguro de que desea salir? Se perderán los cambios no guardados.';
+            // Mensaje genérico (navegadores modernos muestran su propio texto)
+            const mensaje = 'Tiene cambios sin guardar que se perderán';
             e.returnValue = mensaje;
             return mensaje;
         }
     });
     
+    // ✅ NAVEGACIÓN INTERNA: Usar modal Bootstrap (mejor UX)
+    // Interceptar clicks en enlaces para mostrar confirmación con modal
     $(document).on('click', 'a[href]:not(.btn-guardar):not([data-toggle])', function(e) {
         const href = $(this).attr('href');
         
         if (href && href !== '#' && !href.startsWith('#') && href !== window.location.href) {
             if (verificarCambiosSinGuardar()) {
                 e.preventDefault();
-                confirmarSalidaConCambios();
+                confirmarSalidaConCambios(href);
                 return false;
             }
         }
     });
     
+    // Botón específico de "Volver al Listado" (mayor prioridad)
     $('a[href*="/Cotizaciones"]:contains("Volver al Listado"), a[href="/Cotizaciones"], a[href$="/Cotizaciones/Index"]').on('click', function(e) {
+        const href = $(this).attr('href');
         if (verificarCambiosSinGuardar()) {
             e.preventDefault();
-            confirmarSalidaConCambios();
+            confirmarSalidaConCambios(href);
             return false;
         }
     });
@@ -442,13 +451,19 @@ function agregarNuevaFilaDetalle(datos) {
 }
 
 function eliminarDetalle(index) {
-    // Usar la nueva función global mejorada de modal
+    // ✅ USAR MODAL BOOTSTRAP en lugar de confirm() nativo
     mostrarModalConfirmacion(
         'Eliminar Detalle',
-        '¿Está seguro de que desea eliminar esta línea de detalle?<br><br><small class="text-muted">Esta acción no se puede deshacer.</small>',
+        '¿Está seguro de que desea eliminar esta línea de detalle?<br><br>' +
+        '<small class="text-muted">Esta acción no se puede deshacer al guardar.</small>',
         'danger',
         function() {
             ejecutarEliminacionDetalle(index);
+        },
+        null, // No necesita callback de cancelación
+        {
+            btnTextoConfirmar: 'Eliminar',
+            btnTextoCancelar: 'Cancelar'
         }
     );
 }
@@ -660,6 +675,7 @@ if (!nombreInteresado) {
 }
     
     if (totalLineas === 0) {
+        // ✅ MODAL BOOTSTRAP para confirmación de guardado sin productos
         mostrarModalConfirmacion(
             'Cotización Sin Productos',
             '¿Está seguro de que desea guardar la cotización sin líneas de productos?<br><br>' +
@@ -667,6 +683,14 @@ if (!nombreInteresado) {
             'warning',
             function() {
                 continuarGuardadoSinValidacionLineas();
+            },
+            function() {
+                // Usuario canceló, restaurar botón
+                btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Cambios');
+            },
+            {
+                btnTextoConfirmar: 'Guardar Sin Productos',
+                btnTextoCancelar: 'Cancelar'
             }
         );
         return;
@@ -677,12 +701,19 @@ if (!nombreInteresado) {
                            erroresValidacion.join('<br>') +
                            '<br><br><small class="text-muted">Por favor corrija estos campos y vuelva a intentar.</small>';
         
+        // ✅ MODAL BOOTSTRAP para mostrar errores de validación (no es confirmación, es informativo)
         mostrarModalConfirmacion(
             'Errores de Validación',
             mensajeError,
             'warning',
             function() {
+                // Al cerrar, enfocar el primer campo con error
                 $('#NombreInteresado').focus();
+            },
+            null,
+            {
+                btnTextoConfirmar: 'Entendido',
+                btnTextoCancelar: 'Cerrar'
             }
         );
         return;
@@ -884,115 +915,90 @@ function formatNumber(value, decimals = 2) {
     return parseFloat(value).toFixed(decimals);
 }
 
-function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel = null) {
-    if (typeof $ === 'undefined') {
-        usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
+/**
+ * Muestra modal de confirmación usando la función global (si está disponible)
+ * o implementación local como fallback
+ */
+function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm, onCancel, opciones) {
+    // Usar función global si está disponible (recomendado)
+    if (typeof window.mostrarModalConfirmacionGlobal === 'function') {
+        window.mostrarModalConfirmacionGlobal(titulo, mensaje, tipo, onConfirm, onCancel, opciones);
         return;
     }
     
-    if (typeof $.fn.modal !== 'function') {
-        usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
-        return;
-    }
-    
+    // Fallback a implementación local si la global no está disponible
     const modal = $('#modalConfirmacion');
     if (modal.length === 0) {
         usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
         return;
     }
     
-    const elementos = {
-        header: $('#modalConfirmacionHeader'),
-        titulo: $('#modalConfirmacionTitulo'),
-        mensaje: $('#modalConfirmacionMensaje'),
-        btnConfirmar: $('#btnConfirmarAccion')
-    };
+    // Limpiar eventos anteriores
+    modal.off('.localconfirm');
+    $('#btnConfirmarAccion').off('.localconfirm');
     
-    const elementosFaltantes = Object.keys(elementos).filter(key => elementos[key].length === 0);
-    if (elementosFaltantes.length > 0) {
-        usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
-        return;
-    }
+    // Configuración visual
+    const config = obtenerConfiguracionModal(tipo);
+    const btnTextoConfirmar = (opciones && opciones.btnTextoConfirmar) || config.btnTexto;
     
-    modal.off();
-    elementos.btnConfirmar.off();
-    $('.modal-backdrop').remove();
-    $('body').removeClass('modal-open').css({ 'overflow': '', 'padding-right': '' });
+    $('#modalConfirmacionHeader')
+        .removeClass('bg-info bg-warning bg-danger bg-success bg-primary text-white text-dark')
+        .addClass(config.headerClass);
+    $('#modalConfirmacionTitulo').html(`<i class="fas ${config.icono}"></i> ${titulo}`);
+    $('#modalConfirmacionMensaje').html(mensaje);
+    
+    const btnConfirmar = $('#btnConfirmarAccion');
+    btnConfirmar.removeClass('btn-info btn-warning btn-danger btn-success btn-primary')
+                .addClass(config.btnClass)
+                .html(`<i class="fas fa-check"></i> ${btnTextoConfirmar}`);
     
     let accionConfirmada = false;
-    let modalCerrandose = false;
     
-    const config = obtenerConfiguracionModal(tipo); // Ya no necesita parámetro adicional porque está en la función
-    elementos.header.removeClass('bg-info bg-warning bg-danger bg-success text-white text-dark').addClass(config.headerClass);
-    elementos.titulo.html(`<i class="fas ${config.icono}"></i> ${titulo}`);
-    elementos.mensaje.html(mensaje);
-    elementos.btnConfirmar.removeClass('btn-info btn-warning btn-danger btn-success btn-primary').addClass(config.btnClass);
-    elementos.btnConfirmar.html(`<i class="fas fa-check"></i> ${config.btnTexto}`);
-    
-    elementos.btnConfirmar.on('click.modalconfirm', function(e) {
+    // Evento de confirmación
+    btnConfirmar.on('click.localconfirm', function(e) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        
-        if (modalCerrandose) {
-            return;
-        }
-        
         accionConfirmada = true;
-        modalCerrandose = true;
         modal.modal('hide');
-        
-        setTimeout(() => {
-            if (typeof onConfirm === 'function') {
-                try {
-                    onConfirm();
-                } catch (error) {
-                    console.error('Error en callback confirmación:', error);
-                }
-            }
-        }, 200);
     });
     
-    modal.on('hidden.bs.modal.confirm', function() {
-        if (!accionConfirmada && !modalCerrandose && typeof onCancel === 'function') {
-            setTimeout(() => {
-                try {
-                    onCancel();
-                } catch (error) {
-                    console.error('Error en callback cancelación:', error);
-                }
-            }, 100);
+    // Evento al cerrar
+    modal.one('hidden.bs.modal.localconfirm', function() {
+        if (accionConfirmada && typeof onConfirm === 'function') {
+            setTimeout(onConfirm, 150);
+        } else if (!accionConfirmada && typeof onCancel === 'function') {
+            setTimeout(onCancel, 150);
         }
         
-        $(this).off('.confirm');
-        elementos.btnConfirmar.off('.modalconfirm');
+        modal.off('.localconfirm');
+        btnConfirmar.off('.localconfirm');
     });
     
-    try {
-        modal.modal({
-            backdrop: 'static',
-            keyboard: false,
-            show: true
-        });
-        
-        setTimeout(() => {
-            if (!modal.hasClass('show')) {
-                modal.off();
-                elementos.btnConfirmar.off();
-                usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
-            }
-        }, 500);
-        
-    } catch (error) {
-        console.error('Error mostrando modal:', error);
-        usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel);
-    }
+    // Mostrar modal
+    modal.modal({ backdrop: 'static', keyboard: false, show: true });
 }
 
+/**
+ * Fallback a confirmación nativa del navegador
+ * ⚠️ SOLO SE USA SI: jQuery, Bootstrap o el modal no están disponibles
+ * En condiciones normales, SIEMPRE se debe usar el modal Bootstrap
+ */
 function usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel) {
-    const mensajeTexto = mensaje.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    console.warn('⚠️ Usando confirmación nativa como fallback (modal Bootstrap no disponible)');
+    
+    // Convertir HTML a texto plano más inteligentemente
+    const mensajeTexto = mensaje
+        .replace(/<br\s*\/?>/gi, '\n')           // <br> a salto de línea
+        .replace(/<\/p>\s*<p>/gi, '\n\n')        // Párrafos separados
+        .replace(/<strong>(.*?)<\/strong>/gi, '$1') // Quitar tags strong
+        .replace(/<[^>]*>/g, '')                   // Quitar resto de HTML
+        .replace(/\s+/g, ' ')                      // Normalizar espacios
+        .trim();
+    
     const textoCompleto = `${titulo}\n\n${mensajeTexto}`;
     
-    setTimeout(() => {
+    // setTimeout para evitar bloqueo del navegador
+    setTimeout(function() {
         const confirmacion = confirm(textoCompleto);
         
         if (confirmacion && typeof onConfirm === 'function') {
@@ -1003,23 +1009,45 @@ function usarConfirmacionNativa(titulo, mensaje, onConfirm, onCancel) {
     }, 10);
 }
 
-function obtenerConfiguracionModal(tipo, btnTextoPersonalizado = null) {
+/**
+ * Obtiene la configuración visual del modal según el tipo
+ * Mantiene consistencia visual en toda la aplicación
+ */
+function obtenerConfiguracionModal(tipo) {
     const configuraciones = {
-        'info': { headerClass: 'bg-info text-white', icono: 'fa-info-circle', btnClass: 'btn-info', btnTexto: 'Aceptar' },
-        'warning': { headerClass: 'bg-warning text-dark', icono: 'fa-exclamation-triangle', btnClass: 'btn-warning', btnTexto: 'Continuar' },
-        'danger': { headerClass: 'bg-danger text-white', icono: 'fa-exclamation-circle', btnClass: 'btn-danger', btnTexto: 'Eliminar' },
-        'success': { headerClass: 'bg-success text-white', icono: 'fa-check-circle', btnClass: 'btn-success', btnTexto: 'Aceptar' },
-        'exit': { headerClass: 'bg-warning text-dark', icono: 'fa-sign-out-alt', btnClass: 'btn-warning', btnTexto: 'Regresar' }
+        'info': {
+            headerClass: 'bg-info text-white',
+            icono: 'fa-info-circle',
+            btnClass: 'btn-info',
+            btnTexto: 'Aceptar'
+        },
+        'warning': {
+            headerClass: 'bg-warning text-dark',
+            icono: 'fa-exclamation-triangle',
+            btnClass: 'btn-warning',
+            btnTexto: 'Continuar'
+        },
+        'danger': {
+            headerClass: 'bg-danger text-white',
+            icono: 'fa-exclamation-circle',
+            btnClass: 'btn-danger',
+            btnTexto: 'Eliminar'
+        },
+        'success': {
+            headerClass: 'bg-success text-white',
+            icono: 'fa-check-circle',
+            btnClass: 'btn-success',
+            btnTexto: 'Aceptar'
+        },
+        'exit': {
+            headerClass: 'bg-warning text-dark',
+            icono: 'fa-sign-out-alt',
+            btnClass: 'btn-warning',
+            btnTexto: 'Salir Sin Guardar'
+        }
     };
     
-    const config = configuraciones[tipo] || configuraciones['info'];
-    
-    // Si se proporciona texto personalizado, usarlo
-    if (btnTextoPersonalizado) {
-        config.btnTexto = btnTextoPersonalizado;
-    }
-    
-    return config;
+    return configuraciones[tipo] || configuraciones['info'];
 }
 
 function showNotification(type, message) {
@@ -1048,79 +1076,23 @@ function revertirComboMoneda($combo, monedaAnterior) {
     }
 }
 
+/**
+ * Muestra modal de confirmación para cambio de moneda
+ * Usa la función global unificada en lugar de implementación específica
+ */
 function mostrarModalConfirmacionMoneda(titulo, mensaje, tipo, onConfirm, onCancel, $combo, monedaAnterior) {
-    window._monedaCambioConfirmado = false;
-    window._monedaCambioOnConfirm = onConfirm;
-    window._monedaCambioOnCancel = onCancel;
-    
-    const modal = $('#modalConfirmacion');
-    const btnConfirmar = $('#btnConfirmarAccion');
-    
-    modal.off('.moneda');
-    btnConfirmar.off('.moneda');
-    
-    const elementos = {
-        header: $('#modalConfirmacionHeader'),
-        titulo: $('#modalConfirmacionTitulo'),
-        mensaje: $('#modalConfirmacionMensaje'),
-        btnConfirmar: btnConfirmar
-    };
-    
-    const config = obtenerConfiguracionModal(tipo);
-    elementos.header.removeClass('bg-info bg-warning bg-danger bg-success text-white text-dark').addClass(config.headerClass);
-    elementos.titulo.html(`<i class="fas ${config.icono}"></i> ${titulo}`);
-    elementos.mensaje.html(mensaje);
-    elementos.btnConfirmar.removeClass('btn-info btn-warning btn-danger btn-success btn-primary').addClass(config.btnClass);
-    elementos.btnConfirmar.html(`<i class="fas fa-check"></i> ${config.btnTexto}`);
-    
-    btnConfirmar.on('click.moneda', function(e) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        window._monedaCambioConfirmado = true;
-        modal.modal('hide');
-    });
-    
-    modal.on('hidden.bs.modal.moneda', function() {
-        if (window._monedaCambioConfirmado) {
-            setTimeout(() => {
-                if (typeof window._monedaCambioOnConfirm === 'function') {
-                    try {
-                        window._monedaCambioOnConfirm();
-                    } catch (error) {
-                        console.error('Error en callback de confirmación:', error);
-                    }
-                }
-                
-                window._monedaCambioConfirmado = false;
-                window._monedaCambioOnConfirm = null;
-                window._monedaCambioOnCancel = null;
-            }, 100);
-            
-        } else {
-            setTimeout(() => {
-                if (typeof window._monedaCambioOnCancel === 'function') {
-                    try {
-                        window._monedaCambioOnCancel();
-                    } catch (error) {
-                        console.error('Error en callback de cancelación:', error);
-                    }
-                }
-                
-                window._monedaCambioConfirmado = false;
-                window._monedaCambioOnConfirm = null;
-                window._monedaCambioOnCancel = null;
-            }, 100);
+    // ✅ USAR FUNCIÓN GLOBAL UNIFICADA
+    mostrarModalConfirmacion(
+        titulo,
+        mensaje,
+        tipo,
+        onConfirm,
+        onCancel,
+        {
+            btnTextoConfirmar: 'Cambiar Moneda',
+            btnTextoCancelar: 'Cancelar'
         }
-        
-        modal.off('.moneda');
-        btnConfirmar.off('.moneda');
-    });
-    
-    modal.modal({
-        backdrop: 'static',
-        keyboard: false,
-        show: true
-    });
+    );
 }
 
 function calcularSubtotalActual() {
@@ -1156,20 +1128,43 @@ function calcularTotalFinalActual() {
     return (subtotal - descuentos) + impuesto;
 }
 
-function confirmarSalidaConCambios() {
+/**
+ * Muestra modal de confirmación cuando el usuario intenta salir con cambios sin guardar
+ * @param {string} urlDestino - URL a la que se dirigirá si confirma (opcional)
+ */
+function confirmarSalidaConCambios(urlDestino) {
     const hayCambios = verificarCambiosSinGuardar();
     
     if (!hayCambios) {
+        // No hay cambios, permitir navegación
+        if (urlDestino) {
+            window.location.href = urlDestino;
+        }
         return true;
     }
     
+    // Determinar URL de destino
+    const urlFinal = urlDestino || '/Cotizaciones';
+    
+    // ✅ USAR MODAL BOOTSTRAP en lugar de confirm() nativo
     mostrarModalConfirmacion(
         'Cambios Sin Guardar',
         '¿Está seguro de que desea salir sin guardar los cambios?<br><br>' +
-        '<strong class="text-danger">Se perderán todos los cambios realizados.</strong>',
-        'exit', // Usar tipo 'exit' en lugar de 'danger'
+        '<strong class="text-danger">Se perderán todos los cambios realizados.</strong><br><br>' +
+        '<small class="text-muted">Puede hacer clic en "Guardar Cambios" antes de salir para no perder su trabajo.</small>',
+        'exit',
         function() {
-            window.location.href = '/Cotizaciones';
+            // Usuario confirmó: permitir salida
+            marcarComoGuardado(); // Evitar que se dispare beforeunload
+            window.location.href = urlFinal;
+        },
+        function() {
+            // Usuario canceló: quedarse en la página
+            // No hacer nada, el modal se cierra automáticamente
+        },
+        {
+            btnTextoConfirmar: 'Salir Sin Guardar',
+            btnTextoCancelar: 'Quedarme Aquí'
         }
     );
     

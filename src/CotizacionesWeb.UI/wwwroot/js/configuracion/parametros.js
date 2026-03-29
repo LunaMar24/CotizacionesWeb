@@ -253,19 +253,67 @@ $(window).on('load', function() {
     });
 });
 
-// Advertir antes de salir si hay cambios
+// ?? LIMITACIÓN DEL NAVEGADOR: beforeunload requiere mensaje nativo
+// Los navegadores modernos NO permiten usar modales personalizados en beforeunload
+// Este evento solo se dispara para: cerrar tab, cerrar ventana, refresh (F5)
+// Para navegación interna (links, botones), se debe interceptar el click
 $(window).on('beforeunload', function(e) {
     if (checkUnsavedChanges()) {
-        const mensaje = 'Tiene cambios sin guardar. ¿Está seguro de que desea salir?';
+        // Mensaje genérico (navegadores modernos muestran su propio texto)
+        const mensaje = 'Tiene cambios sin guardar que se perderán';
         e.returnValue = mensaje;
         return mensaje;
     }
 });
 
+// ? NAVEGACIÓN INTERNA: Interceptar clicks en pestañas y enlaces
+$(document).on('click', '.categoria-tab', function(e) {
+    if (checkUnsavedChanges()) {
+        e.preventDefault();
+        const urlDestino = $(this).attr('href');
+        
+        // Usar modal Bootstrap para navegación interna
+        if (typeof window.mostrarModalConfirmacionGlobal === 'function') {
+            window.mostrarModalConfirmacionGlobal(
+                'Cambios Sin Guardar',
+                '¿Está seguro de que desea cambiar de categoría sin guardar los cambios?<br><br>' +
+                '<strong class="text-danger">Se perderán todos los cambios realizados.</strong>',
+                'exit',
+                function() {
+                    // Usuario confirmó: navegar
+                    window.location.href = urlDestino;
+                },
+                null,
+                {
+                    btnTextoConfirmar: 'Cambiar Sin Guardar',
+                    btnTextoCancelar: 'Quedarme Aquí'
+                }
+            );
+        } else {
+            // Fallback a confirm nativo si modal no disponible
+            if (confirm('Tiene cambios sin guardar. ¿Está seguro de que desea salir?')) {
+                window.location.href = urlDestino;
+            }
+        }
+        
+        return false;
+    }
+});
+
 /**
- * Funciones de notificación
+ * Función de notificación (usa la función global de site.js)
+ * ? PRINCIPIO DRY: No duplicar código, usar función centralizada
  */
 function mostrarNotificacion(tipo, mensaje) {
+    // Usar función global si está disponible (recomendado)
+    if (typeof window.showNotification === 'function') {
+        window.showNotification(tipo, mensaje);
+        return;
+    }
+    
+    // Fallback solo si la función global no está disponible
+    console.warn('?? window.showNotification no disponible, usando implementación local');
+    
     const alertClass = `alert-${tipo}`;
     const iconClass = tipo === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
     
