@@ -6,6 +6,32 @@
 
 ## 📋 **REGLAS GENERALES DE DESARROLLO**
 
+
+### 📝 **REGLA CRÍTICA: NO GENERAR DOCUMENTACIÓN EXTENSA NI ARCHIVOS .MD ADICIONALES**
+
+**❌ PROHIBIDO**:
+- Crear múltiples archivos `.md` por cada cambio técnico sin solicitud explícita del usuario
+- Generar documentación masiva, quickstarts, diagramas, índices o resúmenes redundantes como salida por defecto
+- Crear carpetas de documentación nuevas para cambios pequeños o medianos
+- Duplicar información ya existente en este documento principal
+
+**✅ PERMITIDO / ESPERADO**:
+- Tomar lo importante de cada cambio y consolidarlo en `CONTEXTO_PROYECTO.md`
+- Documentar únicamente reglas de negocio, decisiones arquitectónicas, restricciones técnicas, patrones reutilizables y consideraciones de seguridad que aporten valor futuro
+- Crear documentación adicional solo si el usuario lo solicita explícitamente
+
+**🎯 REGLA DE ORO**:
+`CONTEXTO_PROYECTO.md` es la **fuente principal de conocimiento operativo** del proyecto. Si un cambio deja aprendizajes útiles para futuras tareas, deben integrarse aquí en forma breve, clara y accionable.
+
+**💡 CRITERIO PARA COPILOT**:
+Antes de generar documentación, evaluar si:
+1. ¿Es algo solicitado explícitamente?
+2. ¿Aporta contexto reusable para futuras tareas?
+3. ¿Se puede resumir mejor dentro de `CONTEXTO_PROYECTO.md`?
+
+Si la respuesta a (1) es no y a (3) es sí, **NO crear archivos adicionales**; actualizar el contexto principal.
+
+
 ### ⚠️ **REGLA CRÍTICA: NO CREAR FUNCIONES DE DIAGNÓSTICO AUTOMÁTICAMENTE**
 
 **❌ PROHIBIDO**: Agregar funciones de diagnóstico como `window.diagnosticar*()`, `window.debug*()`, `window.probar*()` sin solicitud explícita del usuario.
@@ -988,6 +1014,13 @@ $.ajax({
 > **📚 Documentación Técnica Completa**: Ver `src/CotizacionesWeb.Infrastructure/Docs/` para lineamientos detallados
 
 ### 📖 **Documentación de Referencia**
+
+El proyecto puede mantener documentación técnica de apoyo en carpetas auxiliares, **pero no debe generarse nueva documentación extensa por defecto**.
+
+**Regla vigente**:
+- La información importante y reusable debe consolidarse en `CONTEXTO_PROYECTO.md`
+- Los archivos auxiliares existentes pueden usarse como referencia histórica o de apoyo
+- Solo crear documentación nueva cuando el usuario lo solicite explícitamente
 
 El proyecto mantiene documentación técnica detallada en la carpeta Infrastructure:
 
@@ -3367,3 +3400,102 @@ if (!esValida)
 ```
 ## 🛠️ **CONFIGURACIÓN DE PARÁMETROS DEL SISTEMA (AGREGADO)** 
 Se implementó un sistema completo de parámetros configurables para el manejo centralizado de configuraciones
+
+
+
+# === EXTENSION: PARAMETROS SENSITIVOS Y SEGURIDAD ===
+
+## Concepto de Parámetros Sensitivos
+- Los parámetros pueden marcarse como `EsSensitivo = true`
+- Ejemplo principal: `HUBSPOT_ACCESS_TOKEN`
+- Estos valores NO deben exponerse en el HTML ni en DTOs generales
+- El valor real solo se obtiene vía endpoint protegido
+
+## Reglas de Edición
+Un parámetro puede editarse si:
+- `EsModificable = true`
+- o el valor actual está vacío/null (primera configuración)
+
+Esto aplica especialmente para tokens de integración.
+
+## UI Comportamiento
+### Sensitivo Editable
+- Input tipo password
+- Toggle ojo para mostrar/ocultar localmente
+
+### Sensitivo Bloqueado
+- Mostrar valor enmascarado
+- No incluir valor real en DOM
+- Botón ojo:
+  - habilitado si tiene permiso
+  - deshabilitado si no
+
+## Seguridad (Crítico)
+- Nunca renderizar valores sensitivos en HTML
+- Nunca almacenar valores enmascarados en BD
+- Acceso a valores reales solo vía endpoint backend
+- Endpoint protegido con permiso específico
+
+## Permisos Relacionados
+- `CFG_PARAMS_VIEW_SECRET`: permite ver valores reales de parámetros sensitivos
+- No implica permiso de edición
+
+## Endpoint Sensitivo
+- Endpoint dedicado para revelar valores
+- Validaciones:
+  - parámetro existe
+  - es sensitivo
+  - usuario tiene permiso
+
+## Buenas Prácticas para Copilot
+- No generar código que exponga secretos en frontend
+- No usar inputs hidden con valores reales
+- No hardcodear lógica por código de parámetro
+- Usar siempre `EsSensitivo` como regla genérica
+- Mantener separación entre:
+  - DTO de UI
+  - lógica de negocio
+  - acceso a secretos
+
+---
+
+# === EXTENSION: SISTEMA DE MODALES ===
+
+## Reemplazo de alert/confirm
+- NO usar alert() ni confirm()
+- Usar modales Bootstrap
+- Centralizar lógica de confirmación
+
+## Limitación importante
+- beforeunload del navegador no puede reemplazarse completamente
+- Usar modal para navegación interna controlada
+
+---
+
+# === EXTENSION: INTEGRACION HUBSPOT ===
+
+## Autenticación
+- Uso de Private App Token (Bearer)
+- Guardado en parámetros sensitivos
+
+## Búsqueda
+- Uso de múltiples campos configurables
+- Máximo recomendado: 3 campos
+- Implementación con múltiples filterGroups (OR)
+
+## Buenas prácticas
+- No hardcodear campos
+- Usar parámetros configurables
+- Validar configuración antes de ejecutar llamadas
+
+---
+
+# === REGLAS GENERALES PARA COPILOT ===
+
+1. No introducir frameworks nuevos
+2. Usar jQuery + Bootstrap 4.6
+3. Respetar arquitectura por capas
+4. No duplicar lógica
+5. No sobreingeniería
+6. Priorizar claridad sobre complejidad
+7. Mantener seguridad como prioridad
