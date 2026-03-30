@@ -75,8 +75,8 @@ VALUES
 ('HUBSPOT_ACCOUNT_NAME', 'Nombre de la cuenta HubSpot', 'Cuenta Principal', 'S', 'Integracion_HubSpot', 1, 'Mi Cuenta', NULL, 0),
 --('HUBSPOT_LAST_SYNC_CONTACTS', 'Última sincronización contactos', '', 'S', 'Integracion_HubSpot', 1, '', 'Actualizado automáticamente', 0),
 --('HUBSPOT_LAST_SYNC_COMPANIES', 'Última sincronización compañías', '', 'S', 'Integracion_HubSpot', 1, '', 'Actualizado automáticamente', 0),
-('HUBSPOT_CONTACT_SEARCH_FIELD', 'Campos de búsqueda contacto', 'email,firstname,lastname', 'S', 'Integracion_HubSpot', 1, 'email', 'Campos de búsqueda de contactos en HubSpot. Separados por coma. Máximo 3 campos.', 0),
-('HUBSPOT_COMPANY_SEARCH_FIELD', 'Campos de búsqueda compañía', 'name,domain', 'S', 'Integracion_HubSpot', 1, 'name', 'Campos de búsqueda de compañías en HubSpot. Separados por coma. Máximo 3 campos.', 0),
+('HUBSPOT_CONTACT_SEARCH_FIELDS', 'Campos de búsqueda contacto', 'email,firstname,lastname', 'S', 'Integracion_HubSpot', 1, 'email', 'Campos de búsqueda de contactos en HubSpot. Separados por coma. Máximo 4 campos.', 0),
+('HUBSPOT_COMPANY_SEARCH_FIELDS', 'Campos de búsqueda compañía', 'name,domain', 'S', 'Integracion_HubSpot', 1, 'name', 'Campos de búsqueda de compañías en HubSpot. Separados por coma. Máximo 4 campos.', 0),
 
 -- ============================================
 -- PARÁMETROS DE INTEGRACIÓN ERP
