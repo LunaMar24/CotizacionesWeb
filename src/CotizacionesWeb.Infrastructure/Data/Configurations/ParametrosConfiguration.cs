@@ -74,6 +74,14 @@ public class ParametrosConfiguration : IEntityTypeConfiguration<Parametros>
             .HasMaxLength(2000)
             .IsRequired(false);
         
+        // EsSensitivo para parámetros con información confidencial
+        builder.Property(p => p.EsSensitivo)
+            .IsRequired()
+            .HasDefaultValue(false);
+        
+        builder.HasIndex(p => p.EsSensitivo)
+            .HasDatabaseName("IX_Parametros_EsSensitivo");
+        
         // Índices para performance
         builder.HasIndex(p => new { p.Categoria, p.Codigo })
             .HasDatabaseName("IX_Parametros_Categoria_Codigo");

@@ -51,4 +51,10 @@ public class Parametros
     /// Notas adicionales sobre el parámetro
     /// </summary>
     public string? Notas { get; set; }
+    
+    /// <summary>
+    /// Indica si el parámetro contiene información sensitiva (contraseñas, tokens, etc.)
+    /// Los valores sensitivos se enmascaran en la UI y requieren permiso especial para visualizarse
+    /// </summary>
+    public bool EsSensitivo { get; set; } = false;
 }

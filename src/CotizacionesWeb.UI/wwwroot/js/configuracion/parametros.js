@@ -1,6 +1,6 @@
-/**
- * JavaScript para la gestiÛn de par·metros de configuraciÛn
- * Funcionalidades: validaciÛn en tiempo real, reseteo, UX mejorado
+Ôªø/**
+ * JavaScript para la gesti√≥n de par√°metros de configuraci√≥n
+ * Funcionalidades: validaci√≥n en tiempo real, reseteo, UX mejorado
  */
 
 $(document).ready(function() {
@@ -14,11 +14,15 @@ function initConfiguracionParametros() {
     initFormSubmission();
     initTooltips();
     
-    console.log('Sistema de configuraciÛn de par·metros inicializado');
+    // Nuevas funcionalidades para par√°metros sensitivos
+    initToggleVisibilidadSensitivos();
+    initRevelarSecretoBloqueado();
+    
+    console.log('Sistema de configuraci√≥n de par√°metros inicializado');
 }
 
 /**
- * ValidaciÛn en tiempo real de par·metros
+ * Validaci√≥n en tiempo real de par√°metros
  */
 function initValidacionTiempoReal() {
     $('.parametro-input').on('input blur', function() {
@@ -32,14 +36,14 @@ function initValidacionTiempoReal() {
             return;
         }
         
-        // ValidaciÛn inmediata por tipo
+        // Validaci√≥n inmediata por tipo
         const validacionLocal = validarTipoLocal(valor, tipo);
         if (!validacionLocal.esValido) {
             mostrarErrorValidacion($input, validacionLocal.mensaje);
             return;
         }
         
-        // ValidaciÛn en servidor para reglas especÌficas
+        // Validaci√≥n en servidor para reglas espec√≠ficas
         if (codigo) {
             validarEnServidor(codigo, valor, tipo, $input);
         }
@@ -47,19 +51,19 @@ function initValidacionTiempoReal() {
 }
 
 /**
- * ValidaciÛn local inmediata por tipo
+ * Validaci√≥n local inmediata por tipo
  */
 function validarTipoLocal(valor, tipo) {
     switch (tipo) {
         case 'Decimal':
             if (!/^\d+(\.\d+)?$/.test(valor)) {
-                return { esValido: false, mensaje: 'Debe ser un n˙mero decimal v·lido' };
+                return { esValido: false, mensaje: 'Debe ser un n√∫mero decimal v√°lido' };
             }
             break;
             
         case 'Entero':
             if (!/^\d+$/.test(valor)) {
-                return { esValido: false, mensaje: 'Debe ser un n˙mero entero v·lido' };
+                return { esValido: false, mensaje: 'Debe ser un n√∫mero entero v√°lido' };
             }
             break;
             
@@ -72,7 +76,7 @@ function validarTipoLocal(valor, tipo) {
             
         case 'Fecha':
             if (isNaN(Date.parse(valor))) {
-                return { esValido: false, mensaje: 'Debe ser una fecha v·lida' };
+                return { esValido: false, mensaje: 'Debe ser una fecha v√°lida' };
             }
             break;
     }
@@ -81,7 +85,7 @@ function validarTipoLocal(valor, tipo) {
 }
 
 /**
- * ValidaciÛn en servidor
+ * Validaci√≥n en servidor
  */
 function validarEnServidor(codigo, valor, tipo, $input) {
     // Debounce para evitar muchas llamadas
@@ -95,7 +99,8 @@ function validarEnServidor(codigo, valor, tipo, $input) {
                 codigo: codigo,
                 valor: valor,
                 tipo: tipo
-            },
+            }
+        })
         .done(function(response) {
             if (response.esValido) {
                 mostrarValidacionExitosa($input);
@@ -104,7 +109,7 @@ function validarEnServidor(codigo, valor, tipo, $input) {
             }
         })
         .fail(function() {
-            mostrarErrorValidacion($input, 'Error al validar el par·metro');
+            mostrarErrorValidacion($input, 'Error al validar el par√°metro');
         });
     }, 500); // 500ms de debounce
     
@@ -112,7 +117,7 @@ function validarEnServidor(codigo, valor, tipo, $input) {
 }
 
 /**
- * Estados de validaciÛn visual
+ * Estados de validaci√≥n visual
  */
 function mostrarErrorValidacion($input, mensaje) {
     $input.removeClass('is-valid').addClass('is-invalid');
@@ -124,7 +129,7 @@ function mostrarErrorValidacion($input, mensaje) {
     }
     $feedback.text(mensaje);
     
-    // Deshabilitar botÛn de guardar
+    // Deshabilitar bot√≥n de guardar
     $input.closest('form').find('button[type="submit"]').prop('disabled', true);
 }
 
@@ -137,9 +142,9 @@ function mostrarValidacionExitosa($input) {
         $feedback = $('<div class="valid-feedback"></div>');
         $input.after($feedback);
     }
-    $feedback.text('? Valor v·lido');
+    $feedback.text('Valor v√°lido');
     
-    // Habilitar botÛn de guardar
+    // Habilitar bot√≥n de guardar
     $input.closest('form').find('button[type="submit"]').prop('disabled', false);
 }
 
@@ -164,17 +169,20 @@ function initBotonesResetear() {
 }
 
 /**
- * Mejorar UX del envÌo de formularios
+ * Mejorar UX del env√≠o de formularios
  */
 function initFormSubmission() {
     $('.parametro-form').on('submit', function() {
         const $form = $(this);
         const $btn = $form.find('button[type="submit"]');
         
-        // Prevenir m˙ltiples envÌos
+        // Prevenir m√∫ltiples env√≠os
         if ($btn.hasClass('loading')) {
             return false;
         }
+        
+        // Marcar que estamos guardando intencionalmente
+        window.isSavingForm = true;
         
         // Estado de carga
         $btn.addClass('loading');
@@ -194,20 +202,20 @@ function initFormSubmission() {
 function initTooltips() {
     $('[data-toggle="tooltip"]').tooltip();
     
-    // Agregar tooltips din·micos para tipos de datos
+    // Agregar tooltips din√°micos para tipos de datos
     $('.parametro-input').each(function() {
         const tipo = $(this).data('tipo');
         let tooltip = '';
         
         switch (tipo) {
             case 'Decimal':
-                tooltip = 'Ingrese un n˙mero decimal (ej: 123.45)';
+                tooltip = 'Ingrese un n√∫mero decimal (ej: 123.45)';
                 break;
             case 'Entero':
-                tooltip = 'Ingrese un n˙mero entero positivo';
+                tooltip = 'Ingrese un n√∫mero entero positivo';
                 break;
             case 'Booleano (S/N)':
-                tooltip = 'Seleccione SÌ (S) o No (N)';
+                tooltip = 'Seleccione S√≠ (S) o No (N)';
                 break;
             case 'Fecha':
                 tooltip = 'Formato: YYYY-MM-DD o DD/MM/YYYY';
@@ -246,52 +254,57 @@ function checkUnsavedChanges() {
     return hasChanges;
 }
 
-// Guardar valores originales al cargar la p·gina
+// Guardar valores originales al cargar la p√°gina
 $(window).on('load', function() {
     $('.parametro-input').each(function() {
         $(this).attr('data-original-value', $(this).val() || '');
     });
 });
 
-// ?? LIMITACI”N DEL NAVEGADOR: beforeunload requiere mensaje nativo
+// ‚ö†Ô∏è LIMITACI√ìN DEL NAVEGADOR: beforeunload requiere mensaje nativo
 // Los navegadores modernos NO permiten usar modales personalizados en beforeunload
 // Este evento solo se dispara para: cerrar tab, cerrar ventana, refresh (F5)
-// Para navegaciÛn interna (links, botones), se debe interceptar el click
+// Para navegaci√≥n interna (links, botones), se debe interceptar el click
 $(window).on('beforeunload', function(e) {
+    // No mostrar alerta si estamos guardando el formulario
+    if (window.isSavingForm) {
+        return undefined;
+    }
+    
     if (checkUnsavedChanges()) {
-        // Mensaje genÈrico (navegadores modernos muestran su propio texto)
-        const mensaje = 'Tiene cambios sin guardar que se perder·n';
+        // Mensaje gen√©rico (navegadores modernos muestran su propio texto)
+        const mensaje = 'Tiene cambios sin guardar que se perder√°n';
         e.returnValue = mensaje;
         return mensaje;
     }
 });
 
-// ? NAVEGACI”N INTERNA: Interceptar clicks en pestaÒas y enlaces
+// ? NAVEGACI√ìN INTERNA: Interceptar clicks en pesta√±as y enlaces
 $(document).on('click', '.categoria-tab', function(e) {
     if (checkUnsavedChanges()) {
         e.preventDefault();
         const urlDestino = $(this).attr('href');
         
-        // Usar modal Bootstrap para navegaciÛn interna
+        // Usar modal Bootstrap para navegaci√≥n interna
         if (typeof window.mostrarModalConfirmacionGlobal === 'function') {
             window.mostrarModalConfirmacionGlobal(
                 'Cambios Sin Guardar',
-                'øEst· seguro de que desea cambiar de categorÌa sin guardar los cambios?<br><br>' +
-                '<strong class="text-danger">Se perder·n todos los cambios realizados.</strong>',
+                '¬øEst√° seguro de que desea cambiar de categor√≠a sin guardar los cambios?<br><br>' +
+                '<strong class="text-danger">Se perder√°n todos los cambios realizados.</strong>',
                 'exit',
                 function() {
-                    // Usuario confirmÛ: navegar
+                    // Usuario confirm√≥: navegar
                     window.location.href = urlDestino;
                 },
                 null,
                 {
                     btnTextoConfirmar: 'Cambiar Sin Guardar',
-                    btnTextoCancelar: 'Quedarme AquÌ'
+                    btnTextoCancelar: 'Quedarme Aqu√≠'
                 }
             );
         } else {
             // Fallback a confirm nativo si modal no disponible
-            if (confirm('Tiene cambios sin guardar. øEst· seguro de que desea salir?')) {
+            if (confirm('Tiene cambios sin guardar. ¬øEst√° seguro de que desea salir?')) {
                 window.location.href = urlDestino;
             }
         }
@@ -301,18 +314,18 @@ $(document).on('click', '.categoria-tab', function(e) {
 });
 
 /**
- * FunciÛn de notificaciÛn (usa la funciÛn global de site.js)
- * ? PRINCIPIO DRY: No duplicar cÛdigo, usar funciÛn centralizada
+ * Funci√≥n de notificaci√≥n (usa la funci√≥n global de site.js)
+ * ? PRINCIPIO DRY: No duplicar c√≥digo, usar funci√≥n centralizada
  */
 function mostrarNotificacion(tipo, mensaje) {
-    // Usar funciÛn global si est· disponible (recomendado)
+    // Usar funci√≥n global si est√° disponible (recomendado)
     if (typeof window.showNotification === 'function') {
         window.showNotification(tipo, mensaje);
         return;
     }
     
-    // Fallback solo si la funciÛn global no est· disponible
-    console.warn('?? window.showNotification no disponible, usando implementaciÛn local');
+    // Fallback solo si la funci√≥n global no est√° disponible
+    console.warn('?? window.showNotification no disponible, usando implementaci√≥n local');
     
     const alertClass = `alert-${tipo}`;
     const iconClass = tipo === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
@@ -329,14 +342,14 @@ function mostrarNotificacion(tipo, mensaje) {
     
     $('.container-fluid').first().prepend($alert);
     
-    // Auto-dismiss despuÈs de 5 segundos
+    // Auto-dismiss despu√©s de 5 segundos
     setTimeout(function() {
         $alert.alert('close');
     }, 5000);
 }
 
 /**
- * Atajos de teclado ˙tiles
+ * Atajos de teclado √∫tiles
  */
 $(document).on('keydown', function(e) {
     // Ctrl+S para guardar el formulario enfocado
@@ -348,7 +361,7 @@ $(document).on('keydown', function(e) {
         }
     }
     
-    // Escape para cancelar ediciÛn
+    // Escape para cancelar edici√≥n
     if (e.key === 'Escape') {
         $('.parametro-input:focus').blur();
         resetValidationState($('.parametro-input'));
@@ -361,3 +374,213 @@ window.ConfiguracionParametros = {
     mostrarNotificacion,
     resetValidationState
 };
+
+// ============================================
+// FUNCIONALIDADES PARA PAR√ÅMETROS SENSITIVOS
+// ============================================
+
+/**
+ * Inicializar toggle de visibilidad para inputs sensitivos editables
+ */
+function initToggleVisibilidadSensitivos() {
+    // Bot√≥n de toggle visibilidad (ojo) para inputs password
+    $('.btn-toggle-visibility').on('click', function(e) {
+        e.preventDefault();
+        
+        const $btn = $(this);
+        const $input = $btn.closest('.input-group').find('.parametro-input-sensitivo');
+        const $icon = $btn.find('i');
+        
+        if ($input.length === 0) return;
+        
+        // Toggle entre password y text
+        const esPassword = $input.attr('type') === 'password';
+        
+        if (esPassword) {
+            // Mostrar valor
+            $input.attr('type', 'text');
+            $icon.removeClass('fa-eye').addClass('fa-eye-slash');
+            $btn.addClass('active');
+            $btn.attr('title', 'Ocultar valor');
+        } else {
+            // Ocultar valor
+            $input.attr('type', 'password');
+            $icon.removeClass('fa-eye-slash').addClass('fa-eye');
+            $btn.removeClass('active');
+            $btn.attr('title', 'Mostrar valor');
+        }
+        
+        // Actualizar tooltip
+        $btn.tooltip('dispose').tooltip();
+    });
+}
+
+/**
+ * Inicializar revelaci√≥n de valores para par√°metros sensitivos bloqueados
+ */
+function initRevelarSecretoBloqueado() {
+    // Bot√≥n para revelar secreto de par√°metros bloqueados
+    $('.btn-revelar-secreto').on('click', function(e) {
+        e.preventDefault();
+        
+        const $btn = $(this);
+        const parametroId = $btn.data('parametro-id');
+        const codigo = $btn.data('codigo');
+        const $wrapper = $btn.closest('.valor-sensitivo-wrapper');
+        const $valorDisplay = $wrapper.find('.valor-display');
+        const $valorReal = $wrapper.find('.valor-real');
+        
+        // Verificar si ya est√° revelado
+        const estaRevelado = $btn.hasClass('revelado');
+        
+        if (estaRevelado) {
+            // Ocultar valor real
+            ocultarValorSecreto($wrapper, $btn, $valorDisplay, $valorReal);
+        } else {
+            // Verificar si el valor ya fue cargado anteriormente
+            const valorCacheado = $valorReal.data('valor-cacheado');
+            
+            if (valorCacheado) {
+                // Mostrar valor cacheado
+                mostrarValorSecreto($wrapper, $btn, $valorDisplay, $valorReal, valorCacheado, codigo);
+            } else {
+                // Cargar valor desde el servidor
+                revelarValorSecreto(parametroId, codigo, $wrapper, $btn, $valorDisplay, $valorReal);
+            }
+        }
+    });
+}
+
+/**
+ * Revelar valor secreto desde el servidor
+ */
+function revelarValorSecreto(parametroId, codigo, $wrapper, $btn, $valorDisplay, $valorReal) {
+    // Estado de loading
+    $btn.addClass('loading').prop('disabled', true);
+    
+    $.ajax({
+        url: '/Configuracion/RevelarValorSensitivo',
+        type: 'GET',
+        data: { parametroId: parametroId },
+        dataType: 'json'
+    })
+    .done(function(response) {
+        if (response.success && response.valor) {
+            // Cachear el valor para no volver a pedirlo
+            $valorReal.data('valor-cacheado', response.valor);
+            
+            // Mostrar valor real
+            mostrarValorSecreto($wrapper, $btn, $valorDisplay, $valorReal, response.valor, codigo);
+            
+            // Notificaci√≥n
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('success', `Valor real de ${codigo} revelado`);
+            }
+        } else {
+            // Error en respuesta
+            const mensaje = response.message || 'No se pudo obtener el valor del par√°metro';
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('error', mensaje);
+            } else {
+                console.error(mensaje);
+            }
+        }
+    })
+    .fail(function(xhr, status, error) {
+        // Error de servidor
+        let mensaje = 'Error al revelar el valor del par√°metro';
+        
+        if (xhr.status === 403) {
+            mensaje = 'No tiene permisos para ver valores sensitivos';
+        } else if (xhr.status === 404) {
+            mensaje = 'Par√°metro no encontrado';
+        }
+        
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('error', mensaje);
+        } else {
+            console.error(mensaje, error);
+        }
+    })
+    .always(function() {
+        // Remover estado de loading
+        $btn.removeClass('loading').prop('disabled', false);
+    });
+}
+
+/**
+ * Mostrar valor secreto revelado
+ */
+function mostrarValorSecreto($wrapper, $btn, $valorDisplay, $valorReal, valorTexto, codigo) {
+    // Animar salida del valor enmascarado
+    $valorDisplay.addClass('fade-out');
+    
+    setTimeout(function() {
+        // Ocultar valor enmascarado
+        $valorDisplay.addClass('d-none').removeClass('fade-out');
+        
+        // Mostrar valor real
+        $valorReal.text(valorTexto).removeClass('d-none').addClass('fade-in');
+        
+        // Cambiar bot√≥n a estado "revelado"
+        $btn.addClass('revelado');
+        $btn.html('<i class="fas fa-eye-slash"></i> Ocultar Valor');
+        $btn.attr('title', 'Ocultar valor');
+        $btn.tooltip('dispose').tooltip();
+        
+        // Remover animaci√≥n despu√©s de completar
+        setTimeout(function() {
+            $valorReal.removeClass('fade-in');
+        }, 200);
+    }, 200);
+}
+
+/**
+ * Ocultar valor secreto
+ */
+function ocultarValorSecreto($wrapper, $btn, $valorDisplay, $valorReal) {
+    // Animar salida del valor real
+    $valorReal.addClass('fade-out');
+    
+    setTimeout(function() {
+        // Ocultar valor real
+        $valorReal.addClass('d-none').removeClass('fade-out');
+        
+        // Mostrar valor enmascarado
+        $valorDisplay.removeClass('d-none').addClass('fade-in');
+        
+        // Cambiar bot√≥n a estado normal
+        $btn.removeClass('revelado');
+        $btn.html('<i class="fas fa-eye"></i> Ver Valor Real');
+        $btn.attr('title', 'Revelar valor real');
+        $btn.tooltip('dispose').tooltip();
+        
+        // Remover animaci√≥n despu√©s de completar
+        setTimeout(function() {
+            $valorDisplay.removeClass('fade-in');
+        }, 200);
+    }, 200);
+}
+
+/**
+ * Limpiar cache de valores revelados al cambiar de categor√≠a
+ */
+$(document).on('click', '.categoria-tab', function() {
+    // Limpiar cache de valores sensitivos revelados
+    $('.valor-real').each(function() {
+        $(this).removeData('valor-cacheado');
+        $(this).text('').addClass('d-none');
+    });
+    
+    // Resetear botones a estado inicial
+    $('.btn-revelar-secreto').each(function() {
+        const $btn = $(this);
+        if ($btn.hasClass('revelado')) {
+            $btn.removeClass('revelado');
+            $btn.html('<i class="fas fa-eye"></i> Ver Valor Real');
+            
+            const $wrapper = $btn.closest('.valor-sensitivo-wrapper');
+            $wrapper.find('.valor-display').removeClass('d-none');
+        }
+    });
+});

@@ -100,9 +100,11 @@ public class ParametroSistemaService : IParametroSistemaService
                 return false;
             }
 
-            if (!parametro.EsModificable)
+            // REGLA: Permitir edición si EsModificable=true O si valor actual está vacío
+            if (!PuedeEditarParametro(parametro.EsModificable, parametro.Valor))
             {
-                _logger.LogWarning("Parámetro {Codigo} no es modificable", codigo);
+                _logger.LogWarning("Parámetro {Codigo} no puede editarse (EsModificable={EsModificable}, ValorActual={Tiene})",
+                    codigo, parametro.EsModificable, !string.IsNullOrWhiteSpace(parametro.Valor) ? "SÍ" : "NO");
                 return false;
             }
 
@@ -287,5 +289,20 @@ public class ParametroSistemaService : IParametroSistemaService
             _logger.LogError(ex, "Error al inicializar parámetros por defecto");
             return false;
         }
+    }
+    
+    /// <summary>
+    /// Determina si un parámetro puede ser editado actualmente
+    /// REGLA CENTRALIZADA: puede editarse si EsModificable=true O si el valor está vacío/null
+    /// Esto permite configuración inicial de parámetros no modificables
+    /// </summary>
+    private bool PuedeEditarParametro(bool esModificable, string valor)
+    {
+        // Si es modificable, siempre puede editarse
+        if (esModificable)
+            return true;
+        
+        // Si NO es modificable pero el valor está vacío, permitir editar (configuración inicial)
+        return string.IsNullOrWhiteSpace(valor);
     }
 }

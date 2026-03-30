@@ -82,6 +82,12 @@
                         <span class="badge badge-info badge-lg">
                             @categoriaActual.Parametros.Count parámetros configurados
                         </span>
+                        @if (!(bool)ViewBag.PuedeEditar)
+                        {
+                            <span class="badge badge-warning badge-lg ml-2">
+                                <i class="fas fa-lock mr-1"></i>Sin permisos de edición
+                            </span>
+                        }
                     </div>
                 </div>
             </div>
@@ -92,16 +98,25 @@
                 <div class="parametros-grid">
                     @foreach (var parametro in categoriaActual.Parametros)
                     {
-                        <div class="parametro-card @(!parametro.EsModificable ? "parametro-readonly" : "")" 
-                             data-codigo="@parametro.Codigo">
+                        <div class="parametro-card @(!parametro.PuedeEditarActual ? "parametro-readonly" : "") @(parametro.EsSensitivo ? "parametro-sensitivo" : "")" 
+                             data-codigo="@parametro.Codigo"
+                             data-parametro-id="@parametro.ParametroId"
+                             data-es-sensitivo="@parametro.EsSensitivo.ToString().ToLower()"
+                             data-puede-editar="@parametro.PuedeEditarActual.ToString().ToLower()">
                             <div class="parametro-header">
                                 <div class="parametro-title">
                                     <h5 class="mb-1">@parametro.Codigo</h5>
                                     <div class="parametro-meta">
                                         <span class="badge badge-outline-secondary mr-2">@parametro.TipoValor</span>
-                                        @if (!parametro.EsModificable)
+                                        @if (!parametro.PuedeEditarActual)
                                         {
                                             <span class="badge badge-warning">Solo lectura</span>
+                                        }
+                                        @if (parametro.EsSensitivo)
+                                        {
+                                            <span class="badge badge-danger">
+                                                <i class="fas fa-lock"></i> Sensitivo
+                                            </span>
                                         }
                                     </div>
                                 </div>
@@ -120,7 +135,7 @@
                             </div>
                             
                             <div class="parametro-control">
-                                @if (parametro.EsModificable && (bool)ViewBag.PuedeEditar)
+                                @if (parametro.PuedeEditarActual && (bool)ViewBag.PuedeEditar)
                                 {
                                     <form asp-action="ActualizarParametro" asp-controller="Configuracion" method="post" class="parametro-form">
                                         <input type="hidden" name="parametroId" value="@parametro.ParametroId" />
@@ -135,6 +150,17 @@
                                                     <option value="N" selected="@(parametro.Valor == "N")">No (N)</option>
                                                 </select>
                                             }
+                                            else if (parametro.EsSensitivo)
+                                            {
+                                                <!-- Parámetro sensitivo editable: input tipo password con botón toggle -->
+                                                <input type="password" 
+                                                       name="valor" 
+                                                       value="@parametro.Valor" 
+                                                       class="form-control parametro-input parametro-input-sensitivo"
+                                                       data-tipo="@parametro.TipoValor"
+                                                       data-es-sensitivo="true"
+                                                       placeholder="@parametro.ValorPorDefecto" />
+                                            }
                                             else
                                             {
                                                 <input type="text" 
@@ -145,6 +171,15 @@
                                                        placeholder="@parametro.ValorPorDefecto" />
                                             }
                                             <div class="input-group-append">
+                                                @if (parametro.EsSensitivo && parametro.PuedeEditarActual)
+                                                {
+                                                    <button type="button" 
+                                                            class="btn btn-outline-secondary btn-toggle-visibility"
+                                                            data-toggle="tooltip"
+                                                            title="Mostrar/Ocultar valor">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                }
                                                 <button type="submit" class="btn btn-primary">
                                                     <i class="fas fa-save"></i> Guardar
                                                 </button>
@@ -163,20 +198,48 @@
                                 }
                                 else
                                 {
+                                    <!-- Parámetro de solo lectura -->
                                     <div class="parametro-readonly-value">
-                                        <div class="valor-actual">
-                                            <code class="parametro-value">@parametro.Valor</code>
-                                        </div>
-                                        <div class="readonly-badges mt-2">
-                                            @if (!parametro.EsModificable)
-                                            {
-                                                <span class="badge badge-warning">?? Solo lectura</span>
-                                            }
-                                            @if (!(bool)ViewBag.PuedeEditar)
-                                            {
-                                                <span class="badge badge-info">?? Sin permisos de edición</span>
-                                            }
-                                        </div>
+                                        @if (parametro.EsSensitivo && !string.IsNullOrWhiteSpace(parametro.Valor))
+                                        {
+                                            <!-- Parámetro sensitivo bloqueado: valor enmascarado con botón revelar -->
+                                            <div class="valor-sensitivo-wrapper">
+                                                <div class="valor-actual">
+                                                    <code class="parametro-value parametro-value-masked">
+                                                        <span class="valor-display">@parametro.Valor</span>
+                                                        <span class="valor-real d-none"></span>
+                                                    </code>
+                                                </div>
+                                                @if ((bool)ViewBag.PuedeVerSecretos)
+                                                {
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-primary btn-revelar-secreto mt-2"
+                                                            data-parametro-id="@parametro.ParametroId"
+                                                            data-codigo="@parametro.Codigo"
+                                                            data-toggle="tooltip"
+                                                            title="Revelar valor real">
+                                                        <i class="fas fa-eye"></i> Ver Valor Real
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-secondary mt-2"
+                                                            disabled
+                                                            data-toggle="tooltip"
+                                                            title="No tiene permisos para ver valores sensitivos">
+                                                        <i class="fas fa-lock"></i> Protegido
+                                                    </button>
+                                                }
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <!-- Parámetro normal de solo lectura -->
+                                            <div class="valor-actual">
+                                                <code class="parametro-value">@parametro.Valor</code>
+                                            </div>
+                                        }
                                     </div>
                                 }
                             </div>

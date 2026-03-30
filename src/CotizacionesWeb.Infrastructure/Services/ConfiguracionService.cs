@@ -18,6 +18,7 @@ public interface IConfiguracionService
     Task<bool> ActualizarParametroAsync(ActualizarParametroRequest request, string usuarioId);
     Task<bool> ResetearParametroAsync(string codigo, string usuarioId);
     Task<bool> ValidarConsecutivosAsync();
+    Task<Parametros?> ObtenerParametroRealAsync(int parametroId);
 }
 
 public class ConfiguracionService : IConfiguracionService
@@ -74,12 +75,14 @@ public class ConfiguracionService : IConfiguracionService
                         p.ParametroId,
                         p.Codigo,
                         p.Descripcion,
-                        p.Valor,
+                        ObtenerValorParaDisplay(p.Valor, p.EsSensitivo),
                         ObtenerDescripcionTipo(p.TipoValor),
                         p.Categoria,
                         p.EsModificable,
                         p.ValorPorDefecto,
-                        p.Notas
+                        p.Notas,
+                        p.EsSensitivo,
+                        PuedeEditarParametro(p.EsModificable, p.Valor)
                     )).ToList()
                 ))
                 .OrderBy(c => c.Categoria)
@@ -118,12 +121,14 @@ public class ConfiguracionService : IConfiguracionService
                     p.ParametroId,
                     p.Codigo,
                     p.Descripcion,
-                    p.Valor,
+                    ObtenerValorParaDisplay(p.Valor, p.EsSensitivo),
                     ObtenerDescripcionTipo(p.TipoValor),
                     p.Categoria,
                     p.EsModificable,
                     p.ValorPorDefecto,
-                    p.Notas
+                    p.Notas,
+                    p.EsSensitivo,
+                    PuedeEditarParametro(p.EsModificable, p.Valor)
                 )).ToList()
             );
         }
@@ -194,9 +199,11 @@ public class ConfiguracionService : IConfiguracionService
                 return false;
             }
 
-            if (!parametro.EsModificable)
+            // REGLA: Permitir edición si EsModificable=true O si valor actual está vacío
+            if (!PuedeEditarParametro(parametro.EsModificable, parametro.Valor))
             {
-                _logger.LogWarning("Intento de modificar parámetro no modificable: {Codigo}", parametro.Codigo);
+                _logger.LogWarning("Intento de modificar parámetro no editable: {Codigo} (EsModificable={EsModificable}, ValorActual={Tiene})", 
+                    parametro.Codigo, parametro.EsModificable, !string.IsNullOrWhiteSpace(parametro.Valor) ? "SÍ" : "NO");
                 return false;
             }
 
@@ -274,6 +281,54 @@ public class ConfiguracionService : IConfiguracionService
             TipoParametro.Fecha => "Fecha",
             _ => "Desconocido"
         };
+    }
+    
+    /// <summary>
+    /// Determina si un parámetro puede ser editado actualmente
+    /// REGLA: puede editarse si EsModificable=true O si el valor está vacío/null
+    /// </summary>
+    private bool PuedeEditarParametro(bool esModificable, string valor)
+    {
+        // Si es modificable, siempre puede editarse
+        if (esModificable)
+            return true;
+        
+        // Si NO es modificable pero el valor está vacío, permitir editar (configuración inicial)
+        return string.IsNullOrWhiteSpace(valor);
+    }
+    
+    /// <summary>
+    /// Obtiene el valor para mostrar en la UI, enmascarando si es sensitivo
+    /// </summary>
+    private string ObtenerValorParaDisplay(string valor, bool esSensitivo)
+    {
+        if (!esSensitivo)
+            return valor;
+        
+        // Si es sensitivo y tiene valor, enmascarar
+        if (!string.IsNullOrWhiteSpace(valor))
+            return "••••••••••••••••";
+        
+        // Si es sensitivo pero está vacío, mostrar vacío
+        return string.Empty;
+    }
+    
+    /// <summary>
+    /// Obtiene el parámetro real (sin enmascarar) desde la base de datos
+    /// SEGURIDAD: Solo usar desde endpoints con validación de permisos
+    /// </summary>
+    public async Task<Parametros?> ObtenerParametroRealAsync(int parametroId)
+    {
+        try
+        {
+            return await _context.Parametros
+                .FirstOrDefaultAsync(p => p.ParametroId == parametroId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener parámetro real {ParametroId}", parametroId);
+            return null;
+        }
     }
 
     private async Task<ValidacionParametroResult> ValidarParametroEspecificoAsync(string codigo, string valor)

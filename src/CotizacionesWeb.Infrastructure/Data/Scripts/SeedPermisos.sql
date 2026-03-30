@@ -53,9 +53,10 @@ INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
 ('CFG_PARAMS_VIEW', 'Configuracion', 'Ver parámetros del sistema'),
 ('CFG_PARAMS_EDIT', 'Configuracion', 'Editar parámetros del sistema'),
 ('CFG_PARAMS_RESET', 'Configuracion', 'Resetear parámetros a valores por defecto'),
+('CFG_PARAMS_VIEW_SECRET','Configuracion', 'Ver valores reales de parámetros sensitivos (contraseñas, tokens, API keys)'),
 ('CFG_LOGS', 'Configuracion', 'Ver logs del sistema');
 
-PRINT '? 4 permisos de Configuración insertados';
+PRINT '? 5 permisos de Configuración insertados';
 PRINT '';
 
 -- ============================================
@@ -167,13 +168,13 @@ PRINT '==============================================';
 PRINT 'DETALLE DE CATEGORÍAS';
 PRINT '==============================================';
 PRINT '  • Clientes............: 5 permisos';
-PRINT '  • Configuracion.......: 4 permisos';
+PRINT '  • Configuracion.......: 5 permisos';
 PRINT '  • Cotizaciones........: 16 permisos';
 PRINT '  • Reportes............: 4 permisos';
 PRINT '  • Roles...............: 5 permisos';
 PRINT '  • Usuarios............: 6 permisos';
 PRINT '';
-PRINT '  TOTAL.................: 40 permisos';
+PRINT '  TOTAL.................: 41 permisos';
 PRINT '==============================================';
 PRINT '';
 PRINT 'SIGUIENTE PASO:';

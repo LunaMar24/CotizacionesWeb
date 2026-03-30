@@ -2,6 +2,7 @@ namespace CotizacionesWeb.Application.Configuracion;
 
 /// <summary>
 /// DTO para mostrar parámetros del sistema en la UI
+/// ACTUALIZADO: Incluye soporte para parámetros sensitivos
 /// </summary>
 public record ParametroDto(
     int ParametroId,
@@ -12,7 +13,9 @@ public record ParametroDto(
     string Categoria,
     bool EsModificable,
     string? ValorPorDefecto,
-    string? Notas
+    string? Notas,
+    bool EsSensitivo,
+    bool PuedeEditarActual // true si EsModificable=true o si Valor está vacío/null
 );
 
 /// <summary>
