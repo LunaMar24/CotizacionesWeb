@@ -35,6 +35,7 @@ public class ConfiguracionService : IConfiguracionService
         { "Notificaciones", ("Configuración de emails y alertas", "fas fa-envelope") },
         { "Seguridad", ("Configuración de seguridad y autenticación", "fas fa-shield-alt") },
         { "Integracion_HubSpot", ("Configuración de integración con HubSpot CRM", "fab fa-hubspot") },
+        { "Integracion_Erp", ("Configuración de integración con el ERP", "fab fa-building-flag") },
         { "Workflow", ("Reglas de flujo de trabajo", "fas fa-project-diagram") },
         { "Archivos", ("Configuración de almacenamiento", "fas fa-folder") },
         { "Reportes", ("Configuración de informes", "fas fa-chart-bar") },

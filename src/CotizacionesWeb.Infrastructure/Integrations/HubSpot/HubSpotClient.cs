@@ -21,11 +21,15 @@ public class HubSpotClient : IHubSpotService
   private const string HUBSPOT_ACCESS_TOKEN = "HUBSPOT_ACCESS_TOKEN";
   private const string HUBSPOT_OBJECT_CONTACT = "HUBSPOT_OBJECT_CONTACT";
   private const string HUBSPOT_OBJECT_COMPANY = "HUBSPOT_OBJECT_COMPANY";
-  private const string HUBSPOT_CONTACT_SEARCH_FIELD = "HUBSPOT_CONTACT_SEARCH_FIELD";
-  private const string HUBSPOT_COMPANY_SEARCH_FIELD = "HUBSPOT_COMPANY_SEARCH_FIELD";
+  private const string HUBSPOT_CONTACT_SEARCH_FIELDS = "HUBSPOT_CONTACT_SEARCH_FIELDS";
+  private const string HUBSPOT_COMPANY_SEARCH_FIELDS = "HUBSPOT_COMPANY_SEARCH_FIELDS";
   private const string HUBSPOT_PAGE_SIZE = "HUBSPOT_PAGE_SIZE";
   private const string HUBSPOT_TIMEOUT_SECONDS = "HUBSPOT_TIMEOUT_SECONDS";
   private const string HUBSPOT_RETRY_COUNT = "HUBSPOT_RETRY_COUNT";
+
+  //Si se ocupan más parámetros de búsqueda, se deben configurar en el sistema y
+  //mapear en el código, no enviar una lista larga desde el parámetro (Max 6)
+  private const int MAX_HUBSOPT_SEARCH_FIELDS = 4;
 
   public HubSpotClient(HttpClient httpClient, ILogger<HubSpotClient> logger, IParametroSistemaService parametroSistemaService)
   {
@@ -65,22 +69,22 @@ public class HubSpotClient : IHubSpotService
       throw new InvalidOperationException("No se encontró configurado el token de acceso de HubSpot.");
 
     var hubSpotObject = ResolverHubSpotObject(request.TipoInteresado, config);
-    var searchField = ResolverSearchField(request.TipoInteresado, config);
+    var searchFields = ResolverSearchFields(request.TipoInteresado, config);
 
     if (string.IsNullOrWhiteSpace(hubSpotObject))
       throw new InvalidOperationException("No se encontró configurado el objeto HubSpot para el tipo de interesado.");
 
-    if (string.IsNullOrWhiteSpace(searchField))
-      throw new InvalidOperationException("No se encontró configurado el campo de búsqueda HubSpot para el tipo de interesado.");
+    if (searchFields is null || searchFields.Length == 0)
+      throw new InvalidOperationException("No se encontraron campos de búsqueda HubSpot configurados para el tipo de interesado.");
 
     _logger.LogInformation(
         "Buscando interesados en HubSpot. Tipo: {TipoInteresado}, Objeto: {Objeto}, Campo: {CampoBusqueda}",
         request.TipoInteresado,
         hubSpotObject,
-        searchField);
+        string.Join(",", searchFields));
 
     var endpoint = ConstruirSearchEndpoint(config.BaseUrl, hubSpotObject);
-    var requestBody = ConstruirSearchRequestBody(searchField, request.TextoBusqueda, config.PageSize);
+    var requestBody = ConstruirSearchRequestBody(searchFields, request.TextoBusqueda, config.PageSize);
 
     using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
     httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", config.AccessToken);
@@ -138,14 +142,14 @@ public class HubSpotClient : IHubSpotService
     };
   }
 
-  private static string ResolverSearchField(
-    TipoInteresado tipoInteresado,
-    HubSpotSearchConfiguration config)
+  private static string[] ResolverSearchFields(
+      TipoInteresado tipoInteresado,
+      HubSpotSearchConfiguration config)
   {
     return tipoInteresado switch
     {
-      TipoInteresado.Persona => config.ContactSearchField,
-      TipoInteresado.Empresa => config.CompanySearchField,
+      TipoInteresado.Persona => config.ContactSearchFields,
+      TipoInteresado.Empresa => config.CompanySearchFields,
       _ => throw new InvalidOperationException("Tipo de interesado no soportado para búsqueda en HubSpot.")
     };
   }
@@ -157,8 +161,8 @@ public class HubSpotClient : IHubSpotService
     var accessToken = await _parametroSistemaService.ObtenerValorParametroAsync(HUBSPOT_ACCESS_TOKEN);
     var contactObject = await _parametroSistemaService.ObtenerValorParametroAsync(HUBSPOT_OBJECT_CONTACT);
     var companyObject = await _parametroSistemaService.ObtenerValorParametroAsync(HUBSPOT_OBJECT_COMPANY);
-    var contactSearchField = await _parametroSistemaService.ObtenerValorParametroAsync(HUBSPOT_CONTACT_SEARCH_FIELD);
-    var companySearchField = await _parametroSistemaService.ObtenerValorParametroAsync(HUBSPOT_COMPANY_SEARCH_FIELD);
+    var contactSearchFieldsRaw = await _parametroSistemaService.ObtenerValorParametroAsync(HUBSPOT_CONTACT_SEARCH_FIELDS);
+    var companySearchFieldsRaw = await _parametroSistemaService.ObtenerValorParametroAsync(HUBSPOT_COMPANY_SEARCH_FIELDS);
     var pageSize = await _parametroSistemaService.ObtenerValorParametroAsync<int>(HUBSPOT_PAGE_SIZE);
     var timeoutSeconds = await _parametroSistemaService.ObtenerValorParametroAsync<int>(HUBSPOT_TIMEOUT_SECONDS);
     var retryCount = await _parametroSistemaService.ObtenerValorParametroAsync<int>(HUBSPOT_RETRY_COUNT);
@@ -169,8 +173,8 @@ public class HubSpotClient : IHubSpotService
         AccessToken: accessToken ?? string.Empty,
         ContactObject: contactObject ?? "contacts",
         CompanyObject: companyObject ?? "companies",
-        ContactSearchField: contactSearchField ?? "email",
-        CompanySearchField: companySearchField ?? "name",
+        ContactSearchFields: ParseSearchFields(contactSearchFieldsRaw),
+        CompanySearchFields: ParseSearchFields(companySearchFieldsRaw),
         PageSize: pageSize > 0 ? pageSize : 100,
         TimeoutSeconds: timeoutSeconds > 0 ? timeoutSeconds : 30,
         RetryCount: retryCount >= 0 ? retryCount : 3
@@ -186,27 +190,31 @@ public class HubSpotClient : IHubSpotService
   }
 
   private static string ConstruirSearchRequestBody(
-    string searchField,
+    string[] searchFields,
     string textoBusqueda,
     int pageSize)
   {
+    var validFields = searchFields
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Take(MAX_HUBSOPT_SEARCH_FIELDS)
+        .ToArray();
+
     var payload = new
     {
-      filterGroups = new[]
-        {
-            new
+      filterGroups = validFields
+            .Select(field => new
             {
-                filters = new[]
+              filters = new[]
                 {
                     new
                     {
-                        propertyName = searchField,
+                        propertyName = field,
                         @operator = "CONTAINS_TOKEN",
                         value = textoBusqueda
                     }
                 }
-            }
-        },
+            })
+            .ToArray(),
       limit = pageSize,
       properties = new[]
         {
@@ -276,6 +284,19 @@ public class HubSpotClient : IHubSpotService
         .ToList();
   }
 
+  private static string[] ParseSearchFields(string? rawValue)
+  {
+    if (string.IsNullOrWhiteSpace(rawValue))
+      return Array.Empty<string>();
+
+    return rawValue
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Take(MAX_HUBSOPT_SEARCH_FIELDS)
+        .ToArray();
+  }
+
   #endregion Helpers
 
   #region Records Internos Integracion
@@ -286,8 +307,8 @@ public class HubSpotClient : IHubSpotService
     string AccessToken,
     string ContactObject,
     string CompanyObject,
-    string ContactSearchField,
-    string CompanySearchField,
+    string[] ContactSearchFields,
+    string[] CompanySearchFields,
     int PageSize,
     int TimeoutSeconds,
     int RetryCount

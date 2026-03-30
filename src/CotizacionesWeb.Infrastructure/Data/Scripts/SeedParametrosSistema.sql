@@ -56,8 +56,15 @@ INSERT INTO Parametros (Codigo, Descripcion, Valor, TipoValor, Categoria, EsModi
 ('HUBSPOT_ACCOUNT_NAME', 'Nombre de la cuenta HubSpot', 'Cuenta Principal', 'S', 'Integracion_HubSpot', 1, 'Mi Cuenta', NULL),
 --('HUBSPOT_LAST_SYNC_CONTACTS', 'Última sincronización contactos', '', 'S', 'Integracion_HubSpot', 1, '', 'Actualizado automáticamente'),
 --('HUBSPOT_LAST_SYNC_COMPANIES', 'Última sincronización compañías', '', 'S', 'Integracion_HubSpot', 1, '', 'Actualizado automáticamente'),
-('HUBSPOT_CONTACT_SEARCH_FIELD', 'Campo de búsqueda contacto', 'email', 'S', 'Integracion_HubSpot', 1, 'email', NULL),
-('HUBSPOT_COMPANY_SEARCH_FIELD', 'Campo de búsqueda compañía', 'name', 'S', 'Integracion_HubSpot', 1, 'name', NULL),
+('HUBSPOT_CONTACT_SEARCH_FIELD', 'Campos de búsqueda contacto', 'email,firstname,lastname', 'S', 'Integracion_HubSpot', 1, 'email', 'Campos de búsqueda de contactos en HubSpot. Separados por coma. Máximo 3 campos.'),
+('HUBSPOT_COMPANY_SEARCH_FIELD', 'Campos de búsqueda compañía', 'name,domain', 'S', 'Integracion_HubSpot', 1, 'name', 'Campos de búsqueda de compañías en HubSpot. Separados por coma. Máximo 3 campos.'),
+
+-- ============================================
+-- PARÁMETROS DE INTEGRACIÓN ERP
+-- ============================================
+('ERP_ENABLED', 'Activa integración con ERP', 'N', 'B', 'Integracion_ERP', 1, 'N', 'Activar solo después de configurar conexion al ERP'),
+('ERP_NIVELPRECIO_LOCAL', 'Nivel Precio para moneda local', 'ND-LOCAL', 'S', 'Integracion_ERP', 1, 'ND-LOCAL', NULL),
+('ERP_NIVELPRECIO_DOLAR', 'Nivel Precio para moneda dólar', 'ND-DOLAR', 'S', 'Integracion_ERP', 1, 'ND-DOLAR', NULL),
 
 -- ============================================
 -- PARÁMETROS DE NOTIFICACIONES
