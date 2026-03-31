@@ -1,7 +1,10 @@
+using CotizacionesWeb.Domain.Entities.ERP;
+
 namespace CotizacionesWeb.Application.Integrations;
 
 public interface IErpService
 {
-    // TODO: Define ERP integration methods when integration is implemented
-    Task SincronizarCotizacionAsync(int cotizacionId);
+  Task<List<ProductoErp>> ObtenerProductosAsync(
+      string monedaCotizacion,
+      string? textoBusqueda = null);
 }

@@ -3,24 +3,10 @@
 // ========================================
 
 // Variables globales
-let productosDisponibles = [];
+let productosDisponibles = []; // Se cargará dinámicamente desde ERP vía Select2
 let monedaActual = 'CRC';
 let detalleEditandoIndex = -1;
 let estadoActual = 'B'; // Estado actual de la cotización
-
-// Datos temporales de productos (pendiente integración con ERP)
-const PRODUCTOS_TEMP = [
-    { id: 'PROD001', nombre: 'Laptop Dell Inspiron 15', precio: 450000 },
-    { id: 'PROD002', nombre: 'Monitor Samsung 24" Full HD', precio: 125000 },
-    { id: 'PROD003', nombre: 'Teclado Mecánico Logitech', precio: 35000 },
-    { id: 'PROD004', nombre: 'Mouse Wireless HP', precio: 15000 },
-    { id: 'PROD005', nombre: 'Impresora HP LaserJet Pro', precio: 185000 },
-    { id: 'PROD006', nombre: 'Router WiFi TP-Link AC1200', precio: 45000 },
-    { id: 'PROD007', nombre: 'Disco Duro Externo 1TB', precio: 55000 },
-    { id: 'SERV001', nombre: 'Servicio de Instalación', precio: 25000 },
-    { id: 'SERV002', nombre: 'Soporte Técnico Mensual', precio: 40000 },
-    { id: 'SERV003', nombre: 'Configuración de Red', precio: 75000 }
-];
 
 $(document).ready(function() {
     if (typeof $ === 'undefined') {
@@ -221,15 +207,7 @@ function configurarEventos() {
         $('#btnGuardarDetalle').on('click', guardarDetalle);
         $('#modalCantidad, #modalPrecioUnitario, #modalDescuento').on('input', calcularTotalLinea);
         
-        $('#modalProductoId').on('change', function() {
-            const productoId = $(this).val();
-            const producto = productosDisponibles.find(p => p.id === productoId);
-            if (producto) {
-                $('#modalProductoNombre').val(producto.nombre);
-                $('#modalPrecioUnitario').val(producto.precio);
-                calcularTotalLinea();
-            }
-        });
+        // Nota: El evento de cambio de producto ahora lo maneja Select2 en inicializarSelect2Productos()
         
         $('#modalEditarDetalle').on('hidden.bs.modal', limpiarModalDetalle);
     } else {
@@ -246,24 +224,185 @@ function configurarEventos() {
 }
 
 function cargarDatosTemporales() {
-    productosDisponibles = PRODUCTOS_TEMP;
-    
+    // Los productos se cargarán dinámicamente desde el ERP mediante Select2 con AJAX
     const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
         window.FormatUtils.isEditable(estadoActual) : 
         (estadoActual === 'B');
     
     if (esEditable) {
-        const $selectProducto = $('#modalProductoId');
-        $selectProducto.empty().append('<option value="">Seleccione un producto...</option>');
-        
-        productosDisponibles.forEach(producto => {
-            $selectProducto.append(
-                `<option value="${producto.id}" data-precio="${producto.precio}">
-                    ${producto.id} - ${producto.nombre}
-                </option>`
-            );
-        });
+        // Inicializar Select2 con búsqueda remota al ERP
+        inicializarSelect2Productos();
     }
+}
+
+/**
+ * Inicializa Select2 en el campo de productos con búsqueda remota al ERP
+ */
+function inicializarSelect2Productos() {
+    const $select = $('#modalProductoId');
+    
+    // Verificar que el elemento existe
+    if ($select.length === 0) {
+        console.error('❌ El elemento #modalProductoId no existe en el DOM');
+        return;
+    }
+    
+    // Verificar si Select2 ya está inicializado y destruirlo si es necesario
+    if ($select.hasClass('select2-hidden-accessible')) {
+        console.log('🔄 Destruyendo Select2 existente...');
+        $select.select2('destroy');
+    }
+    
+    console.log('✅ Inicializando Select2 en #modalProductoId...');
+    
+    // Configurar Select2 con AJAX
+    $select.select2({
+        theme: 'bootstrap4',
+        placeholder: 'Busque un producto por código o descripción...',
+        allowClear: true,
+        dropdownParent: $('#modalEditarDetalle'), // IMPORTANTE: Asociar al modal
+        language: {
+            inputTooShort: function() {
+                return 'Ingrese al menos 2 caracteres para buscar';
+            },
+            noResults: function() {
+                return 'No se encontraron productos';
+            },
+            searching: function() {
+                return 'Buscando productos en ERP...';
+            },
+            errorLoading: function() {
+                return 'Error al cargar productos';
+            }
+        },
+        minimumInputLength: 2,
+        ajax: {
+            url: '/Cotizaciones/BuscarProductosErp',
+            dataType: 'json',
+            delay: 400, // Debounce de 400ms
+            data: function(params) {
+                // Obtener moneda actual de la cotización
+                const moneda = obtenerMonedaActual();
+                
+                console.log('🔍 Buscando productos:', {
+                    moneda: moneda,
+                    textoBusqueda: params.term
+                });
+                
+                return {
+                    moneda: moneda,
+                    textoBusqueda: params.term
+                };
+            },
+            processResults: function(response) {
+                console.log('📦 Respuesta del servidor:', response);
+                
+                if (!response.success) {
+                    showNotification('error', response.message || 'Error al buscar productos');
+                    return { results: [] };
+                }
+                
+                // Mapear respuesta al formato de Select2
+                const productos = response.data.map(function(producto) {
+                    return {
+                        id: producto.value,
+                        text: producto.text,
+                        precio: producto.precio,
+                        impuesto: producto.impuesto
+                    };
+                });
+                
+                console.log('✅ Productos mapeados:', productos.length, 'items');
+                
+                return { results: productos };
+            },
+            cache: true
+        },
+        escapeMarkup: function(markup) {
+            return markup;
+        },
+        templateResult: formatProductoResult,
+        templateSelection: formatProductoSelection
+    });
+    
+    console.log('✅ Select2 inicializado correctamente');
+    
+    // Evento al seleccionar un producto
+    $select.on('select2:select', function(e) {
+        const data = e.params.data;
+        console.log('✅ Producto seleccionado:', data);
+        
+        if (data) {
+            // Auto-llenar descripción
+            if (data.text) {
+                // Extraer solo la descripción (después del guión)
+                const partes = data.text.split(' - ');
+                const descripcion = partes.length > 1 ? partes.slice(1).join(' - ') : data.text;
+                $('#modalProductoNombre').val(descripcion.trim());
+            }
+            
+            // Auto-llenar precio
+            if (data.precio !== null && data.precio !== undefined) {
+                $('#modalPrecioUnitario').val(data.precio);
+            } else {
+                $('#modalPrecioUnitario').val('0');
+            }
+            
+            // Recalcular total de línea
+            calcularTotalLinea();
+        }
+    });
+    
+    // Evento al limpiar selección
+    $select.on('select2:clear', function() {
+        console.log('🧹 Limpiando selección de producto');
+        $('#modalProductoNombre').val('');
+        $('#modalPrecioUnitario').val('');
+        calcularTotalLinea();
+    });
+    
+    // Evento al abrir el dropdown
+    $select.on('select2:open', function() {
+        console.log('📂 Dropdown de Select2 abierto');
+    });
+}
+
+/**
+ * Formatea el resultado del producto en el dropdown de Select2
+ */
+function formatProductoResult(producto) {
+    if (producto.loading) {
+        return producto.text;
+    }
+    
+    // Separar código y descripción
+    const partes = producto.text.split(' - ');
+    const codigo = partes[0] || '';
+    const descripcion = partes.length > 1 ? partes.slice(1).join(' - ') : '';
+    
+    const precioFormateado = producto.precio ? formatCurrency(producto.precio) : 'N/A';
+    
+    const $resultado = $(
+        '<div class="select2-result-producto">' +
+            '<div class="select2-result-producto__codigo">' + codigo + '</div>' +
+            '<div class="select2-result-producto__descripcion">' + descripcion + '</div>' +
+            '<div class="select2-result-producto__precio">Precio: ' + precioFormateado + '</div>' +
+        '</div>'
+    );
+    
+    return $resultado;
+}
+
+/**
+ * Formatea la selección del producto en el campo de Select2
+ */
+function formatProductoSelection(producto) {
+    if (!producto.id) {
+        return producto.text;
+    }
+    
+    // Mostrar solo código - descripción en el campo seleccionado
+    return producto.text;
 }
 
 // ========================================
@@ -290,13 +429,23 @@ function abrirModalDetalle(index) {
         const precio = parseFloat(fila.find('input[name$=".PrecioUnitario"]').val());
         const descuento = parseFloat(fila.find('input[name$=".Descuento"]').val());
         
-        // Establecer producto seleccionado ANTES de cambiar el nombre
-        $('#modalProductoId').val(productoId);
-        
-        // Si el producto no está en la lista, agregarlo como opción
-        if (productoId && $('#modalProductoId option[value="' + productoId + '"]').length === 0) {
-            $('#modalProductoId').append(`<option value="${productoId}">${productoId} - ${productoNombre}</option>`);
-            $('#modalProductoId').val(productoId);
+        // Configurar Select2 con el producto actual
+        const $selectProducto = $('#modalProductoId');
+        if ($selectProducto.hasClass('select2-hidden-accessible')) {
+            // Agregar opción si no existe y establecer valor
+            if (productoId && $selectProducto.find(`option[value="${productoId}"]`).length === 0) {
+                const textoCompleto = `${productoId} - ${productoNombre}`;
+                const newOption = new Option(textoCompleto, productoId, true, true);
+                $selectProducto.append(newOption).trigger('change');
+            } else {
+                $selectProducto.val(productoId).trigger('change');
+            }
+        } else {
+            // Fallback si Select2 no está inicializado
+            if (productoId && $selectProducto.find(`option[value="${productoId}"]`).length === 0) {
+                $selectProducto.append(`<option value="${productoId}" selected>${productoId} - ${productoNombre}</option>`);
+            }
+            $selectProducto.val(productoId);
         }
         
         $('#modalProductoNombre').val(productoNombre);
@@ -569,7 +718,15 @@ function calcularTotalLinea() {
 
 function limpiarModalDetalle() {
     $('#formEditarDetalle')[0].reset();
-    $('#modalProductoId').val('');
+    
+    // Limpiar Select2
+    const $selectProducto = $('#modalProductoId');
+    if ($selectProducto.hasClass('select2-hidden-accessible')) {
+        $selectProducto.val(null).trigger('change');
+    } else {
+        $selectProducto.val('');
+    }
+    
     $('#modalProductoNombre').val('');
     $('#modalCantidad').val('1');
     $('#modalPrecioUnitario').val('');

@@ -17,17 +17,20 @@ public class CotizacionesController : Controller
   private readonly ILogger<CotizacionesController> _logger;
   private readonly IAssignInteresadoHubSpotService _assignInteresadoHubSpotService;
   private readonly IHubSpotService _hubSpotService;
+  private readonly IErpService _erpService;
 
   public CotizacionesController(
       ICotizacionService cotizacionService,
       ILogger<CotizacionesController> logger,
       IAssignInteresadoHubSpotService assignInteresadoHubSpotService,
-      IHubSpotService hubSpotService)
+      IHubSpotService hubSpotService,
+      IErpService erpService)
   {
     _cotizacionService = cotizacionService;
     _logger = logger;
     _assignInteresadoHubSpotService = assignInteresadoHubSpotService;
     _hubSpotService = hubSpotService;
+    _erpService = erpService;
   }
 
   [RequierePermiso("COT_VIEW")]
@@ -608,6 +611,60 @@ public class CotizacionesController : Controller
         empresaInteresado = result.EmpresaInteresado
       }
     });
+  }
+
+  [HttpGet]
+  [RequiereAlgunPermiso("COT_CREATE", "COT_EDIT")]
+  public async Task<IActionResult> BuscarProductosErp(string moneda, string? textoBusqueda = null)
+  {
+    try
+    {
+      if (string.IsNullOrWhiteSpace(moneda))
+      {
+        return Json(new
+        {
+          success = false,
+          message = "La moneda es requerida"
+        });
+      }
+
+      if (!string.IsNullOrWhiteSpace(textoBusqueda) && textoBusqueda.Trim().Length < 2)
+      {
+        return Json(new
+        {
+          success = false,
+          message = "El texto de búsqueda debe tener al menos 2 caracteres"
+        });
+      }
+
+      var productos = await _erpService.ObtenerProductosAsync(
+          moneda.Trim(),
+          string.IsNullOrWhiteSpace(textoBusqueda) ? null : textoBusqueda.Trim());
+
+      var productosFormateados = productos.Select(p => new
+      {
+        value = p.Producto,
+        text = $"{p.Producto} - {p.Descripcion}",
+        precio = p.Precio,
+        impuesto = p.CodigoImpuesto
+      }).ToList();
+
+      return Json(new
+      {
+        success = true,
+        data = productosFormateados
+      });
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al consultar productos ERP con moneda {Moneda} y búsqueda '{TextoBusqueda}'",
+          moneda, textoBusqueda);
+      return Json(new
+      {
+        success = false,
+        message = "Error al consultar productos ERP"
+      });
+    }
   }
 
   [HttpPost]

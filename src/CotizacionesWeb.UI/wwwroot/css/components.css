@@ -401,3 +401,47 @@
         transform: translateX(0);
     }
 }
+
+/* ============================================
+   SELECT2 CUSTOM STYLES
+   ============================================ */
+
+/* Estilos para resultados de productos en Select2 */
+.select2-result-producto {
+    padding: 8px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.select2-result-producto:hover {
+    background-color: #f8f9fa;
+}
+
+.select2-result-producto__codigo {
+    font-weight: bold;
+    color: #007bff;
+    font-size: 0.95rem;
+}
+
+.select2-result-producto__descripcion {
+    color: #333;
+    margin-top: 2px;
+    font-size: 0.9rem;
+}
+
+.select2-result-producto__precio {
+    color: #28a745;
+    font-size: 0.85rem;
+    margin-top: 2px;
+    font-weight: 600;
+}
+
+/* Ajustar ancho del dropdown */
+.select2-container {
+    width: 100% !important;
+}
+
+/* Mejorar apariencia del placeholder */
+.select2-container--bootstrap4 .select2-selection--single .select2-selection__placeholder {
+    color: #6c757d;
+    font-style: italic;
+}
