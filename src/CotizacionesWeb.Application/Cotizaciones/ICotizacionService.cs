@@ -17,6 +17,9 @@ public interface ICotizacionService
     // Obtener historial de una versión específica
     Task<List<HistorialCotizacionDto>> GetCotizacionVersionHistoryAsync(int versionId);
     
+    // Crear nueva cotización
+    Task<CrearCotizacionResult> CrearCotizacionAsync(CrearCotizacionRequest request, int? userId = null);
+    
     // Copiar versión actual (desde listado principal)
     Task<CopiarVersionResult> CopiarVersionActualAsync(string cotizacionId, string? comentario = null, int? userId = null);
     

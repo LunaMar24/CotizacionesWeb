@@ -206,12 +206,20 @@ public class CotizacionEditarViewModel
     // Propiedades calculadas para reglas de negocio
     /// <summary>
     /// Indica si se puede cambiar la moneda de la cotización.
-    /// Solo es posible si: Versión = 1.0 Y Estado = Borrador Y No hay líneas de detalle
+    /// Para nuevas cotizaciones: siempre puede cambiar si está en estado Borrador
+    /// Para ediciones existentes: solo si está en Borrador Y no tiene líneas persistentes en BD
     /// </summary>
     public bool PuedeCambiarMoneda => 
-        NumeroVersion == 1.0m && 
-        EstadoActual == 'B' && 
-        (Detalles == null || !Detalles.Any());
+        EstadoActual == 'B' && (
+            EsNuevaCotizacion || // Nueva cotización: siempre puede cambiar
+            (Detalles == null || !Detalles.Any(d => d.DetalleVersionId > 0)) // Edición: sin líneas persistentes
+        );
+
+    /// <summary>
+    /// Indica si es una nueva cotización (creación en curso).
+    /// Se usa para ajustar comportamiento específico de la pantalla de creación.
+    /// </summary>
+    public bool EsNuevaCotizacion { get; set; } = false;
 }
 
 public class DetalleEditarViewModel

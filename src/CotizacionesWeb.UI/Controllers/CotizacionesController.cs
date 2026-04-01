@@ -399,6 +399,174 @@ public class CotizacionesController : Controller
     }
   }
 
+  [HttpGet("Cotizaciones/Crear")]
+  [RequierePermiso("COT_CREATE")]
+  public async Task<IActionResult> Crear()
+  {
+    try
+    {
+      // Obtener parámetros de configuración para valores iniciales
+      var monedaDefecto = await _parametroSistemaService.ObtenerValorParametroAsync("MONEDA_DEFECTO") ?? "CRC";
+      var tipoCambioBase = await _parametroSistemaService.ObtenerValorParametroAsync<decimal?>("TIPO_CAMBIO_BASE");
+
+      // Obtener parámetros de configuración de impuestos
+      var usarImpuestosErp = await _parametroSistemaService.ObtenerValorParametroAsync("ERP_USAR_IMPUESTOS") ?? "S";
+      var tasaImpuesto = await _parametroSistemaService.ObtenerValorParametroAsync<decimal?>("TASA_IMPUESTO") ?? 13.0m;
+
+      // Crear ViewModel para nueva cotización con valores predeterminados
+      var viewModel = new CotizacionEditarViewModel
+      {
+        // ID especial para nueva cotización
+        CotizacionId = "<Nueva>",
+        EstadoActual = 'B', // Siempre comienza en Borrador
+        EstadoActualTexto = "Borrador",
+        FechaCreacion = DateTime.Now,
+        FechaVersion = DateTime.Now,
+
+        // Nuevos IDs temporales (se asignarán al guardar)
+        VersionId = 0, // Temporal
+        NumeroVersion = 1.0m, // Primera versión
+
+        // Interesado vacío (debe asignarse durante la creación)
+        InteresadoId = null,
+        NombreInteresado = "",
+        EmailInteresado = "",
+        EmpresaInteresado = "",
+        TipoInteresado = 'P', // Persona por defecto
+
+        // Totales en cero para nueva cotización
+        SubTotal = 0,
+        Impuesto = 0,
+        Descuento = 0,
+        Total = 0,
+        
+        // Configuración inicial desde parámetros
+        Moneda = monedaDefecto,
+        TipoCambio = tipoCambioBase,
+
+        // Sin fechas especiales (nueva cotización)
+        FechaEnvio = null,
+        FechaAceptacion = null,
+        FechaRechazo = null,
+        EnviadoERP = 'N',
+        FechaEnvioERP = null,
+
+        // Sin notas iniciales
+        Notas = "",
+
+        // Sin líneas de detalle inicialmente
+        Detalles = new List<DetalleEditarViewModel>(),
+
+        // Configuración de impuestos desde parámetros del sistema
+        UsarImpuestosErp = usarImpuestosErp,
+        TasaImpuesto = tasaImpuesto,
+        
+        // Marca especial para identificar que es creación
+        EsNuevaCotizacion = true
+      };
+
+      ViewBag.MonedasDisponibles = FormatHelper.GetMonedasDisponiblesParaJson();
+      ViewBag.EsCreacion = true; // Para diferenciar comportamiento en la vista
+
+      return View("Editar", viewModel); // Reutilizar la misma vista Editar
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al cargar la pantalla de creación de cotización");
+      TempData["Error"] = "Error al cargar la pantalla de creación";
+      return RedirectToAction(nameof(Index));
+    }
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_CREATE")]
+  public async Task<IActionResult> GuardarCreacion(CotizacionEditarViewModel viewModel)
+  {
+    try
+    {
+      // Validaciones específicas para creación
+      if (string.IsNullOrWhiteSpace(viewModel.NombreInteresado))
+      {
+        return Json(new { success = false, message = "El nombre del interesado es obligatorio para crear la cotización" });
+      }
+
+      if (viewModel.Detalles == null || !viewModel.Detalles.Any())
+      {
+        return Json(new { success = false, message = "Debe agregar al menos una línea de producto para crear la cotización" });
+      }
+
+      // Validar líneas de detalle
+      for (int i = 0; i < viewModel.Detalles.Count; i++)
+      {
+        var detalle = viewModel.Detalles[i];
+        if (string.IsNullOrWhiteSpace(detalle.ProductoId))
+        {
+          return Json(new { success = false, message = $"El producto de la línea {i + 1} es obligatorio" });
+        }
+        if (detalle.Cantidad <= 0)
+        {
+          return Json(new { success = false, message = $"La cantidad de la línea {i + 1} debe ser mayor a cero" });
+        }
+        if (detalle.PrecioUnitario < 0)
+        {
+          return Json(new { success = false, message = $"El precio unitario de la línea {i + 1} no puede ser negativo" });
+        }
+      }
+
+      // Crear request de creación (reutilizando la estructura de duplicación)
+      var currentUserId = GetCurrentUserId();
+      
+      // Usar el servicio para crear la nueva cotización (necesitaremos agregarlo al servicio)
+      var crearRequest = new CrearCotizacionRequest
+      {
+        NombreInteresado = viewModel.NombreInteresado.Trim(),
+        EmailInteresado = viewModel.EmailInteresado?.Trim() ?? "",
+        EmpresaInteresado = viewModel.EmpresaInteresado?.Trim() ?? "",
+        TipoInteresado = viewModel.TipoInteresado,
+        Moneda = viewModel.Moneda ?? "CRC",
+        TipoCambio = viewModel.TipoCambio,
+        Notas = viewModel.Notas?.Trim() ?? "",
+        SubTotal = viewModel.SubTotal,
+        TotalDescuentos = viewModel.Descuento,
+        Impuesto = viewModel.Impuesto,
+        Total = viewModel.Total,
+        Detalles = viewModel.Detalles.Select(d => new CrearDetalleRequest
+        {
+          ProductoId = d.ProductoId,
+          ProductoNombre = d.ProductoNombre,
+          Cantidad = d.Cantidad,
+          PrecioUnitario = d.PrecioUnitario,
+          Descuento = d.Descuento,
+          PorcentajeImpuesto = d.PorcentajeImpuesto,
+          TotalLinea = d.TotalLinea
+        }).ToList()
+      };
+
+      var resultado = await _cotizacionService.CrearCotizacionAsync(crearRequest, currentUserId);
+
+      if (resultado.Success)
+      {
+        _logger.LogInformation("Cotización {CotizacionId} creada exitosamente", resultado.CotizacionId);
+        return Json(new { 
+          success = true, 
+          message = $"Cotización {resultado.CotizacionId} creada exitosamente",
+          cotizacionId = resultado.CotizacionId
+        });
+      }
+      else
+      {
+        _logger.LogWarning("Creación de cotización falló: {ErrorMessage}", resultado.ErrorMessage);
+        return Json(new { success = false, message = resultado.ErrorMessage });
+      }
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al crear nueva cotización");
+      return Json(new { success = false, message = "Error interno al crear la cotización" });
+    }
+  }
+
   [HttpGet("Cotizaciones/Editar/{cotizacionId}")]
   [RequierePermiso("COT_EDIT")]
   public async Task<IActionResult> Editar(string cotizacionId)

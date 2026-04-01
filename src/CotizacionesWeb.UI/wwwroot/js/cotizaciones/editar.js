@@ -7,6 +7,7 @@ let productosDisponibles = []; // Se cargará dinámicamente desde ERP vía Sele
 let monedaActual = 'CRC';
 let detalleEditandoIndex = -1;
 let estadoActual = 'B'; // Estado actual de la cotización
+let esNuevaCotizacion = false; // Indica si es una nueva cotización
 
 $(document).ready(function() {
 if (typeof $ === 'undefined') {
@@ -18,8 +19,7 @@ if (typeof $.fn.CardWidget === 'undefined') {
     console.warn('AdminLTE CardWidget no está disponible');
 }
     
-// Inicializar estado de cambios guardados
-window.cotizacionGuardada = true;
+// ✅ La inicialización de window.cotizacionGuardada se hace en inicializarVista()
     
 // ⚠️ LIMITACIÓN DEL NAVEGADOR: beforeunload requiere mensaje nativo
 // Los navegadores modernos NO permiten usar modales personalizados en beforeunload
@@ -40,7 +40,14 @@ $(window).on('beforeunload', function(e) {
         const href = $(this).attr('href');
         
         if (href && href !== '#' && !href.startsWith('#') && href !== window.location.href) {
-            if (verificarCambiosSinGuardar()) {
+            const hayCambios = verificarCambiosSinGuardar();
+            console.log('🔍 Click en enlace detectado:', {
+                href: href,
+                hayCambios: hayCambios,
+                cotizacionGuardada: window.cotizacionGuardada
+            });
+            
+            if (hayCambios) {
                 e.preventDefault();
                 confirmarSalidaConCambios(href);
                 return false;
@@ -51,7 +58,14 @@ $(window).on('beforeunload', function(e) {
     // Botón específico de "Volver al Listado" (mayor prioridad)
     $('a[href*="/Cotizaciones"]:contains("Volver al Listado"), a[href="/Cotizaciones"], a[href$="/Cotizaciones/Index"]').on('click', function(e) {
         const href = $(this).attr('href');
-        if (verificarCambiosSinGuardar()) {
+        const hayCambios = verificarCambiosSinGuardar();
+        console.log('🔍 Click en "Volver al Listado":', {
+            href: href,
+            hayCambios: hayCambios,
+            cotizacionGuardada: window.cotizacionGuardada
+        });
+        
+        if (hayCambios) {
             e.preventDefault();
             confirmarSalidaConCambios(href);
             return false;
@@ -66,6 +80,7 @@ $(window).on('beforeunload', function(e) {
     // Marcar cambios al interactuar con líneas de detalle
     $(document).on('click', '#btnAgregarLinea, .btn-editar-detalle, .btn-eliminar-detalle, #btnGuardarDetalle', function() {
         window.cotizacionGuardada = false;
+        console.log('🔄 Interacción con líneas de detalle: marcando como cambios sin guardar');
     });
     
     // Detectar cambios en versión y tipo de cambio
@@ -73,10 +88,10 @@ $(window).on('beforeunload', function(e) {
         window.cotizacionGuardada = false;
     });
     
-    // Detectar cambios en moneda
-    $(document).on('change', '#MonedaSelect', function() {
-        window.cotizacionGuardada = false;
-    });
+    // ✅ REMOVER el listener global de moneda - se maneja dinámicamente
+    // $(document).on('change', '#MonedaSelect', function() {
+    //     window.cotizacionGuardada = false;
+    // });
     
     inicializarVista();
     configurarEventos();
@@ -88,18 +103,20 @@ $(window).on('beforeunload', function(e) {
 // ========================================
 
 function inicializarVista() {
-    if (window.FormatConfig) {
-        monedaActual = window.FormatConfig.moneda || 'CRC';
-        estadoActual = window.FormatConfig.estado || 'B';
-    } else {
-        monedaActual = $('#formEditarCotizacion').find('input[name="Moneda"]').val() || 'CRC';
-        const estadoBadge = $('.header-title .badge').text().trim();
-        estadoActual = detectarEstadoDeTexto(estadoBadge);
-    }
+if (window.FormatConfig) {
+    monedaActual = window.FormatConfig.moneda || 'CRC';
+    estadoActual = window.FormatConfig.estado || 'B';
+    esNuevaCotizacion = window.FormatConfig.esNuevaCotizacion || false;
+} else {
+    monedaActual = $('#formEditarCotizacion').find('input[name="Moneda"]').val() || 'CRC';
+    const estadoBadge = $('.header-title .badge').text().trim();
+    estadoActual = detectarEstadoDeTexto(estadoBadge);
+    esNuevaCotizacion = false;
+}
             
-    const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
-        window.FormatUtils.isEditable(estadoActual) : 
-        (estadoActual === 'B');
+const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
+    window.FormatUtils.isEditable(estadoActual) : 
+    (estadoActual === 'B');
     
     if (typeof $.fn.CardWidget !== 'undefined') {
         try {
@@ -123,11 +140,26 @@ function inicializarVista() {
         mostrarAvisoNoEditable();
     }
     
+    // ✅ INICIALIZAR ESTADO DE GUARDADO según el contexto
+    if (esNuevaCotizacion) {
+        // Para nuevas cotizaciones, comenzar sin cambios pendientes
+        window.cotizacionGuardada = true;
+    } else {
+        // Para ediciones, comenzar sin cambios pendientes (estado inicial)
+        window.cotizacionGuardada = true;
+    }
+    
+    console.log('💾 Estado inicial de guardado:', window.cotizacionGuardada);
+    
     // Almacenar valores originales para detección de cambios
     const $notas = $('textarea[name="Notas"]');
     if ($notas.length > 0) {
         $notas.data('original-value', $notas.val().trim());
     }
+    
+    // ✅ ALMACENAR MONEDA ORIGINAL para detección de cambios
+    window._monedaOriginal = monedaActual;
+    console.log('💾 Moneda original almacenada:', window._monedaOriginal);
     
     // Almacenar valor original de la versión
     const versionTexto = $('#versionValor').text().trim();
@@ -153,7 +185,7 @@ function inicializarVista() {
     
     setTimeout(function() {
         verificarYActualizarEstadoMoneda();
-    }, 200);
+    }, 500); // Aumentar el delay para asegurar que el DOM esté listo
 }
 
 /**
@@ -744,7 +776,11 @@ function agregarNuevaFilaDetalle(datos) {
     
     tbody.append(nuevaFila);
     actualizarContadorLineas();
-    verificarYActualizarEstadoMoneda();
+    
+    // ✅ IMPORTANTE: Verificar estado de moneda después de agregar línea
+    setTimeout(() => {
+        verificarYActualizarEstadoMoneda();
+    }, 100);
 }
 
 function eliminarDetalle(index) {
@@ -770,6 +806,10 @@ function ejecutarEliminacionDetalle(index) {
     const detalleVersionId = parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0;
     const productoNombre = fila.find('.producto-nombre').text();
     
+    // ✅ IMPORTANTE: Marcar como cambios sin guardar ANTES de eliminar
+    window.cotizacionGuardada = false;
+    console.log('🗑️ ANTES de eliminar: marcando como cambios sin guardar');
+    
     if (detalleVersionId > 0) {
         showNotification('info', `Línea persistente "${productoNombre}" marcada para eliminación. Se eliminará de BD al guardar.`);
     }
@@ -778,8 +818,9 @@ function ejecutarEliminacionDetalle(index) {
     reindexarFilasDetalle();
     recalcularTotales();
     
-    // Marcar como cambios sin guardar
+    // ✅ REFORZAR: Asegurar que se mantenga como cambios sin guardar
     window.cotizacionGuardada = false;
+    console.log('🗑️ DESPUÉS de eliminar: confirmando cambios sin guardar');
     
     showNotification('success', 'Detalle eliminado correctamente');
     
@@ -799,6 +840,16 @@ function ejecutarEliminacionDetalle(index) {
             }, 1000);
         }
     }
+    
+    // ✅ VERIFICAR ESTADO DESPUÉS DE ELIMINAR para actualizar detección de cambios
+    setTimeout(() => {
+        verificarYActualizarEstadoMoneda();
+        // Asegurar que el estado se mantiene como sin guardar
+        if (window.cotizacionGuardada !== false) {
+            window.cotizacionGuardada = false;
+            console.log('🗑️ FORZANDO estado sin guardar después de eliminar');
+        }
+    }, 100);
 }
 
 function reindexarFilasDetalle() {
@@ -949,25 +1000,202 @@ function guardarCotizacion() {
         return;
     }
     
-    ejecutarGuardadoCotizacion();
+    // Verificar si es creación o edición
+    if (esNuevaCotizacion) {
+        ejecutarGuardadoCreacion();
+    } else {
+        ejecutarGuardadoCotizacion();
+    }
+}
+
+function ejecutarGuardadoCreacion() {
+    const btn = $('#btnGuardar');
+    
+    // Leer valores desde los spans de solo lectura
+    let nombreInteresado = $('#NombreInteresado').text().trim();
+    if (nombreInteresado === 'No asignado') {
+        nombreInteresado = '';
+    }
+    
+    const totalLineas = $('#tablaDetalles tbody tr').length;
+    const erroresValidacion = [];
+    
+    // Validación ESTRICTA para creación: interesado obligatorio
+    if (!nombreInteresado) {
+        erroresValidacion.push('• El nombre del interesado es obligatorio');
+    }
+    
+    // Validación ESTRICTA para creación: al menos una línea obligatoria
+    if (totalLineas === 0) {
+        erroresValidacion.push('• Debe agregar al menos una línea de producto');
+    }
+    
+    if (erroresValidacion.length > 0) {
+        const mensajeError = '<strong>No se puede crear la cotización por los siguientes errores:</strong><br><br>' +
+                           erroresValidacion.join('<br>') +
+                           '<br><br><small class="text-muted">Por favor corrija estos campos y vuelva a intentar.</small>';
+        
+        // ✅ MODAL BOOTSTRAP para mostrar errores de validación
+        mostrarModalConfirmacion(
+            'Errores de Validación',
+            mensajeError,
+            'warning',
+            function() {
+                // Al cerrar, enfocar el primer campo con error
+                if (!nombreInteresado) {
+                    $('#btnBuscarHubSpot').focus();
+                } else if (totalLineas === 0) {
+                    $('#btnAgregarLinea').focus();
+                }
+            },
+            null,
+            {
+                btnTextoConfirmar: 'Entendido',
+                btnTextoCancelar: 'Cerrar'
+            }
+        );
+        return;
+    }
+    
+    continuarGuardadoCreacion();
+}
+
+function continuarGuardadoCreacion() {
+    const btn = $('#btnGuardar');
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Creando...');
+    
+    try {
+        // Leer valores desde los spans de solo lectura
+        let nombreInteresado = $('#NombreInteresado').text().trim();
+        if (nombreInteresado === 'No asignado') {
+            nombreInteresado = '';
+        }
+            
+        let emailInteresado = $('#EmailInteresado').text().trim();
+        if (emailInteresado === 'No asignado') {
+            emailInteresado = '';
+        }
+            
+        let empresaInteresado = $('#EmpresaInteresado').text().trim();
+        if (empresaInteresado === 'No asignado') {
+            empresaInteresado = '';
+        }
+            
+        const formData = {
+            NombreInteresado: nombreInteresado,
+            EmailInteresado: emailInteresado,
+            EmpresaInteresado: empresaInteresado,
+            TipoInteresado: $('#TipoInteresado').val(),
+            Notas: $('textarea[name="Notas"]').val().trim(),
+            Detalles: [],
+            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        };
+            
+        $('#tablaDetalles tbody tr').each(function(index) {
+            const fila = $(this);
+            const inputDetalleId = fila.find('input[name$=".DetalleVersionId"]');
+            const inputProductoId = fila.find('input[name$=".ProductoId"]');
+            const inputProductoNombre = fila.find('input[name$=".ProductoNombre"]');
+            const inputCantidad = fila.find('input[name$=".Cantidad"]');
+            const inputPrecio = fila.find('input[name$=".PrecioUnitario"]');
+            const inputDescuento = fila.find('input[name$=".Descuento"]');
+            const inputPorcentajeImpuesto = fila.find('input[name$=".PorcentajeImpuesto"]');
+            const inputTotal = fila.find('input[name$=".TotalLinea"]');
+            
+            const detalle = {
+                ProductoId: inputProductoId.val() || fila.find(`input[name="Detalles[${index}].ProductoId"]`).val() || '',
+                ProductoNombre: inputProductoNombre.val() || fila.find(`input[name="Detalles[${index}].ProductoNombre"]`).val() || '',
+                Cantidad: parseFloat(inputCantidad.val() || fila.find(`input[name="Detalles[${index}].Cantidad"]`).val() || 0),
+                PrecioUnitario: parseFloat(inputPrecio.val() || fila.find(`input[name="Detalles[${index}].PrecioUnitario"]`).val() || 0),
+                Descuento: parseFloat(inputDescuento.val() || fila.find(`input[name="Detalles[${index}].Descuento"]`).val() || 0),
+                PorcentajeImpuesto: parseFloat(inputPorcentajeImpuesto.val() || fila.find(`input[name="Detalles[${index}].PorcentajeImpuesto"]`).val() || 0),
+                TotalLinea: parseFloat(inputTotal.val() || fila.find(`input[name="Detalles[${index}].TotalLinea"]`).val() || 0)
+            };
+            
+            if (detalle.ProductoId && detalle.ProductoId !== '') {
+                formData.Detalles.push(detalle);
+            }
+        });
+            
+        const monedaSeleccionada = obtenerMonedaActual();
+        formData.Moneda = monedaSeleccionada;
+        
+        const tipoCambioIngresado = $('#TipoCambio').val();
+        if (tipoCambioIngresado && !isNaN(parseFloat(tipoCambioIngresado))) {
+            formData.TipoCambio = parseFloat(tipoCambioIngresado);
+        } else {
+            formData.TipoCambio = null;
+        }
+        
+        formData.SubTotal = calcularSubtotalActual();
+        formData.TotalDescuentos = calcularTotalDescuentos();
+        formData.Impuesto = calcularImpuestoActual();
+        formData.Total = calcularTotalFinalActual();
+        
+        $.ajax({
+            url: '/Cotizaciones/GuardarCreacion',
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar');
+                
+                if (response.success) {
+                    showNotification('success', response.message || 'Cotización creada exitosamente');
+                    marcarComoGuardado();
+                    
+                    // Redirigir a la vista de edición de la nueva cotización
+                    setTimeout(function() {
+                        if (response.cotizacionId) {
+                            window.location.href = `/Cotizaciones/Editar/${response.cotizacionId}`;
+                        } else {
+                            window.location.href = '/Cotizaciones';
+                        }
+                    }, 2000);
+                } else {
+                    showNotification('error', response.message || 'Error al crear la cotización');
+                }
+            },
+            error: function(xhr, status, error) {
+                btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar');
+                
+                let errorMessage = 'Error de comunicación con el servidor';
+                
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                } else if (xhr.status === 403) {
+                    errorMessage = 'No tiene permisos para realizar esta operación';
+                } else if (xhr.status === 404) {
+                    errorMessage = 'Servicio no encontrado';
+                } else if (xhr.status >= 500) {
+                    errorMessage = 'Error interno del servidor';
+                }
+                
+                showNotification('error', errorMessage);
+            }
+        });
+        
+    } catch (error) {
+        btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar');
+        showNotification('error', 'Error al procesar los datos de la cotización');
+    }
 }
 
 function ejecutarGuardadoCotizacion() {
-const btn = $('#btnGuardar');
+    const btn = $('#btnGuardar');
     
-// Leer valores desde los spans de solo lectura
-let nombreInteresado = $('#NombreInteresado').text().trim();
-if (nombreInteresado === 'No asignado') {
-    nombreInteresado = '';
-}
+    // Leer valores desde los spans de solo lectura
+    let nombreInteresado = $('#NombreInteresado').text().trim();
+    if (nombreInteresado === 'No asignado') {
+        nombreInteresado = '';
+    }
     
-const totalLineas = $('#tablaDetalles tbody tr').length;
-const erroresValidacion = [];
+    const totalLineas = $('#tablaDetalles tbody tr').length;
+    const erroresValidacion = [];
     
-// Validar solo el nombre del interesado (el email no es obligatorio)
-if (!nombreInteresado) {
-    erroresValidacion.push('• El nombre del interesado es obligatorio');
-}
+    // Validar solo el nombre del interesado (el email no es obligatorio)
+    if (!nombreInteresado) {
+        erroresValidacion.push('• El nombre del interesado es obligatorio');
+    }
     
     if (totalLineas === 0) {
         // ✅ MODAL BOOTSTRAP para confirmación de guardado sin productos
@@ -1018,39 +1246,39 @@ if (!nombreInteresado) {
 }
 
 function continuarGuardadoSinValidacionLineas() {
-const btn = $('#btnGuardar');
-btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Guardando...');
+    const btn = $('#btnGuardar');
+    btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Guardando...');
     
-try {
-    // Leer valores desde los spans de solo lectura
-    let nombreInteresado = $('#NombreInteresado').text().trim();
-    if (nombreInteresado === 'No asignado') {
-        nombreInteresado = '';
-    }
+    try {
+        // Leer valores desde los spans de solo lectura
+        let nombreInteresado = $('#NombreInteresado').text().trim();
+        if (nombreInteresado === 'No asignado') {
+            nombreInteresado = '';
+        }
         
-    let emailInteresado = $('#EmailInteresado').text().trim();
-    if (emailInteresado === 'No asignado') {
-        emailInteresado = '';
-    }
+        let emailInteresado = $('#EmailInteresado').text().trim();
+        if (emailInteresado === 'No asignado') {
+            emailInteresado = '';
+        }
         
-    let empresaInteresado = $('#EmpresaInteresado').text().trim();
-    if (empresaInteresado === 'No asignado') {
-        empresaInteresado = '';
-    }
+        let empresaInteresado = $('#EmpresaInteresado').text().trim();
+        if (empresaInteresado === 'No asignado') {
+            empresaInteresado = '';
+        }
         
-    const formData = {
-        CotizacionId: $('input[name="CotizacionId"]').val(),
-        VersionId: parseInt($('input[name="VersionId"]').val()),
-        NombreInteresado: nombreInteresado,
-        EmailInteresado: emailInteresado,
-        EmpresaInteresado: empresaInteresado,
-        TipoInteresado: $('#TipoInteresado').val(),
-        Notas: $('textarea[name="Notas"]').val().trim(),
-        Detalles: [],
-        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
-    };
+        const formData = {
+            CotizacionId: $('input[name="CotizacionId"]').val(),
+            VersionId: parseInt($('input[name="VersionId"]').val()),
+            NombreInteresado: nombreInteresado,
+            EmailInteresado: emailInteresado,
+            EmpresaInteresado: empresaInteresado,
+            TipoInteresado: $('#TipoInteresado').val(),
+            Notas: $('textarea[name="Notas"]').val().trim(),
+            Detalles: [],
+            __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+        };
         
-    $('#tablaDetalles tbody tr').each(function(index) {
+        $('#tablaDetalles tbody tr').each(function(index) {
             const fila = $(this);
             const inputDetalleId = fila.find('input[name$=".DetalleVersionId"]');
             const inputProductoId = fila.find('input[name$=".ProductoId"]');
@@ -1361,24 +1589,12 @@ function showNotification(type, message) {
     }
 }
 
-function revertirComboMoneda($combo, monedaAnterior) {
-    $combo.off('change.moneda');
-    $combo.val(monedaAnterior);
-    
-    if ($combo.val() !== monedaAnterior) {
-        const opcionAnterior = $combo.find(`option[value="${monedaAnterior}"]`);
-        if (opcionAnterior.length > 0) {
-            $combo[0].selectedIndex = opcionAnterior.index();
-        }
-    }
-}
-
 /**
  * Muestra modal de confirmación para cambio de moneda
  * Usa la función global unificada en lugar de implementación específica
  */
-function mostrarModalConfirmacionMoneda(titulo, mensaje, tipo, onConfirm, onCancel, $combo, monedaAnterior) {
-    // ✅ USAR FUNCIÓN GLOBAL UNIFICADA
+function mostrarModalConfirmacionMoneda(titulo, mensaje, tipo, onConfirm, onCancel) {
+    // ✅ USAR FUNCIÓN GLOBAL UNIFICADA - parámetros simplificados
     mostrarModalConfirmacion(
         titulo,
         mensaje,
@@ -1454,12 +1670,24 @@ function confirmarSalidaConCambios(urlDestino) {
     // Determinar URL de destino
     const urlFinal = urlDestino || '/Cotizaciones';
     
+    // Mensajes diferentes según si es creación o edición
+    let titulo, mensaje;
+    if (esNuevaCotizacion) {
+        titulo = 'Cancelar Creación';
+        mensaje = '¿Está seguro de que desea cancelar la creación de la cotización?<br><br>' +
+                 '<strong class="text-danger">Se perderá toda la información ingresada.</strong><br><br>' +
+                 '<small class="text-muted">Puede hacer clic en "Guardar" para crear la cotización antes de salir.</small>';
+    } else {
+        titulo = 'Cambios Sin Guardar';
+        mensaje = '¿Está seguro de que desea salir sin guardar los cambios?<br><br>' +
+                 '<strong class="text-danger">Se perderán todos los cambios realizados.</strong><br><br>' +
+                 '<small class="text-muted">Puede hacer clic en "Guardar Cambios" antes de salir para no perder su trabajo.</small>';
+    }
+    
     // ✅ USAR MODAL BOOTSTRAP en lugar de confirm() nativo
     mostrarModalConfirmacion(
-        'Cambios Sin Guardar',
-        '¿Está seguro de que desea salir sin guardar los cambios?<br><br>' +
-        '<strong class="text-danger">Se perderán todos los cambios realizados.</strong><br><br>' +
-        '<small class="text-muted">Puede hacer clic en "Guardar Cambios" antes de salir para no perder su trabajo.</small>',
+        titulo,
+        mensaje,
         'exit',
         function() {
             // Usuario confirmó: permitir salida
@@ -1471,7 +1699,7 @@ function confirmarSalidaConCambios(urlDestino) {
             // No hacer nada, el modal se cierra automáticamente
         },
         {
-            btnTextoConfirmar: 'Salir Sin Guardar',
+            btnTextoConfirmar: esNuevaCotizacion ? 'Cancelar Creación' : 'Salir Sin Guardar',
             btnTextoCancelar: 'Quedarme Aquí'
         }
     );
@@ -1492,7 +1720,9 @@ function verificarCambiosSinGuardar() {
     const notasActuales = $('textarea[name="Notas"]').val().trim();
     const notasOriginales = $('textarea[name="Notas"]').data('original-value') || '';
     
-    const monedaCombo = $('#MonedaSelect').val();
+    // ✅ MEJORAR DETECCIÓN DE CAMBIO DE MONEDA
+    const monedaComboActual = $('#MonedaSelect').val();
+    const monedaOriginalGuardada = window._monedaOriginal || monedaActual;
     
     // Obtener valor actual y original de la versión
     const versionEditada = $('#NumeroVersion').val();
@@ -1514,14 +1744,42 @@ function verificarCambiosSinGuardar() {
     // Verificar líneas modificadas (que tienen clase linea-modificada)
     const lineasModificadas = $('#tablaDetalles tbody tr.linea-modificada').length;
     
+    // ✅ VERIFICACIÓN MEJORADA DE CAMBIO DE MONEDA
+    let cambioMoneda = false;
+    if (monedaComboActual && monedaComboActual !== monedaOriginalGuardada) {
+        cambioMoneda = true;
+        console.log('🔍 Detectado cambio de moneda:', {
+            actual: monedaComboActual,
+            original: monedaOriginalGuardada,
+            monedaActualVariable: monedaActual
+        });
+    }
+    
+    // ✅ VERIFICAR SI HAY LÍNEAS ELIMINADAS PENDIENTES DE GUARDAR
+    // Si window.cotizacionGuardada es false, significa que hubo cambios
+    const hayLineasEliminadas = (window.cotizacionGuardada === false);
+    
     const hayCambios = (
         notasActuales !== notasOriginales ||
         lineasNuevas > 0 ||
         lineasModificadas > 0 ||
-        (monedaCombo && monedaCombo !== monedaActual) ||
+        cambioMoneda ||
         (versionEditada && versionEditada !== versionOriginal) ||
-        (tipoCambioActual !== tipoCambioOriginal)
+        (tipoCambioActual !== tipoCambioOriginal) ||
+        hayLineasEliminadas // ✅ INCLUIR LÍNEAS ELIMINADAS
     );
+    
+    console.log('🔍 Verificar cambios:', {
+        notasCambiaron: notasActuales !== notasOriginales,
+        lineasNuevas: lineasNuevas,
+        lineasModificadas: lineasModificadas,
+        cambioMoneda: cambioMoneda,
+        versionCambio: versionEditada && versionEditada !== versionOriginal,
+        tipoCambioCambio: tipoCambioActual !== tipoCambioOriginal,
+        hayLineasEliminadas: hayLineasEliminadas,
+        cotizacionGuardada: window.cotizacionGuardada,
+        hayCambios: hayCambios
+    });
     
     return hayCambios;
 }
@@ -1534,6 +1792,10 @@ function marcarComoGuardado() {
     if ($notas.length > 0) {
         $notas.data('original-value', $notas.val().trim());
     }
+    
+    // ✅ ACTUALIZAR MONEDA ORIGINAL después de guardar
+    window._monedaOriginal = monedaActual;
+    console.log('💾 Moneda original actualizada después de guardar:', window._monedaOriginal);
     
     // Actualizar valor original de la versión
     const versionTexto = $('#versionValor').text().trim();
@@ -1549,7 +1811,14 @@ function marcarComoGuardado() {
 }
 
 function seGuardoRecientemente() {
-    return window.cotizacionGuardada === true;
+    // ✅ SOLO considerar "guardado recientemente" si explícitamente se marcó como guardado
+    // AND no se han hecho cambios posteriores
+    const guardadoExplicitamente = (window.cotizacionGuardada === true);
+    console.log('🔍 ¿Se guardó recientemente?:', {
+        cotizacionGuardada: window.cotizacionGuardada,
+        guardadoExplicitamente: guardadoExplicitamente
+    });
+    return guardadoExplicitamente;
 }
 
 function obtenerNombreMoneda(codigo) {
@@ -1580,8 +1849,10 @@ function obtenerNombreMoneda(codigo) {
 // GESTIÓN DE MONEDA
 // ========================================
 
-function aplicarCambioMoneda(nuevaMoneda) {
-    const monedaAnterior = monedaActual;
+/**
+ * ✅ FUNCIÓN AUXILIAR: Procesar cambio de moneda
+ */
+function procesarCambioMoneda(nuevaMoneda) {
     monedaActual = nuevaMoneda;
     
     if (window.FormatConfig) {
@@ -1589,25 +1860,35 @@ function aplicarCambioMoneda(nuevaMoneda) {
         window.FormatConfig.simboloMoneda = getCurrencySymbol(nuevaMoneda);
     }
     
-    const comboMoneda = $('#MonedaSelect');
-    if (comboMoneda.length > 0) {
-        comboMoneda.off('change.moneda');
-        comboMoneda.val(nuevaMoneda);
-        comboMoneda[0].selectedIndex = comboMoneda.find(`option[value="${nuevaMoneda}"]`).index();
-        
-        setTimeout(() => {
-            comboMoneda.on('change.moneda', configurarEventoMoneda);
-        }, 100);
-    }
-    
     actualizarDisplaysMoneda();
-    
-    // Marcar como cambios sin guardar
     window.cotizacionGuardada = false;
     
     showNotification('success', 
         `Moneda cambiada a ${obtenerNombreMoneda(nuevaMoneda)}. ` +
         `Debe Guardar la cotización para aplicar el cambio.`);
+    
+    // ✅ Reconfigurar eventos después del cambio
+    setTimeout(() => {
+        configurarEventoMoneda();
+    }, 100);
+}
+
+/**
+ * ✅ FUNCIÓN AUXILIAR: Revertir selección de moneda
+ */
+function revertirSeleccionMoneda($combo, monedaAnterior) {
+    $combo.val(monedaAnterior);
+    $combo[0].selectedIndex = $combo.find(`option[value="${monedaAnterior}"]`).index();
+    
+    // ✅ Reconfigurar eventos después de revertir
+    setTimeout(() => {
+        configurarEventoMoneda();
+    }, 100);
+}
+
+function aplicarCambioMoneda(nuevaMoneda) {
+    // ✅ USAR LA FUNCIÓN AUXILIAR
+    procesarCambioMoneda(nuevaMoneda);
 }
 
 function actualizarDisplaysMoneda() {
@@ -1634,18 +1915,43 @@ function actualizarDisplaysMoneda() {
 
 function verificarYActualizarEstadoMoneda() {
     const estadoActual = obtenerEstadoActual();
-    const totalLineas = $('#tablaDetalles tbody tr').length;
-    const puedeEditarMoneda = (estadoActual === 'B' && totalLineas === 0);
     
-    if (puedeEditarMoneda) {
-        mostrarComboMoneda();
+    // ✅ NUEVA LÓGICA: Para creaciones nuevas, mostrar combo siempre (sin líneas persistentes)
+    // Para ediciones, aplicar la lógica existente
+    let puedeEditarMoneda = false;
+    
+    if (esNuevaCotizacion) {
+        // En creación: siempre puede cambiar moneda (no hay líneas persistentes)
+        puedeEditarMoneda = (estadoActual === 'B');
     } else {
-        const razon = totalLineas > 0 ? 'hay-lineas' : 'estado-no-borrador';
-        mostrarDisplayMoneda(razon);
+        // En edición: solo si está en borrador Y no tiene líneas persistentes
+        let lineasPersistentes = 0;
+        $('#tablaDetalles tbody tr').each(function() {
+            const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+            if (detalleVersionId > 0) {
+                lineasPersistentes++;
+            }
+        });
+        puedeEditarMoneda = (estadoActual === 'B' && lineasPersistentes === 0);
     }
     
+    if (puedeEditarMoneda) {
+        // ✅ SOLO mostrar combo si no existe o necesita actualizarse
+        mostrarComboMoneda();
+    } else {
+        // ✅ SOLO ocultar combo si actualmente es visible
+        const seccionMoneda = $('.moneda-section');
+        if (seccionMoneda.length > 0 && seccionMoneda.children().length > 0) {
+            mostrarDisplayMoneda('restricciones');
+        }
+    }
+    
+    // ✅ SOLO configurar tipo de cambio si está en borrador
     if (estadoActual === 'B') {
-        configurarEventoTipoCambio();
+        // Verificar si el evento ya está configurado para evitar duplicación
+        if ($('#btnEditarTipoCambio').data('eventos-configurados') !== true) {
+            configurarEventoTipoCambio();
+        }
     }
 }
 
@@ -1656,6 +1962,18 @@ function mostrarComboMoneda() {
     }
     
     const monedaActualReal = obtenerMonedaActual();
+    
+    // ✅ VERIFICAR si ya existe un combo funcional
+    const comboExistente = $('#MonedaSelect');
+    if (comboExistente.length > 0 && comboExistente.val() === monedaActualReal) {
+        // Ya existe y tiene el valor correcto, solo configurar eventos si es necesario
+        if (!comboExistente.data('eventos-configurados')) {
+            configurarEventoMoneda();
+        }
+        return;
+    }
+    
+    // ✅ GENERAR combo solo si es necesario
     let monedasDisponibles = [];
     
     if (window.MonedasDisponibles && Array.isArray(window.MonedasDisponibles)) {
@@ -1702,24 +2020,17 @@ function mostrarComboMoneda() {
             </div>
             <small class="text-success">
                 <i class="fas fa-check-circle"></i>
-                Puede cambiar la moneda: estado Borrador y sin líneas guardadas en BD.
+                Puede cambiar la moneda.
             </small>
         </div>
     `;
     
     seccionMoneda.html(comboHTML);
     
-    const comboCreado = $('#MonedaSelect');
-    comboCreado.val(monedaActualReal);
-    
-    if (comboCreado.val() !== monedaActualReal) {
-        const opcionCorrecta = comboCreado.find(`option[value="${monedaActualReal}"]`);
-        if (opcionCorrecta.length > 0) {
-            comboCreado[0].selectedIndex = opcionCorrecta.index();
-        }
-    }
-    
-    configurarEventoMoneda();
+    // ✅ CONFIGURAR eventos solo UNA VEZ después de crear el combo
+    setTimeout(() => {
+        configurarEventoMoneda();
+    }, 50);
 }
 
 function mostrarDisplayMoneda(razon) {
@@ -1732,55 +2043,81 @@ function mostrarDisplayMoneda(razon) {
 }
 
 function configurarEventoMoneda() {
-    $('#MonedaSelect').off('change.moneda');
+    const $combo = $('#MonedaSelect');
     
-    $('#MonedaSelect').on('change.moneda', function() {
-        const $combo = $(this);
-        const nuevaMoneda = $combo.val();
+    // ✅ Si no existe el combo, no configurar eventos
+    if ($combo.length === 0) {
+        return;
+    }
+    
+    // ✅ LIMPIAR completamente todos los eventos del combo
+    $combo.off();
+    
+    // ✅ Agregar una marca para evitar configuración múltiple
+    if ($combo.data('eventos-configurados') === true) {
+        return;
+    }
+    
+    // ✅ CONFIGURAR UN SOLO LISTENER simple
+    $combo.on('change.moneda', function(e) {
+        const nuevaMoneda = $(this).val();
         const monedaAnterior = monedaActual;
         
-        if (nuevaMoneda !== monedaAnterior) {
-            let lineasPersistentes = 0;
-            $('#tablaDetalles tbody tr').each(function() {
-                const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
-                if (detalleVersionId > 0) {
-                    lineasPersistentes++;
-                }
-            });
-            
-            if (lineasPersistentes > 0) {
-                showNotification('warning', 'No se puede cambiar la moneda cuando hay líneas guardadas en la base de datos. Elimine todas las líneas persistentes primero.');
-                revertirComboMoneda($combo, monedaAnterior);
-                return;
-            }
-            
-            $combo.off('change.moneda');
-            
-            const nombreMonedaNueva = obtenerNombreMoneda(nuevaMoneda);
-            const nombreMonedaAnterior = obtenerNombreMoneda(monedaAnterior);
-            
-            mostrarModalConfirmacionMoneda(
-                'Confirmar Cambio de Moneda',
-                `¿Está seguro de que desea cambiar la moneda de <strong>${nombreMonedaAnterior}</strong> a <strong>${nombreMonedaNueva}</strong>?<br><br>
-                 <small class="text-muted">Este cambio es posible porque no hay líneas guardadas en la base de datos.</small>`,
-                'warning',
-                function() {
-                    aplicarCambioMoneda(nuevaMoneda);
-                    setTimeout(() => {
-                        configurarEventoMoneda();
-                    }, 300);
-                },
-                function() {
-                    revertirComboMoneda($combo, monedaAnterior);
-                    setTimeout(() => {
-                        configurarEventoMoneda();
-                    }, 300);
-                },
-                $combo,
-                monedaAnterior
-            );
+        // ✅ Evitar procesamiento si no hay cambio real
+        if (nuevaMoneda === monedaAnterior) {
+            return;
         }
+        
+        // ✅ Marcar como cambios sin guardar inmediatamente
+        window.cotizacionGuardada = false;
+        
+        // ✅ DETENER el evento inmediatamente para evitar bucles
+        $(this).off('change.moneda');
+        $(this).data('eventos-configurados', false);
+        
+        // ✅ Para nuevas cotizaciones: cambio directo
+        if (esNuevaCotizacion) {
+            procesarCambioMoneda(nuevaMoneda);
+            return;
+        }
+        
+        // ✅ Para ediciones: verificar líneas persistentes
+        let lineasPersistentes = 0;
+        $('#tablaDetalles tbody tr').each(function() {
+            const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
+            if (detalleVersionId > 0) {
+                lineasPersistentes++;
+            }
+        });
+        
+        if (lineasPersistentes > 0) {
+            showNotification('warning', 'No se puede cambiar la moneda cuando hay líneas guardadas en la base de datos. Elimine todas las líneas persistentes primero.');
+            revertirSeleccionMoneda($(this), monedaAnterior);
+            return;
+        }
+        
+        // ✅ Mostrar modal de confirmación
+        const nombreMonedaNueva = obtenerNombreMoneda(nuevaMoneda);
+        const nombreMonedaAnterior = obtenerNombreMoneda(monedaAnterior);
+        
+        mostrarModalConfirmacionMoneda(
+            'Confirmar Cambio de Moneda',
+            `¿Está seguro de que desea cambiar la moneda de <strong>${nombreMonedaAnterior}</strong> a <strong>${nombreMonedaNueva}</strong>?<br><br>
+             <small class="text-muted">Este cambio es posible porque no hay líneas guardadas en la base de datos.</small>`,
+            'warning',
+            function() {
+                // Usuario confirmó
+                procesarCambioMoneda(nuevaMoneda);
+            },
+            function() {
+                // Usuario canceló
+                revertirSeleccionMoneda($combo, monedaAnterior);
+            }
+        );
     });
+    
+    // ✅ Marcar como configurado
+    $combo.data('eventos-configurados', true);
 }
 
 function obtenerEstadoActual() {
@@ -1959,6 +2296,11 @@ function configurarEventoVersion() {
 // ========================================
 
 function configurarEventoTipoCambio() {
+    // ✅ Verificar si ya están configurados los eventos
+    if ($('#btnEditarTipoCambio').data('eventos-configurados') === true) {
+        return;
+    }
+    
     $('#btnEditarTipoCambio, #btnGuardarTipoCambio, #btnCancelarTipoCambio, #TipoCambio').off('.tipocambio');
     
     let valorOriginal = '';
@@ -2008,6 +2350,9 @@ function configurarEventoTipoCambio() {
             $(this).removeClass('is-invalid');
         }
     });
+    
+    // ✅ Marcar como configurado
+    $('#btnEditarTipoCambio').data('eventos-configurados', true);
     
     function guardarCambioTipoCambio() {
         const nuevoValor = $('#TipoCambio').val();

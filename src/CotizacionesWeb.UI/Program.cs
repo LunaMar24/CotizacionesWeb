@@ -71,7 +71,6 @@ try
   builder.Services.AddScoped<CotizacionesWeb.UI.Services.IPermisoChecker, CotizacionesWeb.UI.Services.PermisoChecker>();
 
   // Application services - Cotizaciones
-  builder.Services.AddScoped<ICrearCotizacionService, CrearCotizacionService>();
   builder.Services.AddScoped<ICotizacionService, CotizacionesWeb.Infrastructure.Services.CotizacionService>();
 
   // Sistema de parámetros y consecutivos

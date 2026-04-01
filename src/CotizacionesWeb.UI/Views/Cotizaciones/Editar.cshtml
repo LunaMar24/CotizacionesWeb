@@ -1,6 +1,6 @@
 @model CotizacionesWeb.UI.Models.CotizacionEditarViewModel
 @{
-  ViewData["Title"] = $"Editar Cotización {Model.CotizacionId}";
+  ViewData["Title"] = Model.EsNuevaCotizacion ? "Crear Cotización" : $"Editar Cotización {Model.CotizacionId}";
 }
 
 <!-- Header Principal -->
@@ -8,13 +8,29 @@
   <div class="d-flex justify-content-between align-items-start">
     <div>
       <h1 class="header-title">
-        <i class="fas fa-edit"></i>
-        Editar Cotización @Model.CotizacionId
+        @if (Model.EsNuevaCotizacion)
+        {
+          <i class="fas fa-plus"></i>
+          @Html.Raw("Crear Cotización")
+        }
+        else
+        {
+          <i class="fas fa-edit"></i>
+          @Html.Raw("Editar Cotización ") @Model.CotizacionId
+        }
         <span class="badge badge-secondary-custom ml-2">@Model.EstadoActualTexto</span>
       </h1>
       <p class="header-subtitle">
-        Modifica la información de la cotización, sus líneas de productos y configuraciones.
-        <br><small class="text-muted"><i class="fas fa-info-circle"></i> Solo las cotizaciones en estado <strong>Borrador</strong> pueden ser editadas.</small>
+        @if (Model.EsNuevaCotizacion)
+        {
+          @Html.Raw("Crea una nueva cotización con información del interesado y líneas de productos.")
+          <br><small class="text-muted"><i class="fas fa-info-circle"></i> Debe asignar un interesado y agregar al menos una línea de producto.</small>
+        }
+        else
+        {
+          @Html.Raw("Modifica la información de la cotización, sus líneas de productos y configuraciones.")
+          <br><small class="text-muted"><i class="fas fa-info-circle"></i> Solo las cotizaciones en estado <strong>Borrador</strong> pueden ser editadas.</small>
+        }
       </p>
     </div>
     <div class="d-flex gap-2">
@@ -24,7 +40,14 @@
       @if (Model.EstadoActual == 'B')
       {
         <button type="button" class="btn btn-success" id="btnGuardar">
-          <i class="fas fa-save"></i> Guardar Cambios
+          @if (Model.EsNuevaCotizacion)
+          {
+            <i class="fas fa-save"></i> @Html.Raw("Guardar")
+          }
+          else
+          {
+            <i class="fas fa-save"></i> @Html.Raw("Guardar Cambios")
+          }
         </button>
       }
       else
@@ -76,7 +99,14 @@
                   <div class="info-item">
                     <div class="d-flex">
                       <strong class="info-label">ID Cotización:</strong>
-                      <span class="text-primary font-weight-bold">@Model.CotizacionId</span>
+                      @if (Model.EsNuevaCotizacion)
+                      {
+                        <span class="text-info font-weight-bold">&lt;Nueva&gt;</span>
+                      }
+                      else
+                      {
+                        <span class="text-primary font-weight-bold">@Model.CotizacionId</span>
+                      }
                     </div>
                   </div>
                   <div class="info-item">
@@ -264,9 +294,9 @@
 
               @if (Model.EstadoActual == 'B' && string.IsNullOrWhiteSpace(Model.NombreInteresado))
               {
-                <div class="alert alert-info mt-3 mb-0">
-                  <i class="fas fa-info-circle"></i>
-                  <strong>Sugerencia:</strong> Use el botón <strong>"Buscar en HubSpot"</strong> para asignar un interesado desde HubSpot.
+                <div class="alert alert-warning mt-3 mb-0">
+                  <i class="fas fa-thumb-tack"></i>
+                  <strong>Importante:</strong> Use el botón <strong>"Buscar en HubSpot"</strong> para asignar un interesado desde HubSpot.
                 </div>
               }
             </div>
@@ -476,59 +506,62 @@
             </div>
           </div>
 
-          <!-- Card: Fechas Importantes (Solo Lectura) -->
-          <div class="card card-info card-outline mb-4">
-            <div class="card-header">
-              <h3 class="card-title">
-                <i class="fas fa-calendar-alt"></i> Fechas Importantes
-              </h3>
+          <!-- Card: Fechas Importantes (Solo Lectura) - No mostrar en creación -->
+          @if (!Model.EsNuevaCotizacion)
+          {
+            <div class="card card-info card-outline mb-4">
+              <div class="card-header">
+                <h3 class="card-title">
+                  <i class="fas fa-calendar-alt"></i> Fechas Importantes
+                </h3>
+              </div>
+              <div class="card-body">
+                @if (Model.FechaEnvio.HasValue)
+                {
+                  <div class="info-item">
+                    <div class="d-flex">
+                      <strong class="info-label">Fecha Envío:</strong>
+                      <span>@Model.FechaEnvio.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                  </div>
+                }
+                @if (Model.FechaAceptacion.HasValue)
+                {
+                  <div class="info-item">
+                    <div class="d-flex">
+                      <strong class="info-label">Fecha Aceptación:</strong>
+                      <span class="text-success">@Model.FechaAceptacion.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                  </div>
+                }
+                @if (Model.FechaRechazo.HasValue)
+                {
+                  <div class="info-item">
+                    <div class="d-flex">
+                      <strong class="info-label">Fecha Rechazo:</strong>
+                      <span class="text-danger">@Model.FechaRechazo.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                  </div>
+                }
+                @if (Model.EnviadoERP == 'S' && Model.FechaEnvioERP.HasValue)
+                {
+                  <div class="info-item">
+                    <div class="d-flex">
+                      <strong class="info-label">Enviado al ERP:</strong>
+                      <span class="text-primary">@Model.FechaEnvioERP.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+                  </div>
+                }
+                @if (!Model.FechaEnvio.HasValue && !Model.FechaAceptacion.HasValue && !Model.FechaRechazo.HasValue && Model.EnviadoERP != 'S')
+                {
+                  <div class="text-center text-muted">
+                    <i class="fas fa-calendar-times fa-2x mb-2"></i>
+                    <p>No hay fechas especiales registradas</p>
+                  </div>
+                }
+              </div>
             </div>
-            <div class="card-body">
-              @if (Model.FechaEnvio.HasValue)
-              {
-                <div class="info-item">
-                  <div class="d-flex">
-                    <strong class="info-label">Fecha Envío:</strong>
-                    <span>@Model.FechaEnvio.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                  </div>
-                </div>
-              }
-              @if (Model.FechaAceptacion.HasValue)
-              {
-                <div class="info-item">
-                  <div class="d-flex">
-                    <strong class="info-label">Fecha Aceptación:</strong>
-                    <span class="text-success">@Model.FechaAceptacion.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                  </div>
-                </div>
-              }
-              @if (Model.FechaRechazo.HasValue)
-              {
-                <div class="info-item">
-                  <div class="d-flex">
-                    <strong class="info-label">Fecha Rechazo:</strong>
-                    <span class="text-danger">@Model.FechaRechazo.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                  </div>
-                </div>
-              }
-              @if (Model.EnviadoERP == 'S' && Model.FechaEnvioERP.HasValue)
-              {
-                <div class="info-item">
-                  <div class="d-flex">
-                    <strong class="info-label">Enviado al ERP:</strong>
-                    <span class="text-primary">@Model.FechaEnvioERP.Value.ToString("dd/MM/yyyy HH:mm")</span>
-                  </div>
-                </div>
-              }
-              @if (!Model.FechaEnvio.HasValue && !Model.FechaAceptacion.HasValue && !Model.FechaRechazo.HasValue && Model.EnviadoERP != 'S')
-              {
-                <div class="text-center text-muted">
-                  <i class="fas fa-calendar-times fa-2x mb-2"></i>
-                  <p>No hay fechas especiales registradas</p>
-                </div>
-              }
-            </div>
-          </div>
+          }
 
           <!-- Card: Notas (EDITABLE) -->
           <div class="card card-secondary card-outline">
@@ -783,13 +816,15 @@
         window.FormatConfig.simboloMoneda = '@FormatHelper.GetCurrencySymbol(Model.Moneda)';
         window.FormatConfig.estado = '@Model.EstadoActual';
         window.FormatConfig.tipoCambio = @(Model.TipoCambio?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "null");
+        window.FormatConfig.esNuevaCotizacion = @Model.EsNuevaCotizacion.ToString().ToLower();
     } else {
         // Fallback si FormatConfig no está disponible
         window.FormatConfig = {
             moneda: '@Model.Moneda',
             simboloMoneda: '@FormatHelper.GetCurrencySymbol(Model.Moneda)',
             estado: '@Model.EstadoActual',
-            tipoCambio: @(Model.TipoCambio?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "null")
+            tipoCambio: @(Model.TipoCambio?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "null"),
+            esNuevaCotizacion: @Model.EsNuevaCotizacion.ToString().ToLower()
         };
     }
     
@@ -807,6 +842,7 @@
     console.log('Estado:', '@Model.EstadoActual');
     console.log('Estado Texto:', '@Model.EstadoActualTexto');
     console.log('Estado es editable?:', '@Model.EstadoActual' === 'B');
+    console.log('Es nueva cotización?:', @Model.EsNuevaCotizacion.ToString().ToLower());
     console.log('Monedas disponibles tipo:', typeof window.MonedasDisponibles);
     console.log('Monedas disponibles:', window.MonedasDisponibles);
     console.log('Puede cambiar moneda?:', @Model.PuedeCambiarMoneda.ToString().ToLower());

@@ -295,6 +295,144 @@ public class CotizacionService : ICotizacionService
         )).ToList();
     }
 
+    public async Task<CrearCotizacionResult> CrearCotizacionAsync(CrearCotizacionRequest request, int? userId = null)
+    {
+        try
+        {
+            _logger.LogInformation("Iniciando creación de nueva cotización");
+
+            // Validaciones básicas
+            if (string.IsNullOrWhiteSpace(request.NombreInteresado))
+            {
+                return new CrearCotizacionResult
+                {
+                    Success = false,
+                    ErrorMessage = "El nombre del interesado es obligatorio"
+                };
+            }
+
+            // Usar transacción para garantizar integridad
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Generar nuevo ID de cotización usando el parámetro CONSECUTIVO_COTIZACION
+                var nuevoCotizacionId = await GenerarNuevoCotizacionIdAsync();
+                _logger.LogInformation("Nuevo ID de cotización generado: {NuevoCotizacionId}", nuevoCotizacionId);
+                
+                // Generar nuevo identificador único para la primera versión
+                var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
+                _logger.LogInformation("Nuevo VersionActual generado: {NuevoVersionActual}", nuevoVersionActual);
+
+                // Crear nueva cotización
+                var nuevaCotizacion = new Cotizacion
+                {
+                    CotizacionId = nuevoCotizacionId,
+                    InteresadoId = null, // Se asignará al conectar con HubSpot si es necesario
+                    EstadoActual = (char)EstadoCotizacion.Borrador,
+                    VersionActual = nuevoVersionActual,
+                    MontoCotizacion = request.Total,
+                    Moneda = request.Moneda ?? "CRC",
+                    // Nuevos campos según lineamientos funcionales
+                    FechaAceptacion = null,
+                    FechaRechazo = null,
+                    EnviadoERP = 'N',
+                    FechaEnvioERP = null,
+                    FechaEnvio = null
+                };
+
+                _context.Cotizaciones.Add(nuevaCotizacion);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Nueva cotización creada en BD");
+
+                // Crear primera versión
+                var nuevaVersion = new CotizacionVersion
+                {
+                    CotizacionId = nuevoCotizacionId,
+                    NumeroVersion = 1.0m, // Primera versión siempre es 1.0
+                    FechaVersion = DateTime.Now,
+                    NombreInteresado = request.NombreInteresado,
+                    EmailInteresado = request.EmailInteresado,
+                    EmpresaInteresado = request.EmpresaInteresado,
+                    SubTotal = request.SubTotal,
+                    Impuesto = request.Impuesto,
+                    Descuento = request.TotalDescuentos,
+                    Total = request.Total,
+                    TipoCambio = request.TipoCambio,
+                    VersionActual = nuevoVersionActual,
+                    Notas = request.Notas
+                };
+
+                _context.CotizacionesVersiones.Add(nuevaVersion);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Nueva versión creada con VersionId: {VersionId}", nuevaVersion.VersionId);
+
+                // Crear líneas de detalle
+                if (request.Detalles != null && request.Detalles.Any())
+                {
+                    foreach (var detalle in request.Detalles)
+                    {
+                        var nuevoDetalle = new DetalleCotizacionVersion
+                        {
+                            VersionId = nuevaVersion.VersionId,
+                            ProductoId = detalle.ProductoId,
+                            Cantidad = detalle.Cantidad,
+                            PrecioUnitario = detalle.PrecioUnitario,
+                            Descuento = detalle.Descuento,
+                            PorcentajeImpuesto = detalle.PorcentajeImpuesto,
+                            TotalLinea = detalle.TotalLinea
+                        };
+                        _context.DetallesCotizacionVersion.Add(nuevoDetalle);
+                    }
+
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Detalles creados exitosamente: {CantidadDetalles} líneas", request.Detalles.Count);
+                }
+
+                // Registrar evento inicial en historial
+                var historial = new HistorialCotizacion
+                {
+                    VersionId = nuevaVersion.VersionId,
+                    TipoEvento = "Creada",
+                    FechaEvento = DateTime.Now,
+                    UsuarioEvento = userId ?? 0,
+                    Comentario = "Cotización creada desde pantalla de creación"
+                };
+                _context.HistorialesCotizacion.Add(historial);
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Historial registrado");
+
+                // Confirmar transacción
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Cotización {NuevoCotizacionId} creada exitosamente",
+                    nuevoCotizacionId);
+
+                return new CrearCotizacionResult
+                {
+                    Success = true,
+                    CotizacionId = nuevoCotizacionId
+                };
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error en transacción al crear cotización");
+                throw; // Re-lanzar para que sea capturado por el catch externo
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al crear nueva cotización");
+            return new CrearCotizacionResult
+            {
+                Success = false,
+                ErrorMessage = $"Error al crear cotización: {ex.Message}"
+            };
+        }
+    }
+
     public async Task<CopiarVersionResult> CopiarVersionActualAsync(string cotizacionId, string? comentario = null, int? userId = null)
     {
         try
