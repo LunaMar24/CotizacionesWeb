@@ -10,6 +10,7 @@ public class DetalleCotizacionVersion : BaseEntity
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }
+    public decimal PorcentajeImpuesto { get; set; } // Porcentaje de impuesto (ej: 13.00)
     public decimal TotalLinea { get; set; }
     
     public CotizacionVersion Version { get; set; } = null!;

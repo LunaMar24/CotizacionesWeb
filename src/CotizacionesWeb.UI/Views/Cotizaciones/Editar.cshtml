@@ -347,6 +347,7 @@
                         </td>
                         <td class="text-right">
                           <strong class="total-linea-display">@FormatHelper.FormatCurrency(Model.Detalles[i].TotalLinea, Model.Moneda)</strong>
+                          <input type="hidden" name="Detalles[@i].PorcentajeImpuesto" value="@Model.Detalles[i].PorcentajeImpuesto" />
                           <input type="hidden" name="Detalles[@i].TotalLinea" value="@Model.Detalles[i].TotalLinea" />
                         </td>
                         <td class="text-center">
@@ -568,6 +569,7 @@
         <form id="formEditarDetalle">
           <input type="hidden" id="detalleIndex" />
           <input type="hidden" id="detalleVersionId" />
+          <input type="hidden" id="modalPorcentajeImpuesto" value="0" />
 
           <div class="row">
             <div class="col-md-6">

@@ -85,6 +85,7 @@ VALUES
 ('ERP_NIVELPRECIO_LOCAL', 'Nivel Precio para moneda local', 'ND-LOCAL', 'S', 'Integracion_ERP', 1, 'ND-LOCAL', NULL, 0),
 ('ERP_NIVELPRECIO_DOLAR', 'Nivel Precio para moneda dólar', 'ND-DOLAR', 'S', 'Integracion_ERP', 1, 'ND-DOLAR', NULL, 0),
 ('ERP_CIA', 'Compañía a utilizar en el ERP', '', 'S', 'Integracion_ERP', 1, '', NULL, 0),
+('ERP_USAR_IMPUESTOS', 'Calcular impuestos basado en el ERP', 'N', 'B', 'Integracion_ERP', 1, 'N', NULL, 0),
 
 -- ============================================
 -- PARÁMETROS DE NOTIFICACIONES
@@ -175,7 +176,7 @@ PRINT '==============================================';
 PRINT '  • Consecutivos (2 parámetros)';
 PRINT '  • Financiero (3 parámetros)';
 PRINT '  • Integracion_HubSpot (12 parámetros)';
-PRINT '  • Integracion_ERP (3 parámetros)';
+PRINT '  • Integracion_ERP (5 parámetros)';
 PRINT '  • Notificaciones (1 parámetro)';
 PRINT '  • Seguridad (3 parámetros)';
 PRINT '  • Archivos (3 parámetros)';
@@ -184,7 +185,7 @@ PRINT '  • Workflow (3 parámetros)';
 PRINT '  • Formato (1 parámetro)';
 PRINT '  • Negocio (1 parámetro)';
 PRINT '';
-PRINT 'TOTAL: 35 parámetros activos';
+PRINT 'TOTAL: 36 parámetros activos';
 PRINT '==============================================';
 PRINT '';
 PRINT 'PARÁMETROS CRÍTICOS DE CONSECUTIVOS:';

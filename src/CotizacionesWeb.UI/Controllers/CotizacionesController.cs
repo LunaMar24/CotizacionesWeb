@@ -377,6 +377,7 @@ public class CotizacionesController : Controller
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
           Descuento = d.Descuento,
+          PorcentajeImpuesto = d.PorcentajeImpuesto,
           TotalLinea = d.TotalLinea
         }).ToList()
       };
@@ -472,6 +473,7 @@ public class CotizacionesController : Controller
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
           Descuento = d.Descuento,
+          PorcentajeImpuesto = d.PorcentajeImpuesto,
           TotalLinea = d.TotalLinea
         }).ToList()
       };
@@ -646,6 +648,7 @@ public class CotizacionesController : Controller
         value = p.Producto,
         text = $"{p.Producto} - {p.Descripcion}",
         precio = p.Precio,
+        porcentajeImpuesto = p.Porcentaje,
         impuesto = p.CodigoImpuesto
       }).ToList();
 
@@ -725,6 +728,7 @@ public class CotizacionesController : Controller
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
           Descuento = d.Descuento,
+          PorcentajeImpuesto = d.PorcentajeImpuesto,
           TotalLinea = d.TotalLinea
         }).ToList()
       };

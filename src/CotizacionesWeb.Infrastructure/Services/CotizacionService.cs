@@ -258,6 +258,7 @@ public class CotizacionService : ICotizacionService
             d.Cantidad,
             d.PrecioUnitario,
             d.Descuento,
+            d.PorcentajeImpuesto,
             d.TotalLinea
         )).ToList();
 
@@ -594,6 +595,7 @@ public class CotizacionService : ICotizacionService
                         Cantidad = detalle.Cantidad,
                         PrecioUnitario = detalle.PrecioUnitario,
                         Descuento = detalle.Descuento,
+                        PorcentajeImpuesto = detalle.PorcentajeImpuesto,
                         TotalLinea = detalle.TotalLinea
                     };
                     _context.DetallesCotizacionVersion.Add(nuevoDetalle);
@@ -749,6 +751,7 @@ public class CotizacionService : ICotizacionService
                 detalleExistente.Cantidad = detalleRequest.Cantidad;
                 detalleExistente.PrecioUnitario = detalleRequest.PrecioUnitario;
                 detalleExistente.Descuento = detalleRequest.Descuento;
+                detalleExistente.PorcentajeImpuesto = detalleRequest.PorcentajeImpuesto;
                 detalleExistente.TotalLinea = detalleRequest.TotalLinea;
                 
                 actualizados++;
@@ -772,6 +775,7 @@ public class CotizacionService : ICotizacionService
                 Cantidad = detalleRequest.Cantidad,
                 PrecioUnitario = detalleRequest.PrecioUnitario,
                 Descuento = detalleRequest.Descuento,
+                PorcentajeImpuesto = detalleRequest.PorcentajeImpuesto,
                 TotalLinea = detalleRequest.TotalLinea
                 // CreatedAt, CreatedBy, ModifiedAt, ModifiedBy ? AuditInterceptor
             };
@@ -806,6 +810,7 @@ public class CotizacionService : ICotizacionService
 
     /// <summary>
     /// Calcula los totales de una versión basándose en sus detalles actuales en la base de datos.
+    /// Usa el PorcentajeImpuesto de cada línea para calcular el impuesto correspondiente.
     /// </summary>
     private async Task<(decimal subtotal, decimal totalDescuentos, decimal impuesto, decimal total)> CalcularTotalesVersionAsync(int versionId)
     {
@@ -816,6 +821,7 @@ public class CotizacionService : ICotizacionService
 
         decimal subtotal = 0;
         decimal totalDescuentos = 0;
+        decimal impuestoTotal = 0;
 
         foreach (var detalle in detalles)
         {
@@ -825,21 +831,24 @@ public class CotizacionService : ICotizacionService
             
             // Acumular descuentos
             totalDescuentos += detalle.Descuento;
+            
+            // Calcular impuesto de esta línea usando su porcentaje específico
+            // Base imponible = (cantidad × precio) - descuento
+            var baseImponible = subtotalLinea - detalle.Descuento;
+            var impuestoLinea = baseImponible * (detalle.PorcentajeImpuesto / 100m);
+            impuestoTotal += impuestoLinea;
         }
 
         // Subtotal después de descuentos
         var subtotalConDescuentos = subtotal - totalDescuentos;
         
-        // Calcular impuesto sobre el subtotal con descuentos (13%)
-        var impuesto = subtotalConDescuentos * 0.13m;
-        
         // Total final
-        var total = subtotalConDescuentos + impuesto;
+        var total = subtotalConDescuentos + impuestoTotal;
 
         _logger.LogDebug("Totales calculados para versión {VersionId}: Subtotal={Subtotal}, Descuentos={Descuentos}, Impuesto={Impuesto}, Total={Total}",
-            versionId, subtotal, totalDescuentos, impuesto, total);
+            versionId, subtotal, totalDescuentos, impuestoTotal, total);
 
-        return (subtotal, totalDescuentos, impuesto, total);
+        return (subtotal, totalDescuentos, impuestoTotal, total);
     }
 
     /// <summary>
@@ -850,6 +859,7 @@ public class CotizacionService : ICotizacionService
     {
         decimal subtotal = 0;
         decimal totalDescuentos = 0;
+        decimal impuestoTotal = 0;
 
         if (detalles != null && detalles.Any())
         {
@@ -861,27 +871,30 @@ public class CotizacionService : ICotizacionService
                 
                 // Acumular descuentos
                 totalDescuentos += detalle.Descuento;
+                
+                // Calcular impuesto de esta línea usando su porcentaje específico
+                // Base imponible = (cantidad × precio) - descuento
+                var baseImponible = subtotalLinea - detalle.Descuento;
+                var impuestoLinea = baseImponible * (detalle.PorcentajeImpuesto / 100m);
+                impuestoTotal += impuestoLinea;
             }
         }
 
         // Subtotal después de descuentos
         var subtotalConDescuentos = subtotal - totalDescuentos;
         
-        // Calcular impuesto sobre el subtotal con descuentos (13%)
-        var impuesto = subtotalConDescuentos * 0.13m;
-        
         // Total final
-        var total = subtotalConDescuentos + impuesto;
+        var total = subtotalConDescuentos + impuestoTotal;
 
         _logger.LogInformation("?? Totales calculados DESDE REQUEST (sin consultar BD):");
         _logger.LogInformation("  - Cantidad de líneas en request: {CantidadLineas}", detalles?.Count ?? 0);
         _logger.LogInformation("  - Subtotal bruto: {Subtotal}", subtotal);
         _logger.LogInformation("  - Total descuentos: {Descuentos}", totalDescuentos);
         _logger.LogInformation("  - Subtotal con descuentos: {SubtotalConDescuentos}", subtotalConDescuentos);
-        _logger.LogInformation("  - Impuesto (13%): {Impuesto}", impuesto);
+        _logger.LogInformation("  - Impuesto total: {Impuesto}", impuestoTotal);
         _logger.LogInformation("  - Total final: {Total}", total);
 
-        return (subtotal, totalDescuentos, impuesto, total);
+        return (subtotal, totalDescuentos, impuestoTotal, total);
     }
 
     public async Task<ActualizarCotizacionResult> ActualizarCotizacionAsync(ActualizarCotizacionRequest request, int? userId = null)

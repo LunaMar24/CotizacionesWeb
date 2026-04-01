@@ -308,6 +308,7 @@ function inicializarSelect2Productos() {
                         id: producto.value,
                         text: producto.text,
                         precio: producto.precio,
+                        porcentajeImpuesto: producto.porcentajeImpuesto,
                         impuesto: producto.impuesto
                     };
                 });
@@ -346,6 +347,13 @@ function inicializarSelect2Productos() {
                 $('#modalPrecioUnitario').val(data.precio);
             } else {
                 $('#modalPrecioUnitario').val('0');
+            }
+            
+            // Guardar porcentaje de impuesto en el campo oculto
+            if (data.porcentajeImpuesto !== null && data.porcentajeImpuesto !== undefined) {
+                $('#modalPorcentajeImpuesto').val(data.porcentajeImpuesto);
+            } else {
+                $('#modalPorcentajeImpuesto').val('0');
             }
             
             // Recalcular total de línea
@@ -409,6 +417,23 @@ function formatProductoSelection(producto) {
 // GESTIÓN DE LÍNEAS DE DETALLE
 // ========================================
 
+/**
+ * Obtiene el porcentaje de impuesto a usar según configuración
+ * Si ERP_USAR_IMPUESTOS = "S", usa el porcentaje del ERP
+ * Si ERP_USAR_IMPUESTOS = "N", usa el parámetro TASA_IMPUESTO
+ */
+async function obtenerPorcentajeImpuesto(porcentajeErp) {
+    // Si viene porcentaje del ERP, verificar si debe usarse
+    if (porcentajeErp !== null && porcentajeErp !== undefined) {
+        // Por ahora, siempre usar el del ERP si está disponible
+        // TODO: Implementar consulta al parámetro ERP_USAR_IMPUESTOS si es necesario
+        return porcentajeErp;
+    }
+    
+    // Fallback: usar parámetro por defecto (13%)
+    return 13.0;
+}
+
 function abrirModalDetalle(index) {
     detalleEditandoIndex = index;
     limpiarModalDetalle();
@@ -428,6 +453,7 @@ function abrirModalDetalle(index) {
         const cantidad = parseFloat(fila.find('input[name$=".Cantidad"]').val());
         const precio = parseFloat(fila.find('input[name$=".PrecioUnitario"]').val());
         const descuento = parseFloat(fila.find('input[name$=".Descuento"]').val());
+        const porcentajeImpuesto = parseFloat(fila.find('input[name$=".PorcentajeImpuesto"]').val()) || 0;
         
         // Almacenar valores originales para detectar cambios (solo si no existen)
         const detalleVersionId = parseInt(detalleId) || 0;
@@ -484,6 +510,7 @@ function abrirModalDetalle(index) {
         $('#modalCantidad').val(cantidad);
         $('#modalPrecioUnitario').val(precio);
         $('#modalDescuento').val(descuento);
+        $('#modalPorcentajeImpuesto').val(porcentajeImpuesto);
         
         calcularTotalLinea();
     } else {
@@ -503,6 +530,7 @@ function guardarDetalle() {
     const cantidad = parseFloat($('#modalCantidad').val());
     const precio = parseFloat($('#modalPrecioUnitario').val());
     const descuento = parseFloat($('#modalDescuento').val()) || 0;
+    const porcentajeImpuesto = parseFloat($('#modalPorcentajeImpuesto').val()) || 0;
     
     if (!productoId || !productoNombre || !cantidad || cantidad <= 0 || !precio || precio < 0) {
         showNotification('error', 'Por favor complete todos los campos obligatorios correctamente');
@@ -519,6 +547,7 @@ function guardarDetalle() {
             cantidad: cantidad,
             precioUnitario: precio,
             descuento: descuento,
+            porcentajeImpuesto: porcentajeImpuesto,
             totalLinea: totalLinea
         });
     } else {
@@ -530,6 +559,7 @@ function guardarDetalle() {
             cantidad: cantidad,
             precioUnitario: precio,
             descuento: descuento,
+            porcentajeImpuesto: porcentajeImpuesto,
             totalLinea: totalLinea
         });
     }
@@ -568,6 +598,7 @@ function actualizarFilaDetalle(index, datos) {
     fila.find('input[name$=".Cantidad"]').val(datos.cantidad.toString());
     fila.find('input[name$=".PrecioUnitario"]').val(datos.precioUnitario.toString());
     fila.find('input[name$=".Descuento"]').val(datos.descuento.toString());
+    fila.find('input[name$=".PorcentajeImpuesto"]').val(datos.porcentajeImpuesto.toString());
     fila.find('input[name$=".TotalLinea"]').val(datos.totalLinea.toString());
     
     // Detectar si la línea fue modificada (solo para líneas persistentes)
@@ -664,6 +695,7 @@ function agregarNuevaFilaDetalle(datos) {
             </td>
             <td class="text-right">
                 <strong class="total-linea-display">${formatCurrency(datos.totalLinea)}</strong>
+                <input type="hidden" name="Detalles[${nuevoIndex}].PorcentajeImpuesto" value="${datos.porcentajeImpuesto.toString()}" />
                 <input type="hidden" name="Detalles[${nuevoIndex}].TotalLinea" value="${datos.totalLinea.toString()}" />
             </td>
             <td class="text-center">
@@ -765,25 +797,31 @@ function reindexarFilasDetalle() {
 function recalcularTotales() {
     let subtotal = 0;
     let totalDescuentos = 0;
+    let totalImpuestos = 0;
     
     $('#tablaDetalles tbody tr').each(function() {
         const cantidad = parseFloat($(this).find('input[name$=".Cantidad"]').val()) || 0;
         const precio = parseFloat($(this).find('input[name$=".PrecioUnitario"]').val()) || 0;
         const descuento = parseFloat($(this).find('input[name$=".Descuento"]').val()) || 0;
+        const porcentajeImpuesto = parseFloat($(this).find('input[name$=".PorcentajeImpuesto"]').val()) || 0;
         
         const subtotalLinea = cantidad * precio;
         subtotal += subtotalLinea;
         totalDescuentos += descuento;
+        
+        // Calcular impuesto de esta línea
+        const baseImponible = subtotalLinea - descuento;
+        const impuestoLinea = baseImponible * (porcentajeImpuesto / 100);
+        totalImpuestos += impuestoLinea;
     });
     
     const subtotalConDescuentos = subtotal - totalDescuentos;
-    const impuesto = subtotalConDescuentos * 0.13;
-    const total = subtotalConDescuentos + impuesto;
+    const total = subtotalConDescuentos + totalImpuestos;
     
     $('#displaySubTotal').text(formatCurrency(subtotal));
     $('#displayDescuento').text(formatCurrency(totalDescuentos));
     $('#displaySubtotalDescontado').text(formatCurrency(subtotalConDescuentos));
-    $('#displayImpuesto').text(formatCurrency(impuesto));
+    $('#displayImpuesto').text(formatCurrency(totalImpuestos));
     $('#displayTotal').text(formatCurrency(total));
     
     $('.financial-summary').addClass('updated');
@@ -818,6 +856,7 @@ function limpiarModalDetalle() {
     $('#modalCantidad').val('1');
     $('#modalPrecioUnitario').val('');
     $('#modalDescuento').val('0');
+    $('#modalPorcentajeImpuesto').val('0');
     $('#modalTotalLinea').text(formatCurrency(0));
     $('#detalleIndex').val('');
     $('#detalleVersionId').val('');
@@ -987,6 +1026,7 @@ try {
             const inputCantidad = fila.find('input[name$=".Cantidad"]');
             const inputPrecio = fila.find('input[name$=".PrecioUnitario"]');
             const inputDescuento = fila.find('input[name$=".Descuento"]');
+            const inputPorcentajeImpuesto = fila.find('input[name$=".PorcentajeImpuesto"]');
             const inputTotal = fila.find('input[name$=".TotalLinea"]');
             
             const detalle = {
@@ -996,6 +1036,7 @@ try {
                 Cantidad: parseFloat(inputCantidad.val() || fila.find(`input[name="Detalles[${index}].Cantidad"]`).val() || 0),
                 PrecioUnitario: parseFloat(inputPrecio.val() || fila.find(`input[name="Detalles[${index}].PrecioUnitario"]`).val() || 0),
                 Descuento: parseFloat(inputDescuento.val() || fila.find(`input[name="Detalles[${index}].Descuento"]`).val() || 0),
+                PorcentajeImpuesto: parseFloat(inputPorcentajeImpuesto.val() || fila.find(`input[name="Detalles[${index}].PorcentajeImpuesto"]`).val() || 0),
                 TotalLinea: parseFloat(inputTotal.val() || fila.find(`input[name="Detalles[${index}].TotalLinea"]`).val() || 0)
             };
             
@@ -1339,10 +1380,21 @@ function calcularTotalDescuentos() {
 }
 
 function calcularImpuestoActual() {
-    const subtotal = calcularSubtotalActual();
-    const descuentos = calcularTotalDescuentos();
-    const subtotalConDescuentos = subtotal - descuentos;
-    return subtotalConDescuentos * 0.13;
+    let totalImpuestos = 0;
+    
+    $('#tablaDetalles tbody tr').each(function() {
+        const cantidad = parseFloat($(this).find('input[name$=".Cantidad"]').val()) || 0;
+        const precio = parseFloat($(this).find('input[name$=".PrecioUnitario"]').val()) || 0;
+        const descuento = parseFloat($(this).find('input[name$=".Descuento"]').val()) || 0;
+        const porcentajeImpuesto = parseFloat($(this).find('input[name$=".PorcentajeImpuesto"]').val()) || 0;
+        
+        const subtotalLinea = cantidad * precio;
+        const baseImponible = subtotalLinea - descuento;
+        const impuestoLinea = baseImponible * (porcentajeImpuesto / 100);
+        totalImpuestos += impuestoLinea;
+    });
+    
+    return totalImpuestos;
 }
 
 function calcularTotalFinalActual() {

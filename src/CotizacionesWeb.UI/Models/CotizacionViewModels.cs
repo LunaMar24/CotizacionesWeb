@@ -144,6 +144,7 @@ public class DetalleCotizacionViewModel
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }
+    public decimal PorcentajeImpuesto { get; set; } // Porcentaje de impuesto aplicado
     public decimal TotalLinea { get; set; }
 }
 
@@ -208,6 +209,7 @@ public class DetalleEditarViewModel
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }
+    public decimal PorcentajeImpuesto { get; set; } // Porcentaje de impuesto aplicado
     public decimal TotalLinea { get; set; }
 }
 

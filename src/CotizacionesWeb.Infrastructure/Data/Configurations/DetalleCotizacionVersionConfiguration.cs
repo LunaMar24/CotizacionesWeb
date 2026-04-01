@@ -38,6 +38,11 @@ public class DetalleCotizacionVersionConfiguration : IEntityTypeConfiguration<De
                .HasColumnType("decimal(18,2)")
                .IsRequired();
         
+        builder.Property(d => d.PorcentajeImpuesto)
+               .HasColumnType("decimal(18,2)")
+               .IsRequired()
+               .HasDefaultValue(0);
+        
         builder.Property(d => d.TotalLinea)
                .HasColumnType("decimal(18,2)")
                .IsRequired();

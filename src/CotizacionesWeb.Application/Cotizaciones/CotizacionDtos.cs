@@ -50,6 +50,7 @@ public record DetalleCotizacionDto(
     decimal Cantidad,
     decimal PrecioUnitario,
     decimal Descuento,
+    decimal PorcentajeImpuesto,
     decimal TotalLinea
 );
 
@@ -119,6 +120,7 @@ public record ActualizarDetalleRequest
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }
+    public decimal PorcentajeImpuesto { get; set; } // Porcentaje de impuesto aplicado
     public decimal TotalLinea { get; set; }
 }
 
