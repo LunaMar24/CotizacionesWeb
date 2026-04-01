@@ -166,22 +166,36 @@ const esEditable = (typeof window.FormatUtils !== 'undefined') ?
     const matchVersion = versionTexto.match(/v?(\d+\.\d+)/);
     window._versionOriginal = matchVersion ? matchVersion[1] : '1.0';
     
-    // Almacenar valor original del tipo de cambio
+    // ✅ MEJORADO: Inicialización del tipo de cambio original
     const $tipoCambio = $('#TipoCambio');
     if ($tipoCambio.length > 0) {
         $tipoCambio.data('original-value', $tipoCambio.val());
+        window._tipoCambioOriginal = $tipoCambio.val();
     } else {
         // Si no existe el input, leer del display
         const tipoCambioTexto = $('#tipoCambioValor').text().trim();
         if (tipoCambioTexto && tipoCambioTexto !== 'No definido') {
             const match = tipoCambioTexto.match(/[\d,]+\.?\d*/);
             const valor = match ? match[0].replace(/,/g, '') : '';
-            // Guardar en una variable global temporal
             window._tipoCambioOriginal = valor;
         } else {
-            window._tipoCambioOriginal = '';
+            // ✅ NUEVO: Si es nueva cotización y hay tipo de cambio en FormatConfig, usarlo
+            if (esNuevaCotizacion && window.FormatConfig && window.FormatConfig.tipoCambio) {
+                window._tipoCambioOriginal = window.FormatConfig.tipoCambio.toString();
+                // Actualizar el display también
+                const tipoCambioFormateado = parseFloat(window.FormatConfig.tipoCambio).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+                $('#tipoCambioValor').text(tipoCambioFormateado);
+                console.log('💱 Inicializando tipo de cambio para nueva cotización:', window.FormatConfig.tipoCambio);
+            } else {
+                window._tipoCambioOriginal = '';
+            }
         }
     }
+    
+    console.log('💱 Tipo de cambio original almacenado:', window._tipoCambioOriginal);
     
     setTimeout(function() {
         verificarYActualizarEstadoMoneda();
@@ -1802,12 +1816,22 @@ function marcarComoGuardado() {
     const matchVersion = versionTexto.match(/v?(\d+\.\d+)/);
     window._versionOriginal = matchVersion ? matchVersion[1] : '1.0';
     
-    // Actualizar valor original del tipo de cambio
+    // ✅ MEJORADO: Actualizar valor original del tipo de cambio
     const tipoCambioActual = $('#TipoCambio').val();
     if (tipoCambioActual) {
         $('#TipoCambio').data('original-value', tipoCambioActual);
         window._tipoCambioOriginal = tipoCambioActual;
+    } else {
+        // Si no hay input, leer del display
+        const tipoCambioTexto = $('#tipoCambioValor').text().trim();
+        if (tipoCambioTexto && tipoCambioTexto !== 'No definido') {
+            const match = tipoCambioTexto.match(/[\d,]+\.?\d*/);
+            const valor = match ? match[0].replace(/,/g, '') : '';
+            window._tipoCambioOriginal = valor;
+        }
     }
+    
+    console.log('💱 Tipo de cambio original actualizado después de guardar:', window._tipoCambioOriginal);
 }
 
 function seGuardoRecientemente() {

@@ -75,11 +75,31 @@ public class ParametroSistemaService : IParametroSistemaService
 
         try
         {
-            return (T)Convert.ChangeType(valor, typeof(T));
+            // ? CORREGIDO: Manejar tipos nullable correctamente
+            var targetType = typeof(T);
+            var underlyingType = Nullable.GetUnderlyingType(targetType);
+            
+            // Si es un tipo nullable (como decimal?), usar el tipo subyacente para la conversión
+            if (underlyingType != null)
+            {
+                // Si el valor está vacío o es null, retornar null para tipos nullable
+                if (string.IsNullOrWhiteSpace(valor))
+                    return default(T);
+                
+                // Convertir al tipo subyacente (ej: string -> decimal)
+                var convertedValue = Convert.ChangeType(valor, underlyingType);
+                return (T)convertedValue;
+            }
+            else
+            {
+                // Para tipos no nullable, usar la conversión normal
+                return (T)Convert.ChangeType(valor, targetType);
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al convertir parámetro {Codigo} al tipo {Tipo}", codigo, typeof(T).Name);
+            _logger.LogError(ex, "Error al convertir parámetro {Codigo} con valor '{Valor}' al tipo {Tipo}", 
+                codigo, valor, typeof(T).Name);
             return default(T);
         }
     }

@@ -413,6 +413,9 @@ public class CotizacionesController : Controller
       var usarImpuestosErp = await _parametroSistemaService.ObtenerValorParametroAsync("ERP_USAR_IMPUESTOS") ?? "S";
       var tasaImpuesto = await _parametroSistemaService.ObtenerValorParametroAsync<decimal?>("TASA_IMPUESTO") ?? 13.0m;
 
+      _logger.LogInformation("Crear cotización - Configuración cargada: Moneda={Moneda}, TipoCambio={TipoCambio}, UsarImpuestosERP={UsarImpuestos}, TasaImpuesto={TasaImpuesto}", 
+        monedaDefecto, tipoCambioBase, usarImpuestosErp, tasaImpuesto);
+
       // Crear ViewModel para nueva cotización con valores predeterminados
       var viewModel = new CotizacionEditarViewModel
       {
