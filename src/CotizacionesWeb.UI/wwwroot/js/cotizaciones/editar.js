@@ -9,27 +9,30 @@ let detalleEditandoIndex = -1;
 let estadoActual = 'B'; // Estado actual de la cotización
 
 $(document).ready(function() {
-    if (typeof $ === 'undefined') {
-        console.error('jQuery no está disponible');
-        return;
-    }
+if (typeof $ === 'undefined') {
+    console.error('jQuery no está disponible');
+    return;
+}
     
-    if (typeof $.fn.CardWidget === 'undefined') {
-        console.warn('AdminLTE CardWidget no está disponible');
-    }
+if (typeof $.fn.CardWidget === 'undefined') {
+    console.warn('AdminLTE CardWidget no está disponible');
+}
     
-    // ⚠️ LIMITACIÓN DEL NAVEGADOR: beforeunload requiere mensaje nativo
-    // Los navegadores modernos NO permiten usar modales personalizados en beforeunload
-    // Este evento solo se dispara para: cerrar tab, cerrar ventana, refresh (F5)
-    // Para navegación interna (links, botones), usamos modal Bootstrap más abajo
-    $(window).on('beforeunload', function(e) {
-        if (verificarCambiosSinGuardar()) {
-            // Mensaje genérico (navegadores modernos muestran su propio texto)
-            const mensaje = 'Tiene cambios sin guardar que se perderán';
-            e.returnValue = mensaje;
-            return mensaje;
-        }
-    });
+// Inicializar estado de cambios guardados
+window.cotizacionGuardada = true;
+    
+// ⚠️ LIMITACIÓN DEL NAVEGADOR: beforeunload requiere mensaje nativo
+// Los navegadores modernos NO permiten usar modales personalizados en beforeunload
+// Este evento solo se dispara para: cerrar tab, cerrar ventana, refresh (F5)
+// Para navegación interna (links, botones), usamos modal Bootstrap más abajo
+$(window).on('beforeunload', function(e) {
+    if (verificarCambiosSinGuardar()) {
+        // Mensaje genérico (navegadores modernos muestran su propio texto)
+        const mensaje = 'Tiene cambios sin guardar que se perderán';
+        e.returnValue = mensaje;
+        return mensaje;
+    }
+});
     
     // ✅ NAVEGACIÓN INTERNA: Usar modal Bootstrap (mejor UX)
     // Interceptar clicks en enlaces para mostrar confirmación con modal
@@ -60,7 +63,18 @@ $(document).ready(function() {
         window.cotizacionGuardada = false;
     });
     
-    $(document).on('click', '#btnAgregarLinea, .btn-editar-detalle, .btn-eliminar-detalle', function() {
+    // Marcar cambios al interactuar con líneas de detalle
+    $(document).on('click', '#btnAgregarLinea, .btn-editar-detalle, .btn-eliminar-detalle, #btnGuardarDetalle', function() {
+        window.cotizacionGuardada = false;
+    });
+    
+    // Detectar cambios en versión y tipo de cambio
+    $(document).on('change', '#NumeroVersion, #TipoCambio', function() {
+        window.cotizacionGuardada = false;
+    });
+    
+    // Detectar cambios en moneda
+    $(document).on('change', '#MonedaSelect', function() {
         window.cotizacionGuardada = false;
     });
     
@@ -579,6 +593,9 @@ function guardarDetalle() {
     // Recalcular totales (esto llamará a verificarYActualizarEstadoMoneda)
     recalcularTotales();
     
+    // Marcar como cambios sin guardar
+    window.cotizacionGuardada = false;
+    
     // Cerrar modal
     $('#modalEditarDetalle').modal('hide');
     
@@ -760,6 +777,9 @@ function ejecutarEliminacionDetalle(index) {
     fila.remove();
     reindexarFilasDetalle();
     recalcularTotales();
+    
+    // Marcar como cambios sin guardar
+    window.cotizacionGuardada = false;
     
     showNotification('success', 'Detalle eliminado correctamente');
     
@@ -1482,6 +1502,7 @@ function verificarCambiosSinGuardar() {
     const tipoCambioActual = $('#TipoCambio').val();
     const tipoCambioOriginal = $('#TipoCambio').data('original-value') || window._tipoCambioOriginal || '';
     
+    // Verificar líneas nuevas
     let lineasNuevas = 0;
     $('#tablaDetalles tbody tr').each(function() {
         const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
@@ -1490,9 +1511,13 @@ function verificarCambiosSinGuardar() {
         }
     });
     
+    // Verificar líneas modificadas (que tienen clase linea-modificada)
+    const lineasModificadas = $('#tablaDetalles tbody tr.linea-modificada').length;
+    
     const hayCambios = (
         notasActuales !== notasOriginales ||
         lineasNuevas > 0 ||
+        lineasModificadas > 0 ||
         (monedaCombo && monedaCombo !== monedaActual) ||
         (versionEditada && versionEditada !== versionOriginal) ||
         (tipoCambioActual !== tipoCambioOriginal)
@@ -1576,6 +1601,8 @@ function aplicarCambioMoneda(nuevaMoneda) {
     }
     
     actualizarDisplaysMoneda();
+    
+    // Marcar como cambios sin guardar
     window.cotizacionGuardada = false;
     
     showNotification('success', 
