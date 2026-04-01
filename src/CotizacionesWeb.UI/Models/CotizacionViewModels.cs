@@ -190,6 +190,19 @@ public class CotizacionEditarViewModel
     // Líneas de detalle (EDITABLE)
     public List<DetalleEditarViewModel> Detalles { get; set; } = new();
     
+    // Configuración de impuestos (desde parámetros del sistema)
+    /// <summary>
+    /// Indica si se deben usar los porcentajes de impuesto provenientes del ERP.
+    /// Valores: "S" = Usar impuestos del ERP, "N" = Usar tasa fija del sistema
+    /// </summary>
+    public string UsarImpuestosErp { get; set; } = "S";
+    
+    /// <summary>
+    /// Tasa de impuesto por defecto del sistema (ej: 13.0 para 13%)
+    /// Se usa cuando UsarImpuestosErp = "N" o cuando el ERP no provee porcentaje
+    /// </summary>
+    public decimal TasaImpuesto { get; set; } = 13.0m;
+    
     // Propiedades calculadas para reglas de negocio
     /// <summary>
     /// Indica si se puede cambiar la moneda de la cotización.

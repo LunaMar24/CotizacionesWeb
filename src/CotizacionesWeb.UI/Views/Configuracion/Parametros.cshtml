@@ -143,7 +143,7 @@
                                         <input type="hidden" name="categoriaSeleccionada" value="@ViewBag.CategoriaSeleccionada" />
                                         
                                         <div class="input-group">
-                                            @if (parametro.TipoValor == "Booleano (S/N)")
+                                            @if (parametro.TipoValor == "Booleano")
                                             {
                                                 <select name="valor" class="form-control parametro-input" data-tipo="@parametro.TipoValor">
                                                     <option value="S" selected="@(parametro.Valor == "S")">Sí (S)</option>

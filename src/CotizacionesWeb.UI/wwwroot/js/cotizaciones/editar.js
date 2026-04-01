@@ -349,12 +349,11 @@ function inicializarSelect2Productos() {
                 $('#modalPrecioUnitario').val('0');
             }
             
-            // Guardar porcentaje de impuesto en el campo oculto
-            if (data.porcentajeImpuesto !== null && data.porcentajeImpuesto !== undefined) {
-                $('#modalPorcentajeImpuesto').val(data.porcentajeImpuesto);
-            } else {
-                $('#modalPorcentajeImpuesto').val('0');
-            }
+            // Obtener porcentaje de impuesto según configuración del sistema
+            const porcentajeImpuesto = obtenerPorcentajeImpuesto(data.porcentajeImpuesto);
+            $('#modalPorcentajeImpuesto').val(porcentajeImpuesto);
+            
+            console.log(`💰 Impuesto configurado: ${porcentajeImpuesto}% (ERP: ${data.porcentajeImpuesto || 'N/A'})`);
             
             // Recalcular total de línea
             calcularTotalLinea();
@@ -418,20 +417,33 @@ function formatProductoSelection(producto) {
 // ========================================
 
 /**
- * Obtiene el porcentaje de impuesto a usar según configuración
- * Si ERP_USAR_IMPUESTOS = "S", usa el porcentaje del ERP
- * Si ERP_USAR_IMPUESTOS = "N", usa el parámetro TASA_IMPUESTO
+ * Obtiene el porcentaje de impuesto a usar según configuración del sistema
+ * 
+ * @param {number|null|undefined} porcentajeErp - Porcentaje de impuesto proveniente del ERP
+ * @returns {number} Porcentaje de impuesto a aplicar
+ * 
+ * Lógica:
+ * - Si ERP_USAR_IMPUESTOS = "S" y porcentajeErp tiene valor → usar porcentajeErp
+ * - Si ERP_USAR_IMPUESTOS = "N" → usar TASA_IMPUESTO del sistema
+ * - Si porcentajeErp es null/undefined → fallback a TASA_IMPUESTO del sistema
  */
-async function obtenerPorcentajeImpuesto(porcentajeErp) {
-    // Si viene porcentaje del ERP, verificar si debe usarse
-    if (porcentajeErp !== null && porcentajeErp !== undefined) {
-        // Por ahora, siempre usar el del ERP si está disponible
-        // TODO: Implementar consulta al parámetro ERP_USAR_IMPUESTOS si es necesario
-        return porcentajeErp;
+function obtenerPorcentajeImpuesto(porcentajeErp) {
+    // Obtener configuración desde window.ConfigImpuestos (configurado en la vista Razor)
+    const usarImpuestosErp = window.ConfigImpuestos?.usarImpuestosErp || 'S';
+    const tasaImpuesto = parseFloat(window.ConfigImpuestos?.tasaImpuesto) || 13.0;
+    
+    // Si se debe usar impuestos del ERP y viene un valor válido del ERP
+    if (usarImpuestosErp === 'S' && porcentajeErp !== null && porcentajeErp !== undefined) {
+        const porcentaje = parseFloat(porcentajeErp);
+        if (!isNaN(porcentaje) && porcentaje >= 0) {
+            console.log(`✅ Usando porcentaje del ERP: ${porcentaje}%`);
+            return porcentaje;
+        }
     }
     
-    // Fallback: usar parámetro por defecto (13%)
-    return 13.0;
+    // Fallback: usar tasa de impuesto del sistema
+    console.log(`📋 Usando tasa de impuesto del sistema: ${tasaImpuesto}%`);
+    return tasaImpuesto;
 }
 
 function abrirModalDetalle(index) {

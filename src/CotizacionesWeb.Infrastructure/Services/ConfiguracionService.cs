@@ -277,7 +277,7 @@ public class ConfiguracionService : IConfiguracionService
             TipoParametro.Texto => "Texto",
             TipoParametro.Decimal => "Decimal",
             TipoParametro.Entero => "Entero",
-            TipoParametro.Booleano => "Booleano (S/N)",
+            TipoParametro.Booleano => "Booleano",
             TipoParametro.Fecha => "Fecha",
             _ => "Desconocido"
         };

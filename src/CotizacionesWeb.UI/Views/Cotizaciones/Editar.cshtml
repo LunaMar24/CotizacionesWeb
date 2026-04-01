@@ -792,6 +792,12 @@
             tipoCambio: @(Model.TipoCambio?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture) ?? "null")
         };
     }
+    
+    // Configuración de impuestos desde parámetros del sistema
+    window.ConfigImpuestos = {
+        usarImpuestosErp: '@Model.UsarImpuestosErp',
+        tasaImpuesto: @Model.TasaImpuesto.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)
+    };
 
     // Agregar monedas disponibles desde el servidor
     window.MonedasDisponibles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.MonedasDisponibles ?? FormatHelper.GetMonedasDisponiblesParaJson()));
@@ -805,6 +811,7 @@
     console.log('Monedas disponibles:', window.MonedasDisponibles);
     console.log('Puede cambiar moneda?:', @Model.PuedeCambiarMoneda.ToString().ToLower());
     console.log('FormatConfig después:', window.FormatConfig);
+    console.log('ConfigImpuestos:', window.ConfigImpuestos);
     console.log('====================================');
   </script>
   <!-- Select2 JS -->

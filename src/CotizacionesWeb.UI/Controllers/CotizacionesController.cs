@@ -7,6 +7,7 @@ using CotizacionesWeb.UI.Helpers;
 using System.Security.Claims;
 using CotizacionesWeb.Application.Integrations;
 using CotizacionesWeb.Domain.Enums;
+using CotizacionesWeb.Infrastructure.Services;
 
 namespace CotizacionesWeb.UI.Controllers;
 
@@ -18,19 +19,22 @@ public class CotizacionesController : Controller
   private readonly IAssignInteresadoHubSpotService _assignInteresadoHubSpotService;
   private readonly IHubSpotService _hubSpotService;
   private readonly IErpService _erpService;
+  private readonly IParametroSistemaService _parametroSistemaService;
 
   public CotizacionesController(
       ICotizacionService cotizacionService,
       ILogger<CotizacionesController> logger,
       IAssignInteresadoHubSpotService assignInteresadoHubSpotService,
       IHubSpotService hubSpotService,
-      IErpService erpService)
+      IErpService erpService,
+      IParametroSistemaService parametroSistemaService)
   {
     _cotizacionService = cotizacionService;
     _logger = logger;
     _assignInteresadoHubSpotService = assignInteresadoHubSpotService;
     _hubSpotService = hubSpotService;
     _erpService = erpService;
+    _parametroSistemaService = parametroSistemaService;
   }
 
   [RequierePermiso("COT_VIEW")]
@@ -432,6 +436,10 @@ public class CotizacionesController : Controller
         return NotFound($"Detalle de cotización {cotizacionId} no encontrado");
       }
 
+      // Obtener parámetros de configuración de impuestos
+      var usarImpuestosErp = await _parametroSistemaService.ObtenerValorParametroAsync("ERP_USAR_IMPUESTOS") ?? "S";
+      var tasaImpuesto = await _parametroSistemaService.ObtenerValorParametroAsync<decimal?>("TASA_IMPUESTO") ?? 13.0m;
+
       var viewModel = new CotizacionEditarViewModel
       {
         CotizacionId = detalleDto.Version.CotizacionId,
@@ -464,6 +472,10 @@ public class CotizacionesController : Controller
         FechaEnvioERP = cotizacion.FechaEnvioERP,
 
         Notas = detalleDto.Version.Notas,
+
+        // Configuración de impuestos desde parámetros del sistema
+        UsarImpuestosErp = usarImpuestosErp,
+        TasaImpuesto = tasaImpuesto,
 
         Detalles = detalleDto.Detalles.Select(d => new DetalleEditarViewModel
         {

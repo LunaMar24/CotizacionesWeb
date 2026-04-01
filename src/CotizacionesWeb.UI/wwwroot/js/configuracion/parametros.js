@@ -67,7 +67,7 @@ function validarTipoLocal(valor, tipo) {
             }
             break;
             
-        case 'Booleano (S/N)':
+        case 'Booleano':
             const valorUpper = valor.toUpperCase();
             if (!['S', 'N', 'TRUE', 'FALSE'].includes(valorUpper)) {
                 return { esValido: false, mensaje: 'Debe ser S, N, true o false' };
@@ -214,7 +214,7 @@ function initTooltips() {
             case 'Entero':
                 tooltip = 'Ingrese un número entero positivo';
                 break;
-            case 'Booleano (S/N)':
+            case 'Booleano':
                 tooltip = 'Seleccione Sí (S) o No (N)';
                 break;
             case 'Fecha':
