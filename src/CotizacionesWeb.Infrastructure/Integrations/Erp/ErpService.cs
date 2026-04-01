@@ -55,8 +55,8 @@ public class ErpService : IErpService
       // 3. Resolver moneda ERP
       string monedaErp = monedaCotizacion switch
       {
-        "CRC" => "L",
-        "DOL" => "D",
+        "CRC" => "CRC",
+        "DOL" => "DOL",
         _ => throw new InvalidOperationException("Moneda de cotización no soportada.")
       };
 

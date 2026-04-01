@@ -458,33 +458,46 @@ select.form-control[disabled] {
     background-color: rgba(40, 167, 69, 0.1) !important;
 }
 
-/* Líneas persistentes (guardadas en BD) - fondo azul claro */
+/* Líneas persistentes (guardadas en BD) - sin estilo especial */
 .linea-persistente {
-    background-color: rgba(23, 162, 184, 0.05) !important;
-    border-left: 3px solid #17a2b8;
+    background-color: transparent !important;
+    border-left: 3px solid transparent;
 }
 
 .linea-persistente:hover {
-    background-color: rgba(23, 162, 184, 0.1) !important;
+    background-color: #f8f9fa !important;
 }
 
-/* Iconos de estado para líneas */
-.fa-plus-circle {
+/* Líneas modificadas (persistentes que fueron editadas) - fondo amarillo/naranja claro */
+.linea-modificada {
+    background-color: rgba(255, 193, 7, 0.08) !important;
+    border-left: 3px solid #ffc107;
+}
+
+.linea-modificada:hover {
+    background-color: rgba(255, 193, 7, 0.15) !important;
+}
+
+/* Indicadores de estado en líneas */
+.indicador-estado {
+    font-size: 1rem;
+    margin-left: 0.25rem;
+    cursor: help;
+}
+
+.indicador-estado.fa-plus-circle {
     color: #28a745 !important;
-    font-size: 0.9rem;
-    margin-left: 0.25rem;
 }
 
-.fa-database {
-    color: #17a2b8 !important;
-    font-size: 0.9rem;
-    margin-left: 0.25rem;
+.indicador-estado.fa-edit {
+    color: #ffc107 !important;
 }
 
-/* Contador de líneas mejorado */
+/* Contador de líneas simplificado */
 #contadorLineas {
     font-size: 0.875rem;
-    font-weight: bold;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
 }
 
 /* Tooltip para explicar tipos de líneas */

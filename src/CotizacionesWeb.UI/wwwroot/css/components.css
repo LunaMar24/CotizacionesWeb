@@ -445,3 +445,77 @@
     color: #6c757d;
     font-style: italic;
 }
+
+/* ============================================
+   SELECT2 - Estilos para Items Seleccionados/Resaltados
+   ============================================ */
+
+/* Item resaltado (hover) en el dropdown */
+.select2-container--bootstrap4 .select2-results__option--highlighted {
+    background-color: #e9ecef !important;
+    color: #212529 !important;
+}
+
+/* Item resaltado con nuestra clase personalizada */
+.select2-container--bootstrap4 .select2-results__option--highlighted .select2-result-producto__codigo {
+    color: #0056b3 !important;
+    font-weight: bold;
+}
+
+.select2-container--bootstrap4 .select2-results__option--highlighted .select2-result-producto__descripcion {
+    color: #212529 !important;
+}
+
+.select2-container--bootstrap4 .select2-results__option--highlighted .select2-result-producto__precio {
+    color: #1e7e34 !important;
+    font-weight: 600;
+}
+
+/* Item actualmente seleccionado (marcado) */
+.select2-container--bootstrap4 .select2-results__option[aria-selected="true"] {
+    background-color: #d1ecf1 !important;
+    color: #0c5460 !important;
+}
+
+.select2-container--bootstrap4 .select2-results__option[aria-selected="true"] .select2-result-producto__codigo {
+    color: #004085 !important;
+}
+
+.select2-container--bootstrap4 .select2-results__option[aria-selected="true"] .select2-result-producto__descripcion {
+    color: #0c5460 !important;
+}
+
+.select2-container--bootstrap4 .select2-results__option[aria-selected="true"] .select2-result-producto__precio {
+    color: #155724 !important;
+}
+
+/* Asegurar que Select2 funcione correctamente en modales */
+.select2-container {
+    z-index: 9999 !important;
+}
+
+.select2-dropdown {
+    z-index: 10000 !important;
+}
+
+/* Permitir input en Select2 dentro de modales */
+.modal .select2-search__field {
+    width: 100% !important;
+}
+
+.select2-container--open .select2-dropdown {
+    z-index: 10050 !important;
+}
+
+/* Mejorar visibilidad del input de búsqueda */
+.select2-container--bootstrap4 .select2-search--dropdown .select2-search__field {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.select2-container--bootstrap4 .select2-search--dropdown .select2-search__field:focus {
+    border-color: #80bdff;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}

@@ -305,9 +305,20 @@
                   <tbody>
                     @for (int i = 0; i < Model.Detalles.Count; i++)
                     {
-                      <tr data-detalle-id="@Model.Detalles[i].DetalleVersionId" data-index="@i">
+                      <tr data-detalle-id="@Model.Detalles[i].DetalleVersionId" 
+                          data-index="@i" 
+                          class="linea-persistente"
+                          data-valores-originales='@System.Text.Json.JsonSerializer.Serialize(new { 
+                            productoId = Model.Detalles[i].ProductoId, 
+                            productoNombre = Model.Detalles[i].ProductoNombre,
+                            cantidad = Model.Detalles[i].Cantidad,
+                            precio = Model.Detalles[i].PrecioUnitario,
+                            descuento = Model.Detalles[i].Descuento
+                          })'>
                         <td>
-                          <strong class="text-primary">@Model.Detalles[i].ProductoId</strong>
+                          <div class="d-flex align-items-center">
+                            <strong class="text-primary">@Model.Detalles[i].ProductoId</strong>
+                          </div>
                           <input type="hidden" name="Detalles[@i].DetalleVersionId" value="@Model.Detalles[i].DetalleVersionId" />
                           <input type="hidden" name="Detalles[@i].ProductoId" value="@Model.Detalles[i].ProductoId" />
                         </td>

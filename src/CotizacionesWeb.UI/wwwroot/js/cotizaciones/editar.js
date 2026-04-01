@@ -429,6 +429,38 @@ function abrirModalDetalle(index) {
         const precio = parseFloat(fila.find('input[name$=".PrecioUnitario"]').val());
         const descuento = parseFloat(fila.find('input[name$=".Descuento"]').val());
         
+        // Almacenar valores originales para detectar cambios (solo si no existen)
+        const detalleVersionId = parseInt(detalleId) || 0;
+        if (detalleVersionId > 0) {
+            // Intentar leer desde el atributo data-valores-originales
+            let valoresOriginales = fila.data('valores-originales');
+            
+            // Si no existe en jQuery data, intentar desde el atributo HTML
+            if (!valoresOriginales) {
+                const atributoJson = fila.attr('data-valores-originales');
+                if (atributoJson) {
+                    try {
+                        valoresOriginales = JSON.parse(atributoJson);
+                        fila.data('valores-originales', valoresOriginales);
+                    } catch (e) {
+                        console.warn('Error parseando valores originales:', e);
+                    }
+                }
+            }
+            
+            // Si aún no existen, usar los valores actuales como originales
+            if (!valoresOriginales) {
+                valoresOriginales = {
+                    productoId: productoId,
+                    productoNombre: productoNombre,
+                    cantidad: cantidad,
+                    precio: precio,
+                    descuento: descuento
+                };
+                fila.data('valores-originales', valoresOriginales);
+            }
+        }
+        
         // Configurar Select2 con el producto actual
         const $selectProducto = $('#modalProductoId');
         if ($selectProducto.hasClass('select2-hidden-accessible')) {
@@ -513,7 +545,9 @@ function guardarDetalle() {
 
 function actualizarFilaDetalle(index, datos) {
     const fila = $(`tr[data-index="${index}"]`);
+    const detalleVersionId = parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0;
     
+    // Actualizar displays visuales
     fila.find('.text-primary').text(datos.productoId);
     fila.find('.producto-nombre').text(datos.productoNombre);
     fila.find('.cantidad-display').text(formatNumber(datos.cantidad, 2));
@@ -528,12 +562,60 @@ function actualizarFilaDetalle(index, datos) {
     
     fila.find('.total-linea-display').text(formatCurrency(datos.totalLinea));
     
+    // Actualizar inputs ocultos
     fila.find('input[name$=".ProductoId"]').val(datos.productoId);
     fila.find('input[name$=".ProductoNombre"]').val(datos.productoNombre);
     fila.find('input[name$=".Cantidad"]').val(datos.cantidad.toString());
     fila.find('input[name$=".PrecioUnitario"]').val(datos.precioUnitario.toString());
     fila.find('input[name$=".Descuento"]').val(datos.descuento.toString());
     fila.find('input[name$=".TotalLinea"]').val(datos.totalLinea.toString());
+    
+    // Detectar si la línea fue modificada (solo para líneas persistentes)
+    if (detalleVersionId > 0) {
+        const valoresOriginales = fila.data('valores-originales');
+        
+        // Si no hay valores originales almacenados, almacenarlos ahora
+        if (!valoresOriginales) {
+            fila.data('valores-originales', {
+                productoId: datos.productoId,
+                productoNombre: datos.productoNombre,
+                cantidad: datos.cantidad,
+                precio: datos.precioUnitario,
+                descuento: datos.descuento
+            });
+        } else {
+            // Comparar valores actuales con originales
+            const fueModificada = (
+                valoresOriginales.productoId !== datos.productoId ||
+                valoresOriginales.productoNombre !== datos.productoNombre ||
+                valoresOriginales.cantidad !== datos.cantidad ||
+                valoresOriginales.precio !== datos.precioUnitario ||
+                valoresOriginales.descuento !== datos.descuento
+            );
+            
+            if (fueModificada) {
+                // Marcar línea como modificada
+                fila.removeClass('linea-nueva linea-persistente').addClass('linea-modificada');
+                
+                // Actualizar o agregar indicador visual
+                let indicadorExistente = fila.find('.indicador-estado');
+                
+                if (indicadorExistente.length > 0) {
+                    indicadorExistente.replaceWith('<i class="fas fa-edit text-warning indicador-estado" title="Línea modificada"></i>');
+                } else {
+                    // Agregar indicador si no existe
+                    const contenedorCodigo = fila.find('td:first-child .d-flex');
+                    if (contenedorCodigo.length > 0) {
+                        contenedorCodigo.append('<span class="ml-2"><i class="fas fa-edit text-warning indicador-estado" title="Línea modificada"></i></span>');
+                    }
+                }
+            } else {
+                // No fue modificada, mantener como persistente sin indicador
+                fila.removeClass('linea-nueva linea-modificada').addClass('linea-persistente');
+                fila.find('.indicador-estado').closest('span').remove();
+            }
+        }
+    }
 }
 
 function agregarNuevaFilaDetalle(datos) {
@@ -542,16 +624,21 @@ function agregarNuevaFilaDetalle(datos) {
     
     const esLineaNueva = datos.detalleVersionId === 0;
     const claseIndicador = esLineaNueva ? 'linea-nueva' : 'linea-persistente';
-    const iconoEstado = esLineaNueva ? 
-        '<i class="fas fa-plus-circle text-success" title="Línea nueva (no guardada)"></i>' : 
-        '<i class="fas fa-database text-info" title="Línea persistente (guardada en BD)"></i>';
+    
+    // Determinar indicador visual
+    let iconoEstado = '';
+    if (esLineaNueva) {
+        // Línea nueva (no guardada en BD)
+        iconoEstado = '<i class="fas fa-plus-circle text-success indicador-estado" title="Línea nueva"></i>';
+    }
+    // Si es línea persistente, no mostrar indicador inicialmente (se mostrará al editar)
     
     const nuevaFila = `
         <tr data-detalle-id="${datos.detalleVersionId}" data-index="${nuevoIndex}" class="${claseIndicador}">
             <td>
                 <div class="d-flex align-items-center">
                     <strong class="text-primary">${datos.productoId}</strong>
-                    <span class="ml-2">${iconoEstado}</span>
+                    ${iconoEstado ? `<span class="ml-2">${iconoEstado}</span>` : ''}
                 </div>
                 <input type="hidden" name="Detalles[${nuevoIndex}].DetalleVersionId" value="${datos.detalleVersionId}" />
                 <input type="hidden" name="Detalles[${nuevoIndex}].ProductoId" value="${datos.productoId}" />
@@ -740,31 +827,11 @@ function limpiarModalDetalle() {
 
 function actualizarContadorLineas() {
     const totalLineas = $('#tablaDetalles tbody tr').length;
-    let lineasPersistentes = 0;
-    let lineasTemporales = 0;
     
-    $('#tablaDetalles tbody tr').each(function() {
-        const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
-        if (detalleVersionId > 0) {
-            lineasPersistentes++;
-        } else {
-            lineasTemporales++;
-        }
-    });
-    
-    let textoContador = '';
-    if (totalLineas === 0) {
-        textoContador = '0 líneas';
-    } else {
-        const partes = [];
-        if (lineasPersistentes > 0) {
-            partes.push(`${lineasPersistentes} guardada${lineasPersistentes > 1 ? 's' : ''}`);
-        }
-        if (lineasTemporales > 0) {
-            partes.push(`${lineasTemporales} nueva${lineasTemporales > 1 ? 's' : ''}`);
-        }
-        textoContador = partes.join(', ') + ` (${totalLineas} total)`;
-    }
+    // Texto simplificado: solo mostrar total de líneas
+    const textoContador = totalLineas === 0 ? '0 líneas' : 
+                         totalLineas === 1 ? '1 línea' : 
+                         `${totalLineas} líneas`;
     
     $('#contadorLineas').html(textoContador);
 }
