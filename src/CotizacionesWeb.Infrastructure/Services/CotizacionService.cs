@@ -1250,4 +1250,24 @@ public class CotizacionService : ICotizacionService
             return null;
         }
     }
+
+    public async Task<Dictionary<char, int>> GetCotizacionesCountByEstadoAsync()
+    {
+        try
+        {
+            var conteos = await _context.Cotizaciones
+                .GroupBy(c => c.EstadoActual)
+                .Select(g => new { Estado = g.Key, Count = g.Count() })
+                .ToDictionaryAsync(x => x.Estado, x => x.Count);
+
+            _logger.LogInformation("Conteo de cotizaciones por estado obtenido: {Cantidad} estados distintos", conteos.Count);
+
+            return conteos;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener conteo de cotizaciones por estado");
+            return new Dictionary<char, int>();
+        }
+    }
 }

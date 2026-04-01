@@ -34,4 +34,7 @@ public interface ICotizacionService
     
     // Obtener detalle de la versión actual de una cotización específica
     Task<CotizacionVersionDetalleDto?> GetCotizacionCurrentVersionDetailAsync(string cotizacionId);
+    
+    // Obtener conteo de cotizaciones agrupadas por estado
+    Task<Dictionary<char, int>> GetCotizacionesCountByEstadoAsync();
 }

@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using CotizacionesWeb.UI.Models;
-using CotizacionesWeb.Application.Users;
+using CotizacionesWeb.Application.Cotizaciones;
 
 namespace CotizacionesWeb.UI.Controllers;
 
@@ -10,42 +10,74 @@ namespace CotizacionesWeb.UI.Controllers;
 public class HomeController : Controller
 {
     private readonly ILogger<HomeController> _logger;
-    private readonly IUsuarioService _usuarioService;
+    private readonly ICotizacionService _cotizacionService;
 
-    public HomeController(ILogger<HomeController> logger, IUsuarioService usuarioService)
+    public HomeController(ILogger<HomeController> logger, ICotizacionService cotizacionService)
     {
         _logger = logger;
-        _usuarioService = usuarioService;
+        _cotizacionService = cotizacionService;
     }
 
     public async Task<IActionResult> Index()
     {
-        var usuarios = await _usuarioService.GetAllAsync();
+        var conteosPorEstado = await _cotizacionService.GetCotizacionesCountByEstadoAsync();
+        
+        var estadosCotizaciones = new List<EstadoCotizacionCard>
+        {
+            new EstadoCotizacionCard
+            {
+                CodigoEstado = 'B',
+                NombreEstado = "Borrador",
+                Cantidad = conteosPorEstado.GetValueOrDefault('B', 0),
+                ColorClase = "secondary",
+                Icono = "fa-file-alt"
+            },
+            new EstadoCotizacionCard
+            {
+                CodigoEstado = 'P',
+                NombreEstado = "Pendiente Aprobación",
+                Cantidad = conteosPorEstado.GetValueOrDefault('P', 0),
+                ColorClase = "warning",
+                Icono = "fa-clock"
+            },
+            new EstadoCotizacionCard
+            {
+                CodigoEstado = 'A',
+                NombreEstado = "Aprobada",
+                Cantidad = conteosPorEstado.GetValueOrDefault('A', 0),
+                ColorClase = "success",
+                Icono = "fa-check-circle"
+            },
+            new EstadoCotizacionCard
+            {
+                CodigoEstado = 'E',
+                NombreEstado = "Enviada",
+                Cantidad = conteosPorEstado.GetValueOrDefault('E', 0),
+                ColorClase = "info",
+                Icono = "fa-paper-plane"
+            },
+            new EstadoCotizacionCard
+            {
+                CodigoEstado = 'T',
+                NombreEstado = "Aceptada",
+                Cantidad = conteosPorEstado.GetValueOrDefault('T', 0),
+                ColorClase = "primary",
+                Icono = "fa-thumbs-up"
+            },
+            new EstadoCotizacionCard
+            {
+                CodigoEstado = 'R',
+                NombreEstado = "Rechazada",
+                Cantidad = conteosPorEstado.GetValueOrDefault('R', 0),
+                ColorClase = "danger",
+                Icono = "fa-times-circle"
+            }
+        };
         
         var viewModel = new DashboardViewModel
         {
             UsuarioNombre = User.Identity?.Name ?? "Usuario",
-            Estadisticas = new EstadisticasGenerales
-            {
-                TotalUsuarios = usuarios.Count,
-                UsuariosActivos = usuarios.Count(u => u.Activo),
-                UsuariosInactivos = usuarios.Count(u => !u.Activo),
-                TotalCotizaciones = 0,
-                CotizacionesPendientes = 0,
-                CotizacionesAprobadas = 0,
-                MontoTotalCotizaciones = 0
-            },
-            ActividadesRecientes = new List<ActividadReciente>
-            {
-                new ActividadReciente
-                {
-                    Icono = "fa-user-plus",
-                    Titulo = "Usuarios Registrados",
-                    Descripcion = $"Hay {usuarios.Count} usuarios en el sistema",
-                    Fecha = DateTime.Now,
-                    TipoClase = "success"
-                }
-            }
+            EstadosCotizaciones = estadosCotizaciones
         };
         
         return View(viewModel);

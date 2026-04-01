@@ -10,222 +10,118 @@
             <h1 class="m-0">
                 <i class="fas fa-tachometer-alt text-primary-custom"></i> Dashboard
             </h1>
-            <p class="text-muted mt-2">Bienvenido, <strong>@Model.UsuarioNombre</strong>. Aquí tienes un resumen general del sistema.</p>
+            <p class="text-muted mt-2">Bienvenido, <strong>@Model.UsuarioNombre</strong>. Aquí tienes un resumen de las cotizaciones por estado.</p>
         </div>
     </div>
 </div>
 
-<!-- Estadísticas Generales -->
+<!-- Estadísticas de Cotizaciones por Estado -->
 <div class="row">
-    <!-- Total Usuarios -->
-    <div class="col-lg-3 col-6">
-        <div class="small-box bg-info">
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="small-box bg-secondary">
             <div class="inner">
-                <h3>@Model.Estadisticas.TotalUsuarios</h3>
-                <p>Total Usuarios</p>
+                <h3>@Model.EstadosCotizaciones.First(e => e.CodigoEstado == 'B').Cantidad</h3>
+                <p>Borrador</p>
             </div>
             <div class="icon">
-                <i class="fas fa-users"></i>
+                <i class="fas fa-file-alt"></i>
             </div>
-            <a asp-controller="Usuarios" asp-action="Index" class="small-box-footer">
+            <a asp-controller="Cotizaciones" 
+               asp-action="Index" 
+               asp-route-FiltroBorrador="true"
+               class="small-box-footer">
                 Ver más <i class="fas fa-arrow-circle-right"></i>
             </a>
         </div>
     </div>
 
-    <!-- Usuarios Activos -->
-    <div class="col-lg-3 col-6">
-        <div class="small-box bg-success">
-            <div class="inner">
-                <h3>@Model.Estadisticas.UsuariosActivos</h3>
-                <p>Usuarios Activos</p>
-            </div>
-            <div class="icon">
-                <i class="fas fa-user-check"></i>
-            </div>
-            <a asp-controller="Usuarios" asp-action="Index" class="small-box-footer">
-                Ver más <i class="fas fa-arrow-circle-right"></i>
-            </a>
-        </div>
-    </div>
-
-    <!-- Total Cotizaciones -->
-    <div class="col-lg-3 col-6">
+    <div class="col-lg-4 col-md-6 mb-4">
         <div class="small-box bg-warning">
             <div class="inner">
-                <h3>@Model.Estadisticas.TotalCotizaciones</h3>
-                <p>Total Cotizaciones</p>
-            </div>
-            <div class="icon">
-                <i class="fas fa-file-invoice"></i>
-            </div>
-            <a href="#" class="small-box-footer">
-                Ver más <i class="fas fa-arrow-circle-right"></i>
-            </a>
-        </div>
-    </div>
-
-    <!-- Cotizaciones Pendientes -->
-    <div class="col-lg-3 col-6">
-        <div class="small-box bg-danger">
-            <div class="inner">
-                <h3>@Model.Estadisticas.CotizacionesPendientes</h3>
-                <p>Cotizaciones Pendientes</p>
+                <h3>@Model.EstadosCotizaciones.First(e => e.CodigoEstado == 'P').Cantidad</h3>
+                <p>Pendiente Aprobación</p>
             </div>
             <div class="icon">
                 <i class="fas fa-clock"></i>
             </div>
-            <a href="#" class="small-box-footer">
+            <a asp-controller="Cotizaciones" 
+               asp-action="Index" 
+               asp-route-FiltroPendienteAprobacion="true"
+               class="small-box-footer">
                 Ver más <i class="fas fa-arrow-circle-right"></i>
             </a>
         </div>
     </div>
-</div>
 
-<!-- Segunda fila de estadísticas -->
-<div class="row">
-    <!-- Usuarios Inactivos -->
-    <div class="col-lg-3 col-6">
-        <div class="info-box">
-            <span class="info-box-icon bg-secondary"><i class="fas fa-user-times"></i></span>
-            <div class="info-box-content">
-                <span class="info-box-text">Usuarios Inactivos</span>
-                <span class="info-box-number">@Model.Estadisticas.UsuariosInactivos</span>
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="small-box bg-success">
+            <div class="inner">
+                <h3>@Model.EstadosCotizaciones.First(e => e.CodigoEstado == 'A').Cantidad</h3>
+                <p>Aprobada</p>
             </div>
+            <div class="icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <a asp-controller="Cotizaciones" 
+               asp-action="Index" 
+               asp-route-FiltroAprobada="true"
+               class="small-box-footer">
+                Ver más <i class="fas fa-arrow-circle-right"></i>
+            </a>
         </div>
     </div>
 
-    <!-- Cotizaciones Aprobadas -->
-    <div class="col-lg-3 col-6">
-        <div class="info-box">
-            <span class="info-box-icon bg-success"><i class="fas fa-check-circle"></i></span>
-            <div class="info-box-content">
-                <span class="info-box-text">Cotizaciones Aprobadas</span>
-                <span class="info-box-number">@Model.Estadisticas.CotizacionesAprobadas</span>
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="small-box bg-info">
+            <div class="inner">
+                <h3>@Model.EstadosCotizaciones.First(e => e.CodigoEstado == 'E').Cantidad</h3>
+                <p>Enviada</p>
             </div>
+            <div class="icon">
+                <i class="fas fa-paper-plane"></i>
+            </div>
+            <a asp-controller="Cotizaciones" 
+               asp-action="Index" 
+               asp-route-FiltroEnviada="true"
+               class="small-box-footer">
+                Ver más <i class="fas fa-arrow-circle-right"></i>
+            </a>
         </div>
     </div>
 
-    <!-- Monto Total -->
-    <div class="col-lg-6 col-12">
-        <div class="info-box">
-            <span class="info-box-icon bg-primary"><i class="fas fa-dollar-sign"></i></span>
-            <div class="info-box-content">
-                <span class="info-box-text">Monto Total Cotizado</span>
-                <span class="info-box-number">@Model.Estadisticas.MontoTotalCotizaciones.ToString("C")</span>
-                <span class="info-box-text"><small>Total acumulado de todas las cotizaciones</small></span>
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="small-box bg-primary">
+            <div class="inner">
+                <h3>@Model.EstadosCotizaciones.First(e => e.CodigoEstado == 'T').Cantidad</h3>
+                <p>Aceptada</p>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Actividad Reciente y Accesos Rápidos -->
-<div class="row">
-    <!-- Actividad Reciente -->
-    <div class="col-lg-8">
-        <div class="card card-custom">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-history"></i> Actividad Reciente
-                </h3>
+            <div class="icon">
+                <i class="fas fa-thumbs-up"></i>
             </div>
-            <div class="card-body p-0">
-                @if (Model.ActividadesRecientes.Any())
-                {
-                    <ul class="timeline timeline-inverse p-3">
-                        @foreach (var actividad in Model.ActividadesRecientes)
-                        {
-                            <li class="time-label">
-                                <span class="bg-@actividad.TipoClase">
-                                    @actividad.Fecha.ToString("dd/MM/yyyy")
-                                </span>
-                            </li>
-                            <li>
-                                <i class="fas @actividad.Icono bg-@actividad.TipoClase"></i>
-                                <div class="timeline-item">
-                                    <span class="time">
-                                        <i class="fas fa-clock"></i> @actividad.Fecha.ToString("HH:mm")
-                                    </span>
-                                    <h3 class="timeline-header">@actividad.Titulo</h3>
-                                    <div class="timeline-body">
-                                        @actividad.Descripcion
-                                    </div>
-                                </div>
-                            </li>
-                        }
-                        <li>
-                            <i class="fas fa-clock bg-gray"></i>
-                        </li>
-                    </ul>
-                }
-                else
-                {
-                    <div class="p-4 text-center text-muted">
-                        <i class="fas fa-info-circle fa-2x mb-2"></i>
-                        <p>No hay actividad reciente registrada.</p>
-                    </div>
-                }
-            </div>
+            <a asp-controller="Cotizaciones" 
+               asp-action="Index" 
+               asp-route-FiltroAceptada="true"
+               class="small-box-footer">
+                Ver más <i class="fas fa-arrow-circle-right"></i>
+            </a>
         </div>
     </div>
 
-    <!-- Accesos Rápidos -->
-    <div class="col-lg-4">
-        <div class="card card-custom">
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-bolt"></i> Accesos Rápidos
-                </h3>
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="small-box bg-danger">
+            <div class="inner">
+                <h3>@Model.EstadosCotizaciones.First(e => e.CodigoEstado == 'R').Cantidad</h3>
+                <p>Rechazada</p>
             </div>
-            <div class="card-body">
-                <div class="d-grid gap-3">
-                    @if (User.IsInRole("Admin") || User.IsInRole("Administrador"))
-                    {
-                        <a asp-controller="Usuarios" asp-action="Create" class="btn btn-primary btn-block btn-lg mb-3">
-                            <i class="fas fa-user-plus"></i> Crear Usuario
-                        </a>
-                        <a asp-controller="Usuarios" asp-action="Index" class="btn btn-info btn-block btn-lg mb-3">
-                            <i class="fas fa-users"></i> Gestionar Usuarios
-                        </a>
-                    }
-                    <a href="#" class="btn btn-success btn-block btn-lg mb-3">
-                        <i class="fas fa-file-invoice"></i> Nueva Cotización
-                    </a>
-                    <a href="#" class="btn btn-warning btn-block btn-lg mb-3">
-                        <i class="fas fa-list"></i> Ver Cotizaciones
-                    </a>
-                </div>
+            <div class="icon">
+                <i class="fas fa-times-circle"></i>
             </div>
-        </div>
-
-        <!-- Card de Información -->
-        <div class="card card-custom mt-3">
-            <div class="card-header bg-primary">
-                <h3 class="card-title text-white">
-                    <i class="fas fa-info-circle"></i> Información del Sistema
-                </h3>
-            </div>
-            <div class="card-body">
-                <dl class="row mb-0">
-                    <dt class="col-sm-6">Versión:</dt>
-                    <dd class="col-sm-6">1.0.0</dd>
-                    
-                    <dt class="col-sm-6">Usuario:</dt>
-                    <dd class="col-sm-6">@Model.UsuarioNombre</dd>
-                    
-                    <dt class="col-sm-6">Rol:</dt>
-                    <dd class="col-sm-6">
-                        @if (User.IsInRole("Admin") || User.IsInRole("Administrador"))
-                        {
-                            <span class="badge badge-danger">Administrador</span>
-                        }
-                        else
-                        {
-                            <span class="badge badge-primary">Usuario</span>
-                        }
-                    </dd>
-                </dl>
-            </div>
+            <a asp-controller="Cotizaciones" 
+               asp-action="Index" 
+               asp-route-FiltroRechazada="true"
+               class="small-box-footer">
+                Ver más <i class="fas fa-arrow-circle-right"></i>
+            </a>
         </div>
     </div>
 </div>
