@@ -89,15 +89,15 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Editar Cotización (navegar a página de edición)
-        $('.btn-editar').on('click', function () {
+        $('.btn-editor').on('click', function () {
             const cotizacionId = $(this).attr('data-id');
             
             // DEBUGGING TEMPORAL
-            console.log('=== CLICK EN BOTÓN EDITAR ===');
+            console.log('=== CLICK EN BOTÓN EDITOR ===');
             console.log('Botón clickeado:', this);
             console.log('CotizacionId del botón:', cotizacionId);
             console.log('Fila del botón:', $(this).closest('tr').attr('data-cotizacion-id'));
-            console.log('URL que se va a abrir:', '/Cotizaciones/Editar/' + cotizacionId);
+            console.log('URL que se va a abrir:', '/Cotizaciones/Editor/' + cotizacionId);
             console.log('============================');
             
             // Verificar que el ID no esté vacío o undefined
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Navegar directamente a la vista de edición
-            window.location.href = '/Cotizaciones/Editar/' + cotizacionId;
+            window.location.href = '/Cotizaciones/Editor/' + cotizacionId;
         });
 
         // Ver Detalle (navegar a página de detalle)

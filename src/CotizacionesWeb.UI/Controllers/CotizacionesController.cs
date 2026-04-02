@@ -471,7 +471,7 @@ public class CotizacionesController : Controller
       ViewBag.MonedasDisponibles = FormatHelper.GetMonedasDisponiblesParaJson();
       ViewBag.EsCreacion = true; // Para diferenciar comportamiento en la vista
 
-      return View("Editar", viewModel); // Reutilizar la misma vista Editar
+      return View("Editor", viewModel); // Reutilizar la misma vista Editor
     }
     catch (Exception ex)
     {
@@ -570,9 +570,9 @@ public class CotizacionesController : Controller
     }
   }
 
-  [HttpGet("Cotizaciones/Editar/{cotizacionId}")]
+  [HttpGet("Cotizaciones/Editor/{cotizacionId}")]
   [RequierePermiso("COT_EDIT")]
-  public async Task<IActionResult> Editar(string cotizacionId)
+  public async Task<IActionResult> Editor(string cotizacionId)
   {
     try
     {

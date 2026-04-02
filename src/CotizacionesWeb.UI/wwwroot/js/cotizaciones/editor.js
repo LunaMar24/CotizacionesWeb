@@ -1160,7 +1160,7 @@ function continuarGuardadoCreacion() {
                     // Redirigir a la vista de edición de la nueva cotización
                     setTimeout(function() {
                         if (response.cotizacionId) {
-                            window.location.href = `/Cotizaciones/Editar/${response.cotizacionId}`;
+                            window.location.href = `/Cotizaciones/Editor/${response.cotizacionId}`;
                         } else {
                             window.location.href = '/Cotizaciones';
                         }
