@@ -80,9 +80,12 @@ INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
 ('COT_COPY', 'Cotizaciones', 'Copiar versión de cotización'),
 ('COT_DUPLICATE', 'Cotizaciones', 'Duplicar cotizaciones'),
 ('COT_ARCHIVE', 'Cotizaciones', 'Archivar cotizaciones'),
+('COT_ARCHIVE_VIEW', 'Cotizaciones', 'Ver cotizaciones archivadas'),
+('COT_ARCHIVE_VIEW_DETAIL', 'Cotizaciones', 'Ver detalle cotizaciones archivadas'),
+('COT_ARCHIVE_REACTIVATE', 'Cotizaciones', 'Reactivar cotizaciones archivadas'),
 ('COT_SEND_ERP', 'Cotizaciones', 'Enviar cotizaciones al ERP');
 
-PRINT '? 16 permisos de Cotizaciones insertados';
+PRINT '? 19 permisos de Cotizaciones insertados';
 PRINT '';
 
 -- ============================================
@@ -169,12 +172,12 @@ PRINT 'DETALLE DE CATEGORÍAS';
 PRINT '==============================================';
 PRINT '  • Clientes............: 5 permisos';
 PRINT '  • Configuracion.......: 5 permisos';
-PRINT '  • Cotizaciones........: 16 permisos';
+PRINT '  • Cotizaciones........: 19 permisos';
 PRINT '  • Reportes............: 4 permisos';
 PRINT '  • Roles...............: 5 permisos';
 PRINT '  • Usuarios............: 6 permisos';
 PRINT '';
-PRINT '  TOTAL.................: 41 permisos';
+PRINT '  TOTAL.................: 44 permisos';
 PRINT '==============================================';
 PRINT '';
 PRINT 'SIGUIENTE PASO:';

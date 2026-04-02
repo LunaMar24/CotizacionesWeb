@@ -126,6 +126,102 @@ public class CotizacionService : ICotizacionService
         }).ToList();
     }
 
+    public async Task<List<CotizacionListDto>> GetCotizacionesArchivadasAsync(GetCotizacionesListRequest request)
+    {
+        // Usar una consulta con JOIN explícito para evitar problemas de EF
+        var query = from cot in _context.Cotizaciones
+                    join ver in _context.CotizacionesVersiones
+                        on new { cot.CotizacionId, VersionId = cot.VersionActual }
+                        equals new { ver.CotizacionId, VersionId = ver.VersionActual }
+                    select new { Cotizacion = cot, Version = ver };
+
+        // ✨ FILTRO ESPECÍFICO: Solo cotizaciones archivadas (X)
+        query = query.Where(x => x.Cotizacion.EstadoActual == 'X');
+
+        // Los estados filtrados no aplican para archivadas (siempre será X)
+        // Se ignora request.Estados ya que todas serán archivadas
+
+        // Filtrar por rango de fechas
+        if (request.FechaDesde.HasValue)
+        {
+            var fechaDesdeInicioDia = request.FechaDesde.Value.Date; // 00:00:00
+            query = query.Where(x => x.Cotizacion.CreatedAt >= fechaDesdeInicioDia);
+        }
+
+        if (request.FechaHasta.HasValue)
+        {
+            var fechaHastaFinDia = request.FechaHasta.Value.Date.AddDays(1).AddTicks(-1); // 23:59:59.999
+            query = query.Where(x => x.Cotizacion.CreatedAt <= fechaHastaFinDia);
+        }
+
+        // Filtrar por búsqueda general (solo texto: ID, Nombre, Empresa)
+        if (!string.IsNullOrWhiteSpace(request.Busqueda))
+        {
+            var busqueda = request.Busqueda.ToLower();
+            query = query.Where(x =>
+                x.Cotizacion.CotizacionId.ToLower().Contains(busqueda) ||
+                x.Version.NombreInteresado.ToLower().Contains(busqueda) ||
+                x.Version.EmpresaInteresado.ToLower().Contains(busqueda)
+            );
+        }
+
+        // Filtrar por rango de monto (eficiente en SQL)
+        if (request.MontoDesde.HasValue)
+        {
+            query = query.Where(x => x.Cotizacion.MontoCotizacion >= request.MontoDesde.Value);
+        }
+
+        if (request.MontoHasta.HasValue)
+        {
+            query = query.Where(x => x.Cotizacion.MontoCotizacion <= request.MontoHasta.Value);
+        }
+
+        // Filtrar por versión específica (eficiente en SQL)
+        if (request.Version.HasValue)
+        {
+            query = query.Where(x => x.Version.NumeroVersion == request.Version.Value);
+        }
+
+        // Filtrar por moneda específica (eficiente en SQL)
+        if (!string.IsNullOrWhiteSpace(request.Moneda))
+        {
+            var moneda = request.Moneda.Trim().ToUpper();
+            query = query.Where(x => x.Cotizacion.Moneda.ToUpper() == moneda);
+        }
+
+        var resultados = await query
+            .OrderByDescending(x => x.Cotizacion.ModifiedAt) // Ordenar por fecha de modificación (fecha de archivado)
+            .ToListAsync();
+
+        return resultados.Select(result =>
+        {
+            var c = result.Cotizacion;
+            var versionVigente = result.Version;
+            
+            return new CotizacionListDto(
+                0,  // FASE 3: El DTO aún espera un ID numérico, usar 0 temporalmente
+                c.CotizacionId,
+                c.InteresadoId,
+                versionVigente?.NombreInteresado ?? "",
+                versionVigente?.EmpresaInteresado ?? "",
+                c.EstadoActual,
+                c.VersionActual,
+                versionVigente?.NumeroVersion ?? 1.0m, // NumeroVersion específico de la versión vigente
+                c.CreatedAt, // Using CreatedAt instead of FechaCreacion
+                c.ModifiedAt, // Using ModifiedAt instead of FechaUltimaActualizacion
+                c.MontoCotizacion,
+                c.FechaEnvio,
+                // Información financiera
+                c.Moneda, // Moneda de la cotización (movida desde version)
+                // Nuevos campos según lineamientos funcionales
+                c.FechaAceptacion,
+                c.FechaRechazo,
+                c.EnviadoERP,
+                c.FechaEnvioERP
+            );
+        }).ToList();
+    }
+
     public async Task<List<HistorialCotizacionDto>> GetCotizacionCurrentHistoryAsync(string cotizacionId)
     {
         // Buscar la cotización y su versión vigente usando un JOIN explícito
@@ -326,7 +422,7 @@ public class CotizacionService : ICotizacionService
                 _logger.LogInformation("Nuevo ID de cotización generado: {NuevoCotizacionId}", nuevoCotizacionId);
                 
                 // Generar nuevo identificador único para la primera versión
-                var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
+                var nuevoVersionActual = await GenerarNuevoVersionActualAsync(nuevoCotizacionId);
                 _logger.LogInformation("Nuevo VersionActual generado: {NuevoVersionActual}", nuevoVersionActual);
 
                 // Crear nueva cotización
@@ -395,15 +491,8 @@ public class CotizacionService : ICotizacionService
                 }
 
                 // Registrar evento inicial en historial
-                var historial = new HistorialCotizacion
-                {
-                    VersionId = nuevaVersion.VersionId,
-                    TipoEvento = "Creada",
-                    FechaEvento = DateTime.Now,
-                    UsuarioEvento = userId ?? 0,
-                    Comentario = "Cotización creada desde pantalla de creación"
-                };
-                _context.HistorialesCotizacion.Add(historial);
+                await RegistrarHistorialAsync(nuevaVersion.VersionId, "Creada", 
+                    "Cotización creada desde pantalla de creación", userId);
 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Historial registrado");
@@ -465,7 +554,7 @@ public class CotizacionService : ICotizacionService
                 .ToListAsync();
 
             // Generar nuevo identificador único para la nueva versión
-            var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
+            var nuevoVersionActual = await GenerarNuevoVersionActualAsync(cotizacionId);
             
             // Crear nueva versión con lógica de incremento correcta
             var nuevoNumeroVersion = CalcularNuevaVersion(versionVigente.NumeroVersion);
@@ -508,10 +597,8 @@ public class CotizacionService : ICotizacionService
 
             // Actualizar cotización para apuntar a la nueva versión vigente
             cotizacion.VersionActual = nuevoVersionActual;
-            
-            // ?? CAMBIO CRÍTICO: Al crear una nueva versión, la cotización vuelve a estado Borrador
-            // porque es una nueva versión que debe pasar por todo el ciclo de estados
             cotizacion.EstadoActual = (char)EstadoCotizacion.Borrador;
+            _context.Entry(cotizacion).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
 
             // Crear comentario para el historial
             var comentarioFinal = string.IsNullOrWhiteSpace(comentario) 
@@ -519,15 +606,7 @@ public class CotizacionService : ICotizacionService
                 : $"Nueva versión generada: {comentario.Trim()}";
 
             // Registrar evento en historial
-            var historial = new HistorialCotizacion
-            {
-                VersionId = nuevaVersion.VersionId,
-                TipoEvento = "VersionGenerada",
-                FechaEvento = DateTime.Now,
-                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario dinámico, 0 si no se proporciona
-                Comentario = comentarioFinal
-            };
-            _context.HistorialesCotizacion.Add(historial);
+            await RegistrarHistorialAsync(nuevaVersion.VersionId, "VersionGenerada", comentarioFinal, userId);
 
             await _context.SaveChangesAsync();
 
@@ -565,7 +644,7 @@ public class CotizacionService : ICotizacionService
             }
 
             // Generar nuevo identificador único para la nueva versión
-            var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
+            var nuevoVersionActual = await GenerarNuevoVersionActualAsync(request.CotizacionId);
             
             // Crear nueva versión con lógica de incremento correcta
             var nuevoNumeroVersion = CalcularNuevaVersion(versionBase.NumeroVersion);
@@ -608,10 +687,8 @@ public class CotizacionService : ICotizacionService
 
             // Actualizar cotización para apuntar a la nueva versión vigente
             cotizacion.VersionActual = nuevoVersionActual;
-            
-            // ?? CAMBIO CRÍTICO: Al crear una nueva versión, la cotización vuelve a estado Borrador
-            // porque es una nueva versión que debe pasar por todo el ciclo de estados
             cotizacion.EstadoActual = (char)EstadoCotizacion.Borrador;
+            _context.Entry(cotizacion).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
 
             // Crear comentario para el historial
             var comentarioFinal = string.IsNullOrWhiteSpace(request.Comentario) 
@@ -619,15 +696,7 @@ public class CotizacionService : ICotizacionService
                 : $"Nueva versión generada: {request.Comentario.Trim()}";
 
             // Registrar evento en historial
-            var historial = new HistorialCotizacion
-            {
-                VersionId = nuevaVersion.VersionId,
-                TipoEvento = "VersionGenerada",
-                FechaEvento = DateTime.Now,
-                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario dinámico, 0 si no se proporciona
-                Comentario = comentarioFinal
-            };
-            _context.HistorialesCotizacion.Add(historial);
+            await RegistrarHistorialAsync(nuevaVersion.VersionId, "VersionGenerada", comentarioFinal, userId);
 
             await _context.SaveChangesAsync();
 
@@ -687,7 +756,7 @@ public class CotizacionService : ICotizacionService
                 _logger.LogInformation("Nuevo ID de cotización generado: {NuevoCotizacionId}", nuevoCotizacionId);
                 
                 // Generar nuevo identificador único para la primera versión
-                var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
+                var nuevoVersionActual = await GenerarNuevoVersionActualAsync(nuevoCotizacionId);
                 _logger.LogInformation("Nuevo VersionActual generado: {NuevoVersionActual}", nuevoVersionActual);
 
                 // Crear nueva cotización
@@ -748,15 +817,8 @@ public class CotizacionService : ICotizacionService
                 _logger.LogInformation("Detalles copiados exitosamente");
 
                 // Registrar evento inicial en historial
-                var historial = new HistorialCotizacion
-                {
-                    VersionId = nuevaVersion.VersionId,
-                    TipoEvento = "Creada",
-                    FechaEvento = DateTime.Now,
-                    UsuarioEvento = userId ?? 0,
-                    Comentario = $"Cotización creada por duplicación de {request.CotizacionIdBase}"
-                };
-                _context.HistorialesCotizacion.Add(historial);
+                await RegistrarHistorialAsync(nuevaVersion.VersionId, "Creada", 
+                    $"Cotización creada por duplicación de {request.CotizacionIdBase}", userId);
 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Historial registrado");
@@ -824,21 +886,20 @@ public class CotizacionService : ICotizacionService
         }
     }
 
-    private async Task<int> GenerarNuevoVersionActualAsync()
+    private async Task<int> GenerarNuevoVersionActualAsync(string cotizacionId)
     {
         try
         {
-            // Usar una consulta más segura que maneje el caso cuando no hay versiones
+            // Obtener el máximo VersionActual para esta cotización específica
             var maxVersionActual = await _context.CotizacionesVersiones
-                .Select(v => (int?)v.VersionActual)
-                .DefaultIfEmpty(0) // Si no hay elementos, usar 0
-                .MaxAsync() ?? 0;
+                .Where(v => v.CotizacionId == cotizacionId)
+                .MaxAsync(v => (int?)v.VersionActual);
             
-            return maxVersionActual + 1;
+            return (maxVersionActual ?? 0) + 1;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error al obtener máximo VersionActual, usando 1 como fallback");
+            _logger.LogWarning(ex, "Error al obtener máximo VersionActual para cotización {CotizacionId}, usando 1 como fallback", cotizacionId);
             return 1; // Fallback para el primer caso
         }
     }
@@ -1234,18 +1295,8 @@ public class CotizacionService : ICotizacionService
                 await _context.SaveChangesAsync();
 
                 // Registrar en historial
-                var historial = new HistorialCotizacion
-                {
-                    VersionId = version.VersionId,
-                    TipoEvento = "Actualizada",
-                    FechaEvento = DateTime.Now,
-                    UsuarioEvento = userId ?? 0,
-                    Comentario = hayCambioMoneda ? 
-                        $"Cotización actualizada - Moneda cambiada a {request.Moneda}" : 
-                        "Cotización actualizada"
-                };
-
-                _context.HistorialesCotizacion.Add(historial);
+                await RegistrarHistorialAsync(version.VersionId, "Actualizada", 
+                    hayCambioMoneda ? $"Cotización actualizada - Moneda cambiada a {request.Moneda}" : "Cotización actualizada", userId);
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();
@@ -1670,12 +1721,11 @@ public class CotizacionService : ICotizacionService
             };
 
             _context.HistorialesCotizacion.Add(historial);
-            await _context.SaveChangesAsync();
+            // No llamar SaveChangesAsync aquí para permitir que se maneje en la transacción padre
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al registrar historial para versión {VersionId}", versionId);
-            // No relanzar la excepción para no interrumpir el flujo principal
         }
     }
 }

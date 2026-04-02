@@ -127,6 +127,87 @@ public class CotizacionesController : Controller
     }
   }
 
+  [RequierePermiso("COT_ARCHIVE_VIEW")]
+  public async Task<IActionResult> Archivadas(CotizacionFiltrosViewModel filtros)
+  {
+    try
+    {
+      // Establecer filtro de fecha predeterminado: últimos 6 meses para archivadas
+      // Solo si no se han especificado fechas manualmente
+      if (!filtros.FechaDesde.HasValue && !filtros.FechaHasta.HasValue)
+      {
+        filtros.FechaDesde = DateTime.Today.AddMonths(-6);
+        filtros.FechaHasta = DateTime.Today.AddDays(1); // Incluir todo el día de hoy
+      }
+
+      // Para archivadas no se usan filtros de estado (todas están archivadas)
+      // Se ignoran todos los filtros de estado
+
+      // Validar que la moneda sea válida si se proporciona
+      if (!string.IsNullOrWhiteSpace(filtros.Moneda) && !FormatHelper.IsSupportedCurrency(filtros.Moneda))
+      {
+        _logger.LogWarning("Filtro de moneda inválida: {Moneda}", filtros.Moneda);
+        filtros.Moneda = null; // Limpiar filtro inválido
+        TempData["Warning"] = "Moneda no soportada. Se muestran todas las monedas.";
+      }
+
+      var request = new GetCotizacionesListRequest(
+          null, // Estados siempre null para archivadas
+          filtros.Busqueda,
+          filtros.FechaDesde,
+          filtros.FechaHasta,
+          filtros.MontoDesde,
+          filtros.MontoHasta,
+          filtros.Version,
+          filtros.Moneda
+      );
+
+      var cotizaciones = await _cotizacionService.GetCotizacionesArchivadasAsync(request);
+
+      var viewModel = new CotizacionIndexViewModel
+      {
+        Cotizaciones = cotizaciones.Select(c => new CotizacionViewModel
+        {
+          Id = c.Id,
+          CotizacionId = c.CotizacionId,
+          InteresadoId = c.InteresadoId,
+          NombreInteresado = c.NombreInteresado,
+          EmpresaInteresado = c.EmpresaInteresado,
+          EstadoActual = c.EstadoActual,
+          EstadoActualTexto = ObtenerTextoEstado(c.EstadoActual),
+          VersionActual = c.VersionActual,
+          NumeroVersion = c.NumeroVersion,
+          FechaCreacion = c.FechaCreacion,
+          FechaUltimaActualizacion = c.FechaUltimaActualizacion,
+          MontoCotizacion = c.MontoCotizacion,
+          FechaEnvio = c.FechaEnvio,
+          // Información financiera
+          Moneda = c.Moneda,
+          // Nuevos campos según lineamientos funcionales
+          FechaAceptacion = c.FechaAceptacion,
+          FechaRechazo = c.FechaRechazo,
+          EnviadoERP = c.EnviadoERP,
+          FechaEnvioERP = c.FechaEnvioERP
+        }).ToList(),
+        Filtros = filtros
+      };
+
+      // Agregar monedas disponibles para el filtro
+      ViewBag.MonedasDisponibles = FormatHelper.GetMonedasDisponibles();
+
+      // Indicar que esta es la vista de archivadas
+      ViewBag.EsVistaArchivadas = true;
+
+      return View("Archivadas", viewModel);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al obtener listado de cotizaciones archivadas");
+      TempData["Error"] = "Error al cargar las cotizaciones archivadas";
+      return View("Archivadas", new CotizacionIndexViewModel());
+    }
+  }
+
   [HttpGet("Cotizaciones/Historial/{cotizacionId}")]
   [RequierePermiso("COT_VIEW")]
   public async Task<IActionResult> Historial(string cotizacionId)
@@ -189,6 +270,28 @@ public class CotizacionesController : Controller
   {
     try
     {
+      // Primero verificar el estado actual de la cotización
+      var cotizacionesInfo = await _cotizacionService.GetCotizacionesListAsync(
+          new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null, null));
+      
+      // Si no está en la lista normal, buscar en archivadas
+      var cotizacionInfo = cotizacionesInfo.FirstOrDefault(c => c.CotizacionId == cotizacionId);
+      bool esArchivada = false;
+      
+      if (cotizacionInfo == null)
+      {
+        // Buscar en cotizaciones archivadas
+        var cotizacionesArchivadas = await _cotizacionService.GetCotizacionesArchivadasAsync(
+            new GetCotizacionesListRequest(null, cotizacionId, null, null, null, null, null, null));
+        cotizacionInfo = cotizacionesArchivadas.FirstOrDefault(c => c.CotizacionId == cotizacionId);
+        esArchivada = true;
+      }
+      else
+      {
+        // Verificar si está archivada por el estado
+        esArchivada = cotizacionInfo.EstadoActual == 'X';
+      }
+
       var versiones = await _cotizacionService.GetCotizacionVersionsAsync(cotizacionId);
 
       var viewModel = versiones.Select(v => new CotizacionVersionViewModel
@@ -206,6 +309,7 @@ public class CotizacionesController : Controller
       }).ToList();
 
       ViewBag.CotizacionId = cotizacionId;
+      ViewBag.EsCotizacionArchivada = esArchivada; // Nueva bandera para el modal
       return PartialView("_VersionesModal", viewModel);
     }
     catch (Exception ex)

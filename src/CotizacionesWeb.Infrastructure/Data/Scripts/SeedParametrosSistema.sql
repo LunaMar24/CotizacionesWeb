@@ -117,7 +117,8 @@ VALUES
 -- ============================================
 -- PARÁMETROS DE WORKFLOW
 -- ============================================
-('APROBACION_AUTOMATICA_MONTO', 'Monto máximo para aprobación automática', '0', 'N', 'Workflow', 1, '0', 'Si es 0, no hay aprobación automática', 0),
+('APROBACION_AUTOMATICA_CRC_MONTO', 'Monto máximo en colones para aprobación de cotizaciones automáticas', '0', 'N', 'Workflow', 1, '0', 'Si es 0, no hay aprobación automática', 0),
+('APROBACION_AUTOMATICA_DOL_MONTO', 'Monto máximo en dólares para aprobación de cotizaciones automáticas', '0', 'N', 'Workflow', 1, '0', 'Si es 0, no hay aprobación automática', 0),
 ('REQUIERE_APROBACION_DESCUENTO', 'Porcentaje de descuento que requiere aprobación', '10', 'N', 'Workflow', 1, '15', NULL, 0),
 ('DIAS_VIGENCIA_COTIZACION', 'Días de vigencia por defecto de cotización', '15', 'N', 'Workflow', 1, '15', NULL, 0),
 
