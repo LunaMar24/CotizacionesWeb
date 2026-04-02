@@ -20,6 +20,7 @@ public class CotizacionesController : Controller
   private readonly IHubSpotService _hubSpotService;
   private readonly IErpService _erpService;
   private readonly IParametroSistemaService _parametroSistemaService;
+  private readonly PermisoHelper _permisoHelper;
 
   public CotizacionesController(
       ICotizacionService cotizacionService,
@@ -27,7 +28,8 @@ public class CotizacionesController : Controller
       IAssignInteresadoHubSpotService assignInteresadoHubSpotService,
       IHubSpotService hubSpotService,
       IErpService erpService,
-      IParametroSistemaService parametroSistemaService)
+      IParametroSistemaService parametroSistemaService,
+      PermisoHelper permisoHelper)
   {
     _cotizacionService = cotizacionService;
     _logger = logger;
@@ -35,6 +37,7 @@ public class CotizacionesController : Controller
     _hubSpotService = hubSpotService;
     _erpService = erpService;
     _parametroSistemaService = parametroSistemaService;
+    _permisoHelper = permisoHelper;
   }
 
   [RequierePermiso("COT_VIEW")]
@@ -60,7 +63,7 @@ public class CotizacionesController : Controller
       if (filtros.FiltroRechazada) estadosSeleccionados.Add('R');
       // Mantener Cancelada por retrocompatibilidad temporal
       if (filtros.FiltroCancelada) estadosSeleccionados.Add('C');
-      // Nota: Archivada (X) NO se incluye en filtros según lineamientos
+      // ? Archivada (X) se excluye automáticamente en el servicio - las cotizaciones archivadas salen del ámbito de gestión
 
       // Validar que la moneda sea válida si se proporciona
       if (!string.IsNullOrWhiteSpace(filtros.Moneda) && !FormatHelper.IsSupportedCurrency(filtros.Moneda))
@@ -951,6 +954,300 @@ public class CotizacionesController : Controller
       'X' => "Archivada", // Legacy - mantener por retrocompatibilidad
       _ => "Desconocido"
     };
+  }
+
+  // ========================================
+  // ENDPOINTS DE CAMBIO DE ESTADO
+  // ========================================
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_EDIT")]
+  public async Task<IActionResult> EnviarAprobacion(string cotizacionId)
+  {
+    try
+    {
+      var result = await _cotizacionService.CambiarEstadoCotizacionAsync(
+        cotizacionId, 
+        (char)EstadoCotizacion.Borrador, 
+        (char)EstadoCotizacion.PendienteAprobacion, 
+        "Enviada a aprobación", 
+        GetCurrentUserId());
+      
+      if (result.Success)
+      {
+        return Json(new { success = true, message = "Cotización enviada a aprobación exitosamente" });
+      }
+      
+      return Json(new { success = false, message = result.ErrorMessage });
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al enviar cotización {CotizacionId} a aprobación", cotizacionId);
+      return Json(new { success = false, message = "Error interno al cambiar el estado" });
+    }
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_APPROVE")]
+  public async Task<IActionResult> Aprobar(string cotizacionId)
+  {
+    try
+    {
+      var result = await _cotizacionService.CambiarEstadoCotizacionAsync(
+        cotizacionId, 
+        (char)EstadoCotizacion.PendienteAprobacion, 
+        (char)EstadoCotizacion.Aprobada, 
+        "Cotización aprobada", 
+        GetCurrentUserId());
+      
+      if (result.Success)
+      {
+        return Json(new { success = true, message = "Cotización aprobada exitosamente" });
+      }
+      
+      return Json(new { success = false, message = result.ErrorMessage });
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al aprobar cotización {CotizacionId}", cotizacionId);
+      return Json(new { success = false, message = "Error interno al cambiar el estado" });
+    }
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequiereAlgunPermiso("COT_APPROVE", "COT_REJECT", "COT_ARCHIVE")]
+  public async Task<IActionResult> CambiarEstadoConNota(string cotizacionId, char estadoOrigen, char estadoDestino, string nota, string? comentarioAdicional = null)
+  {
+    try
+    {
+      // Validar que la nota sea obligatoria
+      if (string.IsNullOrWhiteSpace(nota))
+      {
+        return Json(new { success = false, message = "La nota explicativa es obligatoria para este cambio de estado" });
+      }
+
+      if (nota.Trim().Length < 10)
+      {
+        return Json(new { success = false, message = "La nota debe tener al menos 10 caracteres" });
+      }
+
+      // Validar transición válida y permiso específico
+      var (esValida, mensaje, permisoRequerido) = ValidarTransicionConNota(estadoOrigen, estadoDestino);
+      
+      if (!esValida)
+      {
+        return Json(new { success = false, message = "Transición de estado no válida" });
+      }
+
+      // Verificar que el usuario tenga el permiso específico para esta transición
+      var tienePermisoEspecifico = await _permisoHelper.UsuarioTienePermisoAsync(User, permisoRequerido);
+      
+      if (!tienePermisoEspecifico)
+      {
+        _logger.LogWarning("Usuario {UserId} intentó cambiar estado sin permiso {Permiso}", GetCurrentUserId(), permisoRequerido);
+        return Json(new { success = false, message = $"No tiene permisos para realizar esta operación. Se requiere: {permisoRequerido}" });
+      }
+
+      // Para archivado, usar el método específico que maneja el comentario adicional
+      if (estadoDestino == 'X') // Archivada
+      {
+        // Usar ambos campos por separado: motivo obligatorio y comentario adicional
+        var result = await _cotizacionService.CambiarEstadoCotizacionBasicoAsync(
+          cotizacionId, 
+          estadoDestino, 
+          nota.Trim(), // Este va como motivo obligatorio (MotivoArchivado)
+          comentarioAdicional, // Este va como comentario adicional (Comentario)
+          GetCurrentUserId());
+        
+        if (result.Success)
+        {
+          return Json(new { success = true, message = mensaje, shouldReload = true });
+        }
+        
+        return Json(new { success = false, message = result.ErrorMessage });
+      }
+      else
+      {
+        // Para otros cambios de estado, usar el método normal
+        var result = await _cotizacionService.CambiarEstadoCotizacionAsync(
+          cotizacionId, 
+          estadoOrigen, 
+          estadoDestino, 
+          nota.Trim(),
+          GetCurrentUserId());
+        
+        if (result.Success)
+        {
+          return Json(new { success = true, message = mensaje, shouldReload = true });
+        }
+        
+        return Json(new { success = false, message = result.ErrorMessage });
+      }
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al cambiar estado de cotización {CotizacionId}", cotizacionId);
+      return Json(new { success = false, message = "Error interno al cambiar el estado" });
+    }
+  }
+
+  private static (bool esValida, string mensaje, string permisoRequerido) ValidarTransicionConNota(char estadoOrigen, char estadoDestino)
+  {
+    return (estadoOrigen, estadoDestino) switch
+    {
+      ('P', 'B') => (true, "Cotización devuelta a borrador exitosamente", "COT_APPROVE"),
+      ('P', 'A') => (true, "Cotización aprobada exitosamente", "COT_APPROVE"),
+      ('E', 'R') => (true, "Cotización marcada como rechazada exitosamente", "COT_REJECT"),
+      (_, 'X') => (true, "Cotización archivada exitosamente", "COT_ARCHIVE"),
+      _ => (false, "", "")
+    };
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_APPROVE")]
+  public async Task<IActionResult> DevolverBorrador(string cotizacionId, string nota)
+  {
+    // Redireccionar al método genérico
+    return await CambiarEstadoConNota(cotizacionId, 'P', 'B', nota);
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_SEND_CLIENT")]
+  public async Task<IActionResult> EnviarCliente(string cotizacionId)
+  {
+    try
+    {
+      var result = await _cotizacionService.CambiarEstadoCotizacionAsync(
+        cotizacionId, 
+        (char)EstadoCotizacion.Aprobada, 
+        (char)EstadoCotizacion.Enviada, 
+        "Enviada al cliente", 
+        GetCurrentUserId());
+      
+      if (result.Success)
+      {
+        return Json(new { success = true, message = "Cotización enviada al cliente exitosamente" });
+      }
+      
+      return Json(new { success = false, message = result.ErrorMessage });
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al enviar cotización {CotizacionId} al cliente", cotizacionId);
+      return Json(new { success = false, message = "Error interno al cambiar el estado" });
+    }
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_ACCEPT")]
+  public async Task<IActionResult> MarcarAceptada(string cotizacionId)
+  {
+    try
+    {
+      var result = await _cotizacionService.CambiarEstadoCotizacionAsync(
+        cotizacionId, 
+        (char)EstadoCotizacion.Enviada, 
+        (char)EstadoCotizacion.Aceptada, 
+        "Marcada como aceptada por el cliente", 
+        GetCurrentUserId());
+      
+      if (result.Success)
+      {
+        return Json(new { success = true, message = "Cotización marcada como aceptada exitosamente" });
+      }
+      
+      return Json(new { success = false, message = result.ErrorMessage });
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al marcar cotización {CotizacionId} como aceptada", cotizacionId);
+      return Json(new { success = false, message = "Error interno al cambiar el estado" });
+    }
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_REJECT")]
+  public async Task<IActionResult> MarcarRechazada(string cotizacionId)
+  {
+    try
+    {
+      var result = await _cotizacionService.CambiarEstadoCotizacionAsync(
+        cotizacionId, 
+        (char)EstadoCotizacion.Enviada, 
+        (char)EstadoCotizacion.Rechazada, 
+        "Marcada como rechazada por el cliente", 
+        GetCurrentUserId());
+      
+      if (result.Success)
+      {
+        return Json(new { success = true, message = "Cotización marcada como rechazada exitosamente" });
+      }
+      
+      return Json(new { success = false, message = result.ErrorMessage });
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al marcar cotización {CotizacionId} como rechazada", cotizacionId);
+      return Json(new { success = false, message = "Error interno al cambiar el estado" });
+    }
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_ARCHIVE")]
+  public async Task<IActionResult> Archivar(string cotizacionId)
+  {
+    try
+    {
+      var result = await _cotizacionService.CambiarEstadoCotizacionBasicoAsync(
+        cotizacionId, 
+        (char)EstadoCotizacion.Archivada, 
+        "Cotización archivada", // Motivo por defecto
+        null, // Sin comentario adicional
+        GetCurrentUserId());
+      
+      if (result.Success)
+      {
+        return Json(new { success = true, message = "Cotización archivada exitosamente" });
+      }
+      
+      return Json(new { success = false, message = result.ErrorMessage });
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al archivar cotización {CotizacionId}", cotizacionId);
+      return Json(new { success = false, message = "Error interno al cambiar el estado" });
+    }
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_SEND_ERP")]
+  public async Task<IActionResult> EnviarERP(string cotizacionId)
+  {
+    try
+    {
+      var result = await _cotizacionService.MarcarEnvioERPAsync(cotizacionId, GetCurrentUserId());
+      
+      if (result.Success)
+      {
+        return Json(new { success = true, message = "Cotización enviada al ERP exitosamente" });
+      }
+      
+      return Json(new { success = false, message = result.ErrorMessage });
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al enviar cotización {CotizacionId} al ERP", cotizacionId);
+      return Json(new { success = false, message = "Error interno al enviar al ERP" });
+    }
   }
 
   private int GetCurrentUserId()

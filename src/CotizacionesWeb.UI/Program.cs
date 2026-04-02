@@ -69,6 +69,7 @@ try
 
   // UI Services
   builder.Services.AddScoped<CotizacionesWeb.UI.Services.IPermisoChecker, CotizacionesWeb.UI.Services.PermisoChecker>();
+  builder.Services.AddScoped<CotizacionesWeb.UI.Helpers.PermisoHelper>();
 
   // Application services - Cotizaciones
   builder.Services.AddScoped<ICotizacionService, CotizacionesWeb.Infrastructure.Services.CotizacionService>();

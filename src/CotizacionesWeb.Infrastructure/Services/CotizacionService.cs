@@ -1,4 +1,6 @@
-using CotizacionesWeb.Application.Cotizaciones;
+Ôªøusing CotizacionesWeb.Application.Cotizaciones;
+using CotizacionesWeb.Application.Common.Helpers;
+using CotizacionesWeb.Application.Common.Validators;
 using CotizacionesWeb.Domain.Entities;
 using CotizacionesWeb.Domain.Enums;
 using CotizacionesWeb.Infrastructure.Data;
@@ -25,12 +27,15 @@ public class CotizacionService : ICotizacionService
 
     public async Task<List<CotizacionListDto>> GetCotizacionesListAsync(GetCotizacionesListRequest request)
     {
-        // Usar una consulta con JOIN explÌcito para evitar problemas de EF
+        // Usar una consulta con JOIN expl√≠cito para evitar problemas de EF
         var query = from cot in _context.Cotizaciones
                     join ver in _context.CotizacionesVersiones
                         on new { cot.CotizacionId, VersionId = cot.VersionActual }
                         equals new { ver.CotizacionId, VersionId = ver.VersionActual }
                     select new { Cotizacion = cot, Version = ver };
+
+        // ‚ú® EXCLUSI√ìN AUTOM√ÅTICA: Las cotizaciones archivadas (X) salen del √°mbito de gesti√≥n
+        query = query.Where(x => x.Cotizacion.EstadoActual != 'X');
 
         // Filtrar por estados si se proporcionan
         if (request.Estados != null && request.Estados.Any())
@@ -51,7 +56,7 @@ public class CotizacionService : ICotizacionService
             query = query.Where(x => x.Cotizacion.CreatedAt <= fechaHastaFinDia);
         }
 
-        // Filtrar por b˙squeda general (solo texto: ID, Nombre, Empresa)
+        // Filtrar por b√∫squeda general (solo texto: ID, Nombre, Empresa)
         if (!string.IsNullOrWhiteSpace(request.Busqueda))
         {
             var busqueda = request.Busqueda.ToLower();
@@ -73,18 +78,18 @@ public class CotizacionService : ICotizacionService
             query = query.Where(x => x.Cotizacion.MontoCotizacion <= request.MontoHasta.Value);
         }
 
-        // Filtrar por versiÛn especÌfica (eficiente en SQL)
+        // Filtrar por versi√≥n espec√≠fica (eficiente en SQL)
         if (request.Version.HasValue)
         {
             query = query.Where(x => x.Version.NumeroVersion == request.Version.Value);
         }
 
-        // Filtrar por moneda especÌfica (eficiente en SQL)
+        // Filtrar por moneda espec√≠fica (eficiente en SQL)
         if (!string.IsNullOrWhiteSpace(request.Moneda))
         {
             var moneda = request.Moneda.Trim().ToUpper();
-            // ValidaciÛn opcional: verificar que la moneda es v·lida seg˙n FormatHelper
-            // Si se necesita acceso al helper desde Infrastructure, se podrÌa inyectar o crear una interfaz
+            // Validaci√≥n opcional: verificar que la moneda es v√°lida seg√∫n FormatHelper
+            // Si se necesita acceso al helper desde Infrastructure, se podr√≠a inyectar o crear una interfaz
             query = query.Where(x => x.Cotizacion.Moneda.ToUpper() == moneda);
         }
 
@@ -98,21 +103,21 @@ public class CotizacionService : ICotizacionService
             var versionVigente = result.Version;
             
             return new CotizacionListDto(
-                0,  // FASE 3: El DTO a˙n espera un ID numÈrico, usar 0 temporalmente
+                0,  // FASE 3: El DTO a√∫n espera un ID num√©rico, usar 0 temporalmente
                 c.CotizacionId,
                 c.InteresadoId,
                 versionVigente?.NombreInteresado ?? "",
                 versionVigente?.EmpresaInteresado ?? "",
                 c.EstadoActual,
                 c.VersionActual,
-                versionVigente?.NumeroVersion ?? 1.0m, // NumeroVersion especÌfico de la versiÛn vigente
+                versionVigente?.NumeroVersion ?? 1.0m, // NumeroVersion espec√≠fico de la versi√≥n vigente
                 c.CreatedAt, // Using CreatedAt instead of FechaCreacion
                 c.ModifiedAt, // Using ModifiedAt instead of FechaUltimaActualizacion
                 c.MontoCotizacion,
                 c.FechaEnvio,
-                // InformaciÛn financiera
-                c.Moneda, // Moneda de la cotizaciÛn (movida desde version)
-                // Nuevos campos seg˙n lineamientos funcionales
+                // Informaci√≥n financiera
+                c.Moneda, // Moneda de la cotizaci√≥n (movida desde version)
+                // Nuevos campos seg√∫n lineamientos funcionales
                 c.FechaAceptacion,
                 c.FechaRechazo,
                 c.EnviadoERP,
@@ -123,7 +128,7 @@ public class CotizacionService : ICotizacionService
 
     public async Task<List<HistorialCotizacionDto>> GetCotizacionCurrentHistoryAsync(string cotizacionId)
     {
-        // Buscar la cotizaciÛn y su versiÛn vigente usando un JOIN explÌcito
+        // Buscar la cotizaci√≥n y su versi√≥n vigente usando un JOIN expl√≠cito
         var cotizacionConVersion = await (from cot in _context.Cotizaciones
                                           join ver in _context.CotizacionesVersiones
                                               on new { cot.CotizacionId, VersionId = cot.VersionActual }
@@ -137,7 +142,7 @@ public class CotizacionService : ICotizacionService
             return new List<HistorialCotizacionDto>();
         }
 
-        // Obtener los historiales de la versiÛn vigente
+        // Obtener los historiales de la versi√≥n vigente
         var historiales = await _context.HistorialesCotizacion
             .Where(h => h.VersionId == cotizacionConVersion.Version.VersionId)  // FASE 3: Usar VersionId
             .OrderByDescending(h => h.FechaEvento)
@@ -168,7 +173,7 @@ public class CotizacionService : ICotizacionService
 
     public async Task<List<CotizacionVersionDto>> GetCotizacionVersionsAsync(string cotizacionId)
     {
-        // Obtener la cotizaciÛn para saber cu·l es la versiÛn actual vigente y obtener la moneda
+        // Obtener la cotizaci√≥n para saber cu√°l es la versi√≥n actual vigente y obtener la moneda
         var cotizacion = await _context.Cotizaciones
             .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
 
@@ -179,7 +184,7 @@ public class CotizacionService : ICotizacionService
 
         var versionActualId = cotizacion.VersionActual;
 
-        // Obtener SOLO las versiones anteriores (excluir la versiÛn actual)
+        // Obtener SOLO las versiones anteriores (excluir la versi√≥n actual)
         var versiones = await _context.CotizacionesVersiones
             .Where(v => v.CotizacionId == cotizacionId && v.VersionActual != versionActualId)
             .OrderByDescending(v => v.NumeroVersion)
@@ -193,14 +198,14 @@ public class CotizacionService : ICotizacionService
             v.NombreInteresado,
             v.EmailInteresado,
             v.EmpresaInteresado,
-            'P', // Temporal: usar 'P' como default hasta obtener la relaciÛn con Interesado
+            'P', // Temporal: usar 'P' como default hasta obtener la relaci√≥n con Interesado
             v.SubTotal,
             v.Impuesto,
             v.Descuento,
             v.Total,
             cotizacion.Moneda, // ? CORREGIDO: Moneda desde Cotizacion
             v.TipoCambio, // TipoCambio se mantiene en version
-            0, // Siempre 0 porque son versiones histÛricas (no actuales)
+            0, // Siempre 0 porque son versiones hist√≥ricas (no actuales)
             v.Notas
         )).ToList();
     }
@@ -226,7 +231,7 @@ public class CotizacionService : ICotizacionService
         var cotizacion = versionConInteresadoYCotizacion.Cotizacion;
         var interesado = versionConInteresadoYCotizacion.Interesado;
 
-        // Obtener detalles de la versiÛn
+        // Obtener detalles de la versi√≥n
         var detalles = await _context.DetallesCotizacionVersion
             .Where(d => d.VersionId == versionId)
             .ToListAsync();
@@ -299,9 +304,9 @@ public class CotizacionService : ICotizacionService
     {
         try
         {
-            _logger.LogInformation("Iniciando creaciÛn de nueva cotizaciÛn");
+            _logger.LogInformation("Iniciando creaci√≥n de nueva cotizaci√≥n");
 
-            // Validaciones b·sicas
+            // Validaciones b√°sicas
             if (string.IsNullOrWhiteSpace(request.NombreInteresado))
             {
                 return new CrearCotizacionResult
@@ -311,29 +316,29 @@ public class CotizacionService : ICotizacionService
                 };
             }
 
-            // Usar transacciÛn para garantizar integridad
+            // Usar transacci√≥n para garantizar integridad
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                // Generar nuevo ID de cotizaciÛn usando el par·metro CONSECUTIVO_COTIZACION
+                // Generar nuevo ID de cotizaci√≥n usando el par√°metro CONSECUTIVO_COTIZACION
                 var nuevoCotizacionId = await GenerarNuevoCotizacionIdAsync();
-                _logger.LogInformation("Nuevo ID de cotizaciÛn generado: {NuevoCotizacionId}", nuevoCotizacionId);
+                _logger.LogInformation("Nuevo ID de cotizaci√≥n generado: {NuevoCotizacionId}", nuevoCotizacionId);
                 
-                // Generar nuevo identificador ˙nico para la primera versiÛn
+                // Generar nuevo identificador √∫nico para la primera versi√≥n
                 var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
                 _logger.LogInformation("Nuevo VersionActual generado: {NuevoVersionActual}", nuevoVersionActual);
 
-                // Crear nueva cotizaciÛn
+                // Crear nueva cotizaci√≥n
                 var nuevaCotizacion = new Cotizacion
                 {
                     CotizacionId = nuevoCotizacionId,
-                    InteresadoId = null, // Se asignar· al conectar con HubSpot si es necesario
+                    InteresadoId = null, // Se asignar√° al conectar con HubSpot si es necesario
                     EstadoActual = (char)EstadoCotizacion.Borrador,
                     VersionActual = nuevoVersionActual,
                     MontoCotizacion = request.Total,
                     Moneda = request.Moneda ?? "CRC",
-                    // Nuevos campos seg˙n lineamientos funcionales
+                    // Nuevos campos seg√∫n lineamientos funcionales
                     FechaAceptacion = null,
                     FechaRechazo = null,
                     EnviadoERP = 'N',
@@ -343,13 +348,13 @@ public class CotizacionService : ICotizacionService
 
                 _context.Cotizaciones.Add(nuevaCotizacion);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Nueva cotizaciÛn creada en BD");
+                _logger.LogInformation("Nueva cotizaci√≥n creada en BD");
 
-                // Crear primera versiÛn
+                // Crear primera versi√≥n
                 var nuevaVersion = new CotizacionVersion
                 {
                     CotizacionId = nuevoCotizacionId,
-                    NumeroVersion = 1.0m, // Primera versiÛn siempre es 1.0
+                    NumeroVersion = 1.0m, // Primera versi√≥n siempre es 1.0
                     FechaVersion = DateTime.Now,
                     NombreInteresado = request.NombreInteresado,
                     EmailInteresado = request.EmailInteresado,
@@ -365,9 +370,9 @@ public class CotizacionService : ICotizacionService
 
                 _context.CotizacionesVersiones.Add(nuevaVersion);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Nueva versiÛn creada con VersionId: {VersionId}", nuevaVersion.VersionId);
+                _logger.LogInformation("Nueva versi√≥n creada con VersionId: {VersionId}", nuevaVersion.VersionId);
 
-                // Crear lÌneas de detalle
+                // Crear l√≠neas de detalle
                 if (request.Detalles != null && request.Detalles.Any())
                 {
                     foreach (var detalle in request.Detalles)
@@ -386,7 +391,7 @@ public class CotizacionService : ICotizacionService
                     }
 
                     await _context.SaveChangesAsync();
-                    _logger.LogInformation("Detalles creados exitosamente: {CantidadDetalles} lÌneas", request.Detalles.Count);
+                    _logger.LogInformation("Detalles creados exitosamente: {CantidadDetalles} l√≠neas", request.Detalles.Count);
                 }
 
                 // Registrar evento inicial en historial
@@ -396,17 +401,17 @@ public class CotizacionService : ICotizacionService
                     TipoEvento = "Creada",
                     FechaEvento = DateTime.Now,
                     UsuarioEvento = userId ?? 0,
-                    Comentario = "CotizaciÛn creada desde pantalla de creaciÛn"
+                    Comentario = "Cotizaci√≥n creada desde pantalla de creaci√≥n"
                 };
                 _context.HistorialesCotizacion.Add(historial);
 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Historial registrado");
 
-                // Confirmar transacciÛn
+                // Confirmar transacci√≥n
                 await transaction.CommitAsync();
 
-                _logger.LogInformation("CotizaciÛn {NuevoCotizacionId} creada exitosamente",
+                _logger.LogInformation("Cotizaci√≥n {NuevoCotizacionId} creada exitosamente",
                     nuevoCotizacionId);
 
                 return new CrearCotizacionResult
@@ -418,17 +423,17 @@ public class CotizacionService : ICotizacionService
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, "Error en transacciÛn al crear cotizaciÛn");
+                _logger.LogError(ex, "Error en transacci√≥n al crear cotizaci√≥n");
                 throw; // Re-lanzar para que sea capturado por el catch externo
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al crear nueva cotizaciÛn");
+            _logger.LogError(ex, "Error al crear nueva cotizaci√≥n");
             return new CrearCotizacionResult
             {
                 Success = false,
-                ErrorMessage = $"Error al crear cotizaciÛn: {ex.Message}"
+                ErrorMessage = $"Error al crear cotizaci√≥n: {ex.Message}"
             };
         }
     }
@@ -437,7 +442,7 @@ public class CotizacionService : ICotizacionService
     {
         try
         {
-            // Buscar la cotizaciÛn y su versiÛn vigente usando un JOIN explÌcito
+            // Buscar la cotizaci√≥n y su versi√≥n vigente usando un JOIN expl√≠cito
             var cotizacionConVersion = await (from cot in _context.Cotizaciones
                                               join ver in _context.CotizacionesVersiones
                                                   on new { cot.CotizacionId, VersionId = cot.VersionActual }
@@ -448,21 +453,21 @@ public class CotizacionService : ICotizacionService
 
             if (cotizacionConVersion == null)
             {
-                return new CopiarVersionResult(false, "CotizaciÛn no encontrada", null, null);
+                return new CopiarVersionResult(false, "Cotizaci√≥n no encontrada", null, null);
             }
 
             var cotizacion = cotizacionConVersion.Cotizacion;
             var versionVigente = cotizacionConVersion.Version;
 
-            // Obtener los detalles de la versiÛn vigente
+            // Obtener los detalles de la versi√≥n vigente
             var detalles = await _context.DetallesCotizacionVersion
                 .Where(d => d.VersionId == versionVigente.VersionId)  // CORREGIDO: Usar VersionId
                 .ToListAsync();
 
-            // Generar nuevo identificador ˙nico para la nueva versiÛn
+            // Generar nuevo identificador √∫nico para la nueva versi√≥n
             var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
             
-            // Crear nueva versiÛn con lÛgica de incremento correcta
+            // Crear nueva versi√≥n con l√≥gica de incremento correcta
             var nuevoNumeroVersion = CalcularNuevaVersion(versionVigente.NumeroVersion);
             var nuevaVersion = new CotizacionVersion
             {
@@ -479,7 +484,7 @@ public class CotizacionService : ICotizacionService
                 TipoCambio = versionVigente.TipoCambio, // TipoCambio se mantiene en version
                 VersionActual = nuevoVersionActual,
                 Notas = versionVigente.Notas
-                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor autom·ticamente
+                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor autom√°ticamente
             };
 
             _context.CotizacionesVersiones.Add(nuevaVersion);
@@ -496,22 +501,22 @@ public class CotizacionService : ICotizacionService
                     PrecioUnitario = detalle.PrecioUnitario,
                     Descuento = detalle.Descuento,
                     TotalLinea = detalle.TotalLinea
-                    // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor autom·ticamente
+                    // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor autom√°ticamente
                 };
                 _context.DetallesCotizacionVersion.Add(nuevoDetalle);
             }
 
-            // Actualizar cotizaciÛn para apuntar a la nueva versiÛn vigente
+            // Actualizar cotizaci√≥n para apuntar a la nueva versi√≥n vigente
             cotizacion.VersionActual = nuevoVersionActual;
             
-            // ?? CAMBIO CRÕTICO: Al crear una nueva versiÛn, la cotizaciÛn vuelve a estado Borrador
-            // porque es una nueva versiÛn que debe pasar por todo el ciclo de estados
+            // ?? CAMBIO CR√çTICO: Al crear una nueva versi√≥n, la cotizaci√≥n vuelve a estado Borrador
+            // porque es una nueva versi√≥n que debe pasar por todo el ciclo de estados
             cotizacion.EstadoActual = (char)EstadoCotizacion.Borrador;
 
             // Crear comentario para el historial
             var comentarioFinal = string.IsNullOrWhiteSpace(comentario) 
-                ? $"Nueva versiÛn {nuevoNumeroVersion} generada desde versiÛn {versionVigente.NumeroVersion}"
-                : $"Nueva versiÛn generada: {comentario.Trim()}";
+                ? $"Nueva versi√≥n {nuevoNumeroVersion} generada desde versi√≥n {versionVigente.NumeroVersion}"
+                : $"Nueva versi√≥n generada: {comentario.Trim()}";
 
             // Registrar evento en historial
             var historial = new HistorialCotizacion
@@ -519,22 +524,22 @@ public class CotizacionService : ICotizacionService
                 VersionId = nuevaVersion.VersionId,
                 TipoEvento = "VersionGenerada",
                 FechaEvento = DateTime.Now,
-                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario din·mico, 0 si no se proporciona
+                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario din√°mico, 0 si no se proporciona
                 Comentario = comentarioFinal
             };
             _context.HistorialesCotizacion.Add(historial);
 
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Nueva versiÛn {NumeroVersion} creada para cotizaciÛn {CotizacionId}", 
+            _logger.LogInformation("Nueva versi√≥n {NumeroVersion} creada para cotizaci√≥n {CotizacionId}", 
                 nuevoNumeroVersion, cotizacionId);
 
             return new CopiarVersionResult(true, null, nuevaVersion.VersionId, nuevoNumeroVersion);  // CORREGIDO: No cast a int
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al copiar versiÛn actual de cotizaciÛn {CotizacionId}", cotizacionId);
-            return new CopiarVersionResult(false, "Error al crear nueva versiÛn", null, null);
+            _logger.LogError(ex, "Error al copiar versi√≥n actual de cotizaci√≥n {CotizacionId}", cotizacionId);
+            return new CopiarVersionResult(false, "Error al crear nueva versi√≥n", null, null);
         }
     }
 
@@ -547,7 +552,7 @@ public class CotizacionService : ICotizacionService
 
             if (cotizacion == null)
             {
-                return new CopiarVersionResult(false, "CotizaciÛn no encontrada", null, null);
+                return new CopiarVersionResult(false, "Cotizaci√≥n no encontrada", null, null);
             }
 
             var versionBase = await _context.CotizacionesVersiones
@@ -556,13 +561,13 @@ public class CotizacionService : ICotizacionService
 
             if (versionBase == null)
             {
-                return new CopiarVersionResult(false, "VersiÛn base no encontrada", null, null);
+                return new CopiarVersionResult(false, "Versi√≥n base no encontrada", null, null);
             }
 
-            // Generar nuevo identificador ˙nico para la nueva versiÛn
+            // Generar nuevo identificador √∫nico para la nueva versi√≥n
             var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
             
-            // Crear nueva versiÛn con lÛgica de incremento correcta
+            // Crear nueva versi√≥n con l√≥gica de incremento correcta
             var nuevoNumeroVersion = CalcularNuevaVersion(versionBase.NumeroVersion);
             var nuevaVersion = new CotizacionVersion
             {
@@ -579,7 +584,7 @@ public class CotizacionService : ICotizacionService
                 TipoCambio = versionBase.TipoCambio, // TipoCambio se mantiene en version
                 VersionActual = nuevoVersionActual,
                 Notas = versionBase.Notas
-                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor autom·ticamente
+                // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor autom√°ticamente
             };
 
             _context.CotizacionesVersiones.Add(nuevaVersion);
@@ -596,22 +601,22 @@ public class CotizacionService : ICotizacionService
                     PrecioUnitario = detalle.PrecioUnitario,
                     Descuento = detalle.Descuento,
                     TotalLinea = detalle.TotalLinea
-                    // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor autom·ticamente
+                    // CORREGIDO: Remover CreatedAt y CreatedBy - los maneja AuditInterceptor autom√°ticamente
                 };
                 _context.DetallesCotizacionVersion.Add(nuevoDetalle);
             }
 
-            // Actualizar cotizaciÛn para apuntar a la nueva versiÛn vigente
+            // Actualizar cotizaci√≥n para apuntar a la nueva versi√≥n vigente
             cotizacion.VersionActual = nuevoVersionActual;
             
-            // ?? CAMBIO CRÕTICO: Al crear una nueva versiÛn, la cotizaciÛn vuelve a estado Borrador
-            // porque es una nueva versiÛn que debe pasar por todo el ciclo de estados
+            // ?? CAMBIO CR√çTICO: Al crear una nueva versi√≥n, la cotizaci√≥n vuelve a estado Borrador
+            // porque es una nueva versi√≥n que debe pasar por todo el ciclo de estados
             cotizacion.EstadoActual = (char)EstadoCotizacion.Borrador;
 
             // Crear comentario para el historial
             var comentarioFinal = string.IsNullOrWhiteSpace(request.Comentario) 
-                ? $"Nueva versiÛn {nuevoNumeroVersion} generada desde versiÛn {(request.EsVersionAntigua ? "antigua " : "")}{versionBase.NumeroVersion}"
-                : $"Nueva versiÛn generada: {request.Comentario.Trim()}";
+                ? $"Nueva versi√≥n {nuevoNumeroVersion} generada desde versi√≥n {(request.EsVersionAntigua ? "antigua " : "")}{versionBase.NumeroVersion}"
+                : $"Nueva versi√≥n generada: {request.Comentario.Trim()}";
 
             // Registrar evento en historial
             var historial = new HistorialCotizacion
@@ -619,22 +624,22 @@ public class CotizacionService : ICotizacionService
                 VersionId = nuevaVersion.VersionId,
                 TipoEvento = "VersionGenerada",
                 FechaEvento = DateTime.Now,
-                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario din·mico, 0 si no se proporciona
+                UsuarioEvento = userId ?? 0, // CORREGIDO: Usuario din√°mico, 0 si no se proporciona
                 Comentario = comentarioFinal
             };
             _context.HistorialesCotizacion.Add(historial);
 
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Nueva versiÛn {NumeroVersion} creada desde versiÛn {VersionBase} para cotizaciÛn {CotizacionId}",
+            _logger.LogInformation("Nueva versi√≥n {NumeroVersion} creada desde versi√≥n {VersionBase} para cotizaci√≥n {CotizacionId}",
                 nuevoNumeroVersion, versionBase.NumeroVersion, request.CotizacionId);
 
             return new CopiarVersionResult(true, null, nuevaVersion.VersionId, nuevoNumeroVersion);  // CORREGIDO: No cast a int
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al copiar versiÛn especÌfica de cotizaciÛn {CotizacionId}", request.CotizacionId);
-            return new CopiarVersionResult(false, "Error al crear nueva versiÛn", null, null);
+            _logger.LogError(ex, "Error al copiar versi√≥n espec√≠fica de cotizaci√≥n {CotizacionId}", request.CotizacionId);
+            return new CopiarVersionResult(false, "Error al crear nueva versi√≥n", null, null);
         }
     }
 
@@ -642,9 +647,9 @@ public class CotizacionService : ICotizacionService
     {
         try
         {
-            _logger.LogInformation("Iniciando duplicaciÛn de cotizaciÛn {CotizacionId}", request.CotizacionIdBase);
+            _logger.LogInformation("Iniciando duplicaci√≥n de cotizaci√≥n {CotizacionId}", request.CotizacionIdBase);
 
-            // Buscar la cotizaciÛn base y su versiÛn vigente usando un JOIN explÌcito
+            // Buscar la cotizaci√≥n base y su versi√≥n vigente usando un JOIN expl√≠cito
             var cotizacionBaseConVersion = await (from cotizacion in _context.Cotizaciones
                                                   join version in _context.CotizacionesVersiones
                                                       on new { cotizacion.CotizacionId, VersionId = cotizacion.VersionActual }
@@ -655,52 +660,52 @@ public class CotizacionService : ICotizacionService
 
             if (cotizacionBaseConVersion == null)
             {
-                _logger.LogWarning("CotizaciÛn base {CotizacionId} no encontrada", request.CotizacionIdBase);
-                return new DuplicarCotizacionResult(false, "CotizaciÛn base no encontrada", null);
+                _logger.LogWarning("Cotizaci√≥n base {CotizacionId} no encontrada", request.CotizacionIdBase);
+                return new DuplicarCotizacionResult(false, "Cotizaci√≥n base no encontrada", null);
             }
 
             var cotizacionBase = cotizacionBaseConVersion.Cotizacion;
             var versionVigente = cotizacionBaseConVersion.Version;
 
-            _logger.LogInformation("CotizaciÛn base encontrada: {CotizacionId}, VersiÛn: {VersionActual}", 
+            _logger.LogInformation("Cotizaci√≥n base encontrada: {CotizacionId}, Versi√≥n: {VersionActual}", 
                 cotizacionBase.CotizacionId, cotizacionBase.VersionActual);
 
-            // Obtener los detalles de la versiÛn vigente
+            // Obtener los detalles de la versi√≥n vigente
             var detalles = await _context.DetallesCotizacionVersion
                 .Where(d => d.VersionId == versionVigente.VersionId)
                 .ToListAsync();
 
             _logger.LogInformation("Encontrados {CantidadDetalles} detalles para copiar", detalles.Count);
 
-            // Usar transacciÛn para garantizar integridad
+            // Usar transacci√≥n para garantizar integridad
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                // Generar nuevo ID de cotizaciÛn
+                // Generar nuevo ID de cotizaci√≥n
                 var nuevoCotizacionId = await GenerarNuevoCotizacionIdAsync();
-                _logger.LogInformation("Nuevo ID de cotizaciÛn generado: {NuevoCotizacionId}", nuevoCotizacionId);
+                _logger.LogInformation("Nuevo ID de cotizaci√≥n generado: {NuevoCotizacionId}", nuevoCotizacionId);
                 
-                // Generar nuevo identificador ˙nico para la primera versiÛn
+                // Generar nuevo identificador √∫nico para la primera versi√≥n
                 var nuevoVersionActual = await GenerarNuevoVersionActualAsync();
                 _logger.LogInformation("Nuevo VersionActual generado: {NuevoVersionActual}", nuevoVersionActual);
 
-                // Crear nueva cotizaciÛn
+                // Crear nueva cotizaci√≥n
                 var nuevaCotizacion = new Cotizacion
                 {
                     CotizacionId = nuevoCotizacionId,
                     InteresadoId = null, // Se limpia el interesado
                     EstadoActual = (char)EstadoCotizacion.Borrador,
-                    VersionActual = nuevoVersionActual, // Apuntar a la nueva versiÛn
+                    VersionActual = nuevoVersionActual, // Apuntar a la nueva versi√≥n
                     MontoCotizacion = versionVigente.Total,
-                    Moneda = cotizacionBase.Moneda, // Copiar moneda desde la cotizaciÛn base
+                    Moneda = cotizacionBase.Moneda, // Copiar moneda desde la cotizaci√≥n base
                 };
 
                 _context.Cotizaciones.Add(nuevaCotizacion);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Nueva cotizaciÛn creada en BD");
+                _logger.LogInformation("Nueva cotizaci√≥n creada en BD");
 
-                // Crear primera versiÛn
+                // Crear primera versi√≥n
                 var nuevaVersion = new CotizacionVersion
                 {
                     CotizacionId = nuevoCotizacionId,
@@ -714,16 +719,16 @@ public class CotizacionService : ICotizacionService
                     Descuento = versionVigente.Descuento,
                     Total = versionVigente.Total,
                     TipoCambio = versionVigente.TipoCambio, // TipoCambio se mantiene en version
-                    // Moneda ya no se guarda en version (est· en Cotizacion)
+                    // Moneda ya no se guarda en version (est√° en Cotizacion)
                     VersionActual = nuevoVersionActual,
                     Notas = null // Se limpian las notas
                 };
 
                 _context.CotizacionesVersiones.Add(nuevaVersion);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Nueva versiÛn creada con VersionId: {VersionId}", nuevaVersion.VersionId);
+                _logger.LogInformation("Nueva versi√≥n creada con VersionId: {VersionId}", nuevaVersion.VersionId);
 
-                // Copiar lÌneas de detalle
+                // Copiar l√≠neas de detalle
                 foreach (var detalle in detalles)
                 {
                     var nuevoDetalle = new DetalleCotizacionVersion
@@ -749,17 +754,17 @@ public class CotizacionService : ICotizacionService
                     TipoEvento = "Creada",
                     FechaEvento = DateTime.Now,
                     UsuarioEvento = userId ?? 0,
-                    Comentario = $"CotizaciÛn creada por duplicaciÛn de {request.CotizacionIdBase}"
+                    Comentario = $"Cotizaci√≥n creada por duplicaci√≥n de {request.CotizacionIdBase}"
                 };
                 _context.HistorialesCotizacion.Add(historial);
 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Historial registrado");
 
-                // Confirmar transacciÛn
+                // Confirmar transacci√≥n
                 await transaction.CommitAsync();
 
-                _logger.LogInformation("CotizaciÛn {NuevoCotizacionId} duplicada exitosamente de {CotizacionIdBase}",
+                _logger.LogInformation("Cotizaci√≥n {NuevoCotizacionId} duplicada exitosamente de {CotizacionIdBase}",
                     nuevoCotizacionId, request.CotizacionIdBase);
 
                 return new DuplicarCotizacionResult(true, null, nuevoCotizacionId);
@@ -767,14 +772,14 @@ public class CotizacionService : ICotizacionService
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, "Error en transacciÛn al duplicar cotizaciÛn {CotizacionId}", request.CotizacionIdBase);
+                _logger.LogError(ex, "Error en transacci√≥n al duplicar cotizaci√≥n {CotizacionId}", request.CotizacionIdBase);
                 throw; // Re-lanzar para que sea capturado por el catch externo
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al duplicar cotizaciÛn {CotizacionId}", request.CotizacionIdBase);
-            return new DuplicarCotizacionResult(false, $"Error al duplicar cotizaciÛn: {ex.Message}", null);
+            _logger.LogError(ex, "Error al duplicar cotizaci√≥n {CotizacionId}", request.CotizacionIdBase);
+            return new DuplicarCotizacionResult(false, $"Error al duplicar cotizaci√≥n: {ex.Message}", null);
         }
     }
 
@@ -782,19 +787,19 @@ public class CotizacionService : ICotizacionService
     {
         try
         {
-            // ?? NUEVO: Usar el sistema de par·metros para generar consecutivos
-            _logger.LogInformation("Generando nuevo ID de cotizaciÛn usando sistema de par·metros");
+            // ?? NUEVO: Usar el sistema de par√°metros para generar consecutivos
+            _logger.LogInformation("Generando nuevo ID de cotizaci√≥n usando sistema de par√°metros");
             
             var nuevoConsecutivo = await _parametroService.ObtenerSiguienteConsecutivoCotizacionAsync();
-            _logger.LogInformation("Nuevo ID de cotizaciÛn generado: {NuevoConsecutivo}", nuevoConsecutivo);
+            _logger.LogInformation("Nuevo ID de cotizaci√≥n generado: {NuevoConsecutivo}", nuevoConsecutivo);
             
             return nuevoConsecutivo;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error crÌtico al generar ID usando par·metros, usando mÈtodo fallback");
+            _logger.LogError(ex, "Error cr√≠tico al generar ID usando par√°metros, usando m√©todo fallback");
             
-            // ?? FALLBACK: MÈtodo anterior como respaldo
+            // ?? FALLBACK: M√©todo anterior como respaldo
             try
             {
                 var ultimoNumero = await _context.Cotizaciones
@@ -813,8 +818,8 @@ public class CotizacionService : ICotizacionService
             }
             catch (Exception fallbackEx)
             {
-                _logger.LogError(fallbackEx, "Error crÌtico: tanto el sistema de par·metros como el fallback fallaron");
-                throw new InvalidOperationException("No se pudo generar un ID de cotizaciÛn v·lido", fallbackEx);
+                _logger.LogError(fallbackEx, "Error cr√≠tico: tanto el sistema de par√°metros como el fallback fallaron");
+                throw new InvalidOperationException("No se pudo generar un ID de cotizaci√≥n v√°lido", fallbackEx);
             }
         }
     }
@@ -823,7 +828,7 @@ public class CotizacionService : ICotizacionService
     {
         try
         {
-            // Usar una consulta m·s segura que maneje el caso cuando no hay versiones
+            // Usar una consulta m√°s segura que maneje el caso cuando no hay versiones
             var maxVersionActual = await _context.CotizacionesVersiones
                 .Select(v => (int?)v.VersionActual)
                 .DefaultIfEmpty(0) // Si no hay elementos, usar 0
@@ -833,31 +838,31 @@ public class CotizacionService : ICotizacionService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error al obtener m·ximo VersionActual, usando 1 como fallback");
+            _logger.LogWarning(ex, "Error al obtener m√°ximo VersionActual, usando 1 como fallback");
             return 1; // Fallback para el primer caso
         }
     }
 
     private static decimal CalcularNuevaVersion(decimal versionActual)
     {
-        // Implementar lÛgica de incremento seg˙n documentaciÛn:
-        // Si es versiÛn mayor (1.0, 2.0, 3.0) ? incrementar entero: 1.0 ? 2.0
-        // Si es versiÛn menor (1.1, 1.2, 2.5) ? incrementar decimal: 1.1 ? 1.2
+        // Implementar l√≥gica de incremento seg√∫n documentaci√≥n:
+        // Si es versi√≥n mayor (1.0, 2.0, 3.0) ? incrementar entero: 1.0 ? 2.0
+        // Si es versi√≥n menor (1.1, 1.2, 2.5) ? incrementar decimal: 1.1 ? 1.2
         
         if (versionActual % 1 == 0)
         {
-            // Es versiÛn mayor (ej: 1.0, 2.0)
+            // Es versi√≥n mayor (ej: 1.0, 2.0)
             return versionActual + 1.0m;
         }
         else
         {
-            // Es versiÛn menor (ej: 1.1, 2.5)
+            // Es versi√≥n menor (ej: 1.1, 2.5)
             return versionActual + 0.1m;
         }
     }
 
     /// <summary>
-    /// Actualiza los detalles de una versiÛn de forma inteligente preservando la auditorÌa.
+    /// Actualiza los detalles de una versi√≥n de forma inteligente preservando la auditor√≠a.
     /// UPDATE para existentes, INSERT para nuevos, DELETE solo para eliminados.
     /// </summary>
     private async Task ActualizarDetallesVersionAsync(int versionId, List<ActualizarDetalleRequest> nuevosDetalles)
@@ -870,7 +875,7 @@ public class CotizacionService : ICotizacionService
         var detallesExistentesDict = detallesExistentes.ToDictionary(d => d.DetalleVersionId);
         var idsEnRequest = nuevosDetalles.Where(d => d.DetalleVersionId > 0).Select(d => d.DetalleVersionId).ToHashSet();
         
-        _logger.LogInformation("?? Actualizando detalles de versiÛn {VersionId}. Existentes en BD: {Existentes}, En request: {Request}", 
+        _logger.LogInformation("?? Actualizando detalles de versi√≥n {VersionId}. Existentes en BD: {Existentes}, En request: {Request}", 
             versionId, detallesExistentes.Count, nuevosDetalles.Count);
         
         _logger.LogInformation("?? IDs en request: [{IdsEnRequest}]", 
@@ -925,7 +930,7 @@ public class CotizacionService : ICotizacionService
                 detalleRequest.ProductoId, detalleRequest.Cantidad);
         }
 
-        // 3. ?? ELIMINAR FÕSICAMENTE detalles que ya no est·n en el request
+        // 3. ?? ELIMINAR F√çSICAMENTE detalles que ya no est√°n en el request
         var detallesAEliminar = detallesExistentes.Where(d => !idsEnRequest.Contains(d.DetalleVersionId)).ToList();
         if (detallesAEliminar.Any())
         {
@@ -935,24 +940,24 @@ public class CotizacionService : ICotizacionService
             
             _context.DetallesCotizacionVersion.RemoveRange(detallesAEliminar);
             
-            _logger.LogInformation("?? Detalles FÕSICAMENTE eliminados de BD: {Count}", detallesAEliminar.Count);
+            _logger.LogInformation("?? Detalles F√çSICAMENTE eliminados de BD: {Count}", detallesAEliminar.Count);
         }
         else
         {
             _logger.LogInformation("?? No hay detalles para eliminar");
         }
 
-        _logger.LogInformation("? GestiÛn de detalles completada para versiÛn {VersionId}. Actualizados: {Actualizados}, Insertados: {Insertados}, Eliminados: {Eliminados}", 
+        _logger.LogInformation("? Gesti√≥n de detalles completada para versi√≥n {VersionId}. Actualizados: {Actualizados}, Insertados: {Insertados}, Eliminados: {Eliminados}", 
             versionId, actualizados, insertados, detallesAEliminar.Count);
     }
 
     /// <summary>
-    /// Calcula los totales de una versiÛn bas·ndose en sus detalles actuales en la base de datos.
-    /// Usa el PorcentajeImpuesto de cada lÌnea para calcular el impuesto correspondiente.
+    /// Calcula los totales de una versi√≥n bas√°ndose en sus detalles actuales en la base de datos.
+    /// Usa el PorcentajeImpuesto de cada l√≠nea para calcular el impuesto correspondiente.
     /// </summary>
     private async Task<(decimal subtotal, decimal totalDescuentos, decimal impuesto, decimal total)> CalcularTotalesVersionAsync(int versionId)
     {
-        // Obtener detalles actuales despuÈs de las modificaciones
+        // Obtener detalles actuales despu√©s de las modificaciones
         var detalles = await _context.DetallesCotizacionVersion
             .Where(d => d.VersionId == versionId)
             .ToListAsync();
@@ -963,27 +968,27 @@ public class CotizacionService : ICotizacionService
 
         foreach (var detalle in detalles)
         {
-            // Subtotal = suma de (cantidad ◊ precio unitario) sin descuentos
+            // Subtotal = suma de (cantidad √ó precio unitario) sin descuentos
             var subtotalLinea = detalle.Cantidad * detalle.PrecioUnitario;
             subtotal += subtotalLinea;
             
             // Acumular descuentos
             totalDescuentos += detalle.Descuento;
             
-            // Calcular impuesto de esta lÌnea usando su porcentaje especÌfico
-            // Base imponible = (cantidad ◊ precio) - descuento
+            // Calcular impuesto de esta l√≠nea usando su porcentaje espec√≠fico
+            // Base imponible = (cantidad √ó precio) - descuento
             var baseImponible = subtotalLinea - detalle.Descuento;
             var impuestoLinea = baseImponible * (detalle.PorcentajeImpuesto / 100m);
             impuestoTotal += impuestoLinea;
         }
 
-        // Subtotal despuÈs de descuentos
+        // Subtotal despu√©s de descuentos
         var subtotalConDescuentos = subtotal - totalDescuentos;
         
         // Total final
         var total = subtotalConDescuentos + impuestoTotal;
 
-        _logger.LogDebug("Totales calculados para versiÛn {VersionId}: Subtotal={Subtotal}, Descuentos={Descuentos}, Impuesto={Impuesto}, Total={Total}",
+        _logger.LogDebug("Totales calculados para versi√≥n {VersionId}: Subtotal={Subtotal}, Descuentos={Descuentos}, Impuesto={Impuesto}, Total={Total}",
             versionId, subtotal, totalDescuentos, impuestoTotal, total);
 
         return (subtotal, totalDescuentos, impuestoTotal, total);
@@ -991,7 +996,7 @@ public class CotizacionService : ICotizacionService
 
     /// <summary>
     /// ?? NUEVO: Calcula los totales directamente desde el request para evitar problemas de cache/timing con EF.
-    /// Esta es la forma correcta de calcular totales cuando se est·n actualizando lÌneas.
+    /// Esta es la forma correcta de calcular totales cuando se est√°n actualizando l√≠neas.
     /// </summary>
     private (decimal subtotal, decimal totalDescuentos, decimal impuesto, decimal total) CalcularTotalesDesdeRequest(List<ActualizarDetalleRequest>? detalles)
     {
@@ -1003,29 +1008,29 @@ public class CotizacionService : ICotizacionService
         {
             foreach (var detalle in detalles)
             {
-                // Subtotal = suma de (cantidad ◊ precio unitario) sin descuentos
+                // Subtotal = suma de (cantidad √ó precio unitario) sin descuentos
                 var subtotalLinea = detalle.Cantidad * detalle.PrecioUnitario;
                 subtotal += subtotalLinea;
                 
                 // Acumular descuentos
                 totalDescuentos += detalle.Descuento;
                 
-                // Calcular impuesto de esta lÌnea usando su porcentaje especÌfico
-                // Base imponible = (cantidad ◊ precio) - descuento
+                // Calcular impuesto de esta l√≠nea usando su porcentaje espec√≠fico
+                // Base imponible = (cantidad √ó precio) - descuento
                 var baseImponible = subtotalLinea - detalle.Descuento;
                 var impuestoLinea = baseImponible * (detalle.PorcentajeImpuesto / 100m);
                 impuestoTotal += impuestoLinea;
             }
         }
 
-        // Subtotal despuÈs de descuentos
+        // Subtotal despu√©s de descuentos
         var subtotalConDescuentos = subtotal - totalDescuentos;
         
         // Total final
         var total = subtotalConDescuentos + impuestoTotal;
 
         _logger.LogInformation("?? Totales calculados DESDE REQUEST (sin consultar BD):");
-        _logger.LogInformation("  - Cantidad de lÌneas en request: {CantidadLineas}", detalles?.Count ?? 0);
+        _logger.LogInformation("  - Cantidad de l√≠neas en request: {CantidadLineas}", detalles?.Count ?? 0);
         _logger.LogInformation("  - Subtotal bruto: {Subtotal}", subtotal);
         _logger.LogInformation("  - Total descuentos: {Descuentos}", totalDescuentos);
         _logger.LogInformation("  - Subtotal con descuentos: {SubtotalConDescuentos}", subtotalConDescuentos);
@@ -1039,76 +1044,76 @@ public class CotizacionService : ICotizacionService
     {
         try
         {
-            _logger.LogInformation("=== INICIO ACTUALIZACI”N COTIZACI”N ===");
+            _logger.LogInformation("=== INICIO ACTUALIZACI√ìN COTIZACI√ìN ===");
             _logger.LogInformation("CotizacionId: {CotizacionId}, VersionId: {VersionId}", 
                 request.CotizacionId, request.VersionId);
             _logger.LogInformation("Moneda en request: '{Moneda}'", request.Moneda);
             _logger.LogInformation("==========================================");
 
-            // Buscar la cotizaciÛn y verificar estado
+            // Buscar la cotizaci√≥n y verificar estado
             var cotizacion = await _context.Cotizaciones
                 .FirstOrDefaultAsync(c => c.CotizacionId == request.CotizacionId);
 
             if (cotizacion == null)
             {
-                _logger.LogWarning("CotizaciÛn {CotizacionId} no encontrada", request.CotizacionId);
-                return new ActualizarCotizacionResult(false, "CotizaciÛn no encontrada");
+                _logger.LogWarning("Cotizaci√≥n {CotizacionId} no encontrada", request.CotizacionId);
+                return new ActualizarCotizacionResult(false, "Cotizaci√≥n no encontrada");
             }
 
-            _logger.LogInformation("CotizaciÛn encontrada: Estado='{EstadoActual}', MonedaActual='{MonedaActual}'",
+            _logger.LogInformation("Cotizaci√≥n encontrada: Estado='{EstadoActual}', MonedaActual='{MonedaActual}'",
                 cotizacion.EstadoActual, cotizacion.Moneda);
 
-            // Validar que estÈ en estado Borrador
+            // Validar que est√© en estado Borrador
             var estadoEsBorrador = cotizacion.EstadoActual == 'B';
             var estadoEsProbablementeBorrador = (int)cotizacion.EstadoActual == 66; // ASCII de 'B'
             
             if (!estadoEsBorrador && !estadoEsProbablementeBorrador)
             {
-                _logger.LogWarning("VALIDACI”N FALLIDA - Intento de editar cotizaciÛn {CotizacionId} en estado '{Estado}'", 
+                _logger.LogWarning("VALIDACI√ìN FALLIDA - Intento de editar cotizaci√≥n {CotizacionId} en estado '{Estado}'", 
                     request.CotizacionId, cotizacion.EstadoActual);
                 return new ActualizarCotizacionResult(false, "Solo se pueden editar cotizaciones en estado Borrador");
             }
 
-            // Buscar la versiÛn a actualizar
+            // Buscar la versi√≥n a actualizar
             var version = await _context.CotizacionesVersiones
                 .Include(v => v.Detalles)
                 .FirstOrDefaultAsync(v => v.VersionId == request.VersionId);
 
             if (version == null || version.CotizacionId != request.CotizacionId)
             {
-                _logger.LogWarning("VersiÛn {VersionId} no encontrada para cotizaciÛn {CotizacionId}", 
+                _logger.LogWarning("Versi√≥n {VersionId} no encontrada para cotizaci√≥n {CotizacionId}", 
                     request.VersionId, request.CotizacionId);
-                return new ActualizarCotizacionResult(false, "VersiÛn no encontrada");
+                return new ActualizarCotizacionResult(false, "Versi√≥n no encontrada");
             }
 
-            _logger.LogInformation("VersiÛn encontrada: VersionId {VersionId}, NumeroVersion {NumeroVersion}", 
+            _logger.LogInformation("Versi√≥n encontrada: VersionId {VersionId}, NumeroVersion {NumeroVersion}", 
                 version.VersionId, version.NumeroVersion);
 
             using var transaction = await _context.Database.BeginTransactionAsync();
 
             try
             {
-                // ?? VERIFICACI”N CRÕTICA: øHay cambio de moneda?
+                // ?? VERIFICACI√ìN CR√çTICA: ¬øHay cambio de moneda?
                 bool hayCambioMoneda = !string.IsNullOrEmpty(request.Moneda) && request.Moneda != cotizacion.Moneda;
                 
-                _logger.LogInformation("?? AN¡LISIS CAMBIO DE MONEDA:");
+                _logger.LogInformation("?? AN√ÅLISIS CAMBIO DE MONEDA:");
                 _logger.LogInformation("  - Moneda actual en BD: '{MonedaActual}'", cotizacion.Moneda);
                 _logger.LogInformation("  - Moneda en request: '{MonedaRequest}'", request.Moneda);
-                _logger.LogInformation("  - øHay cambio?: {HayCambio}", hayCambioMoneda);
+                _logger.LogInformation("  - ¬øHay cambio?: {HayCambio}", hayCambioMoneda);
 
                 if (hayCambioMoneda)
                 {
                     _logger.LogInformation("?? PROCESANDO CAMBIO DE MONEDA: {MonedaAnterior} -> {MonedaNueva}", 
                         cotizacion.Moneda, request.Moneda);
 
-                    // Validar que se puede cambiar (estado Borrador y sin lÌneas en BD)
+                    // Validar que se puede cambiar (estado Borrador y sin l√≠neas en BD)
                     if (cotizacion.EstadoActual == 'B')
                     {
                         var lineasEnBD = await _context.DetallesCotizacionVersion
                             .Where(d => d.VersionId == version.VersionId)
                             .CountAsync();
                         
-                        _logger.LogInformation("?? ValidaciÛn cambio moneda: LineasEnBD={LineasEnBD}", lineasEnBD);
+                        _logger.LogInformation("?? Validaci√≥n cambio moneda: LineasEnBD={LineasEnBD}", lineasEnBD);
                         
                         if (lineasEnBD == 0)
                         {
@@ -1127,7 +1132,7 @@ public class CotizacionService : ICotizacionService
                             
                             _logger.LogInformation("?? SaveChanges ejecutado para moneda");
                             
-                            // ?? VERIFICACI”N INMEDIATA
+                            // ?? VERIFICACI√ìN INMEDIATA
                             var verificacion = await _context.Cotizaciones
                                 .AsNoTracking()
                                 .FirstOrDefaultAsync(c => c.CotizacionId == cotizacion.CotizacionId);
@@ -1139,18 +1144,18 @@ public class CotizacionService : ICotizacionService
                             }
                             else
                             {
-                                _logger.LogError("? ERROR CRÕTICO: Moneda NO se persistiÛ. BD='{MonedaBD}', Esperado='{MonedaEsperada}'", 
+                                _logger.LogError("? ERROR CR√çTICO: Moneda NO se persisti√≥. BD='{MonedaBD}', Esperado='{MonedaEsperada}'", 
                                     verificacion?.Moneda, request.Moneda);
                                 await transaction.RollbackAsync();
-                                return new ActualizarCotizacionResult(false, "Error crÌtico: la moneda no se pudo guardar en la base de datos");
+                                return new ActualizarCotizacionResult(false, "Error cr√≠tico: la moneda no se pudo guardar en la base de datos");
                             }
                         }
                         else
                         {
-                            _logger.LogWarning("? CAMBIO DE MONEDA RECHAZADO: Hay {LineasEnBD} lÌneas en BD", lineasEnBD);
+                            _logger.LogWarning("? CAMBIO DE MONEDA RECHAZADO: Hay {LineasEnBD} l√≠neas en BD", lineasEnBD);
                             await transaction.RollbackAsync();
                             return new ActualizarCotizacionResult(false, 
-                                $"No se puede cambiar la moneda cuando hay {lineasEnBD} lÌneas en la base de datos. Elimine todas las lÌneas primero.");
+                                $"No se puede cambiar la moneda cuando hay {lineasEnBD} l√≠neas en la base de datos. Elimine todas las l√≠neas primero.");
                         }
                     }
                     else
@@ -1166,16 +1171,16 @@ public class CotizacionService : ICotizacionService
                     _logger.LogInformation("?? No hay cambio de moneda solicitado");
                 }
 
-                // Actualizar datos de la versiÛn
+                // Actualizar datos de la versi√≥n
                 version.NombreInteresado = request.NombreInteresado;
                 version.EmailInteresado = request.EmailInteresado;
                 version.EmpresaInteresado = request.EmpresaInteresado;
                 version.Notas = request.Notas;
                 
-                // ?? Actualizar n˙mero de versiÛn si se proporciona
+                // ?? Actualizar n√∫mero de versi√≥n si se proporciona
                 if (request.NumeroVersion.HasValue && request.NumeroVersion.Value != version.NumeroVersion)
                 {
-                    _logger.LogInformation("N˙mero de versiÛn actualizado: {VersionAnterior} -> {VersionNueva}", 
+                    _logger.LogInformation("N√∫mero de versi√≥n actualizado: {VersionAnterior} -> {VersionNueva}", 
                         version.NumeroVersion, request.NumeroVersion.Value);
                     version.NumeroVersion = request.NumeroVersion.Value;
                 }
@@ -1187,16 +1192,16 @@ public class CotizacionService : ICotizacionService
                     _logger.LogInformation("Tipo de cambio actualizado a: {TipoCambio}", request.TipoCambio.Value);
                 }
 
-                // GESTI”N DE DETALLES
+                // GESTI√ìN DE DETALLES
                 if (request.Detalles != null && request.Detalles.Any())
                 {
                     await ActualizarDetallesVersionAsync(version.VersionId, request.Detalles);
-                    _logger.LogInformation("Detalles actualizados para versiÛn {VersionId}: {CantidadDetalles} elementos", 
+                    _logger.LogInformation("Detalles actualizados para versi√≥n {VersionId}: {CantidadDetalles} elementos", 
                         version.VersionId, request.Detalles.Count);
                 }
                 else
                 {
-                    _logger.LogInformation("CotizaciÛn guardada sin detalles (estado borrador)");
+                    _logger.LogInformation("Cotizaci√≥n guardada sin detalles (estado borrador)");
                     // Limpiar detalles existentes si los hubiera
                     var detallesExistentes = await _context.DetallesCotizacionVersion
                         .Where(d => d.VersionId == version.VersionId)
@@ -1209,20 +1214,20 @@ public class CotizacionService : ICotizacionService
                     }
                 }
 
-                // ?? CORRECCI”N CRÕTICA: Calcular totales DESDE EL REQUEST, no desde BD
+                // ?? CORRECCI√ìN CR√çTICA: Calcular totales DESDE EL REQUEST, no desde BD
                 // Esto evita problemas de cache y timing con Entity Framework
                 var (subtotal, totalDescuentos, impuesto, total) = CalcularTotalesDesdeRequest(request.Detalles);
 
                 _logger.LogInformation("?? Totales calculados DESDE REQUEST: SubTotal={SubTotal}, Descuentos={Descuentos}, Impuesto={Impuesto}, Total={Total}", 
                     subtotal, totalDescuentos, impuesto, total);
 
-                // Actualizar totales en la versiÛn
+                // Actualizar totales en la versi√≥n
                 version.SubTotal = subtotal;
                 version.Descuento = totalDescuentos;
                 version.Impuesto = impuesto;
                 version.Total = total;
 
-                // Actualizar monto de la cotizaciÛn
+                // Actualizar monto de la cotizaci√≥n
                 cotizacion.MontoCotizacion = total;
 
                 // SaveChanges final para el resto de cambios
@@ -1236,8 +1241,8 @@ public class CotizacionService : ICotizacionService
                     FechaEvento = DateTime.Now,
                     UsuarioEvento = userId ?? 0,
                     Comentario = hayCambioMoneda ? 
-                        $"CotizaciÛn actualizada - Moneda cambiada a {request.Moneda}" : 
-                        "CotizaciÛn actualizada"
+                        $"Cotizaci√≥n actualizada - Moneda cambiada a {request.Moneda}" : 
+                        "Cotizaci√≥n actualizada"
                 };
 
                 _context.HistorialesCotizacion.Add(historial);
@@ -1245,7 +1250,7 @@ public class CotizacionService : ICotizacionService
 
                 await transaction.CommitAsync();
 
-                _logger.LogInformation("=== ACTUALIZACI”N COMPLETADA EXITOSAMENTE ===");
+                _logger.LogInformation("=== ACTUALIZACI√ìN COMPLETADA EXITOSAMENTE ===");
                 _logger.LogInformation("CotizacionId: {CotizacionId}, Total: {Total}, Moneda: {Moneda}",
                     request.CotizacionId, total, cotizacion.Moneda);
                 _logger.LogInformation("=============================================");
@@ -1255,13 +1260,13 @@ public class CotizacionService : ICotizacionService
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, "Error en transacciÛn al actualizar cotizaciÛn {CotizacionId}", request.CotizacionId);
+                _logger.LogError(ex, "Error en transacci√≥n al actualizar cotizaci√≥n {CotizacionId}", request.CotizacionId);
                 throw;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al actualizar cotizaciÛn {CotizacionId}", request.CotizacionId);
+            _logger.LogError(ex, "Error al actualizar cotizaci√≥n {CotizacionId}", request.CotizacionId);
             return new ActualizarCotizacionResult(false, $"Error interno: {ex.Message}");
         }
     }
@@ -1270,15 +1275,15 @@ public class CotizacionService : ICotizacionService
     {
         try
         {
-            _logger.LogInformation("=== DEBUGGING INFORMACI”N DE COTIZACI”N {CotizacionId} ===", cotizacionId);
+            _logger.LogInformation("=== DEBUGGING INFORMACI√ìN DE COTIZACI√ìN {CotizacionId} ===", cotizacionId);
             
-            // Consultar cotizaciÛn directamente
+            // Consultar cotizaci√≥n directamente
             var cotizacion = await _context.Cotizaciones
                 .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
 
             if (cotizacion == null)
             {
-                _logger.LogWarning("CotizaciÛn {CotizacionId} no encontrada en base de datos", cotizacionId);
+                _logger.LogWarning("Cotizaci√≥n {CotizacionId} no encontrada en base de datos", cotizacionId);
                 return new CotizacionDebugInfoDto(
                     cotizacionId, 
                     'X', 
@@ -1290,28 +1295,28 @@ public class CotizacionService : ICotizacionService
                     false);
             }
 
-            _logger.LogInformation("CotizaciÛn encontrada: Estado='{Estado}' (char: {EstadoChar}, ASCII: {EstadoAscii}), VersionActual={VersionActual}", 
+            _logger.LogInformation("Cotizaci√≥n encontrada: Estado='{Estado}' (char: {EstadoChar}, ASCII: {EstadoAscii}), VersionActual={VersionActual}", 
                 cotizacion.EstadoActual, cotizacion.EstadoActual, (int)cotizacion.EstadoActual, cotizacion.VersionActual);
 
-            // Verificar comparaciÛn con 'B'
+            // Verificar comparaci√≥n con 'B'
             var esBorrador = cotizacion.EstadoActual == 'B';
-            _logger.LogInformation("ComparaciÛn Estado == 'B': {EsBorrador} (Estado: '{Estado}', B: '{B}', EstadoAscii: {EstadoAscii}, BAscii: {BAscii})",
+            _logger.LogInformation("Comparaci√≥n Estado == 'B': {EsBorrador} (Estado: '{Estado}', B: '{B}', EstadoAscii: {EstadoAscii}, BAscii: {BAscii})",
                 esBorrador, cotizacion.EstadoActual, 'B', (int)cotizacion.EstadoActual, (int)'B');
 
-            // Obtener informaciÛn de la versiÛn actual
+            // Obtener informaci√≥n de la versi√≥n actual
             var version = await _context.CotizacionesVersiones
                 .FirstOrDefaultAsync(v => v.VersionId == cotizacion.VersionActual);
 
             var versionInfo = version != null ? 
                 $"VersionId={version.VersionId}, NumeroVersion={version.NumeroVersion}" : 
-                "VersiÛn no encontrada";
+                "Versi√≥n no encontrada";
 
-            _logger.LogInformation("InformaciÛn de versiÛn: {VersionInfo}", versionInfo);
+            _logger.LogInformation("Informaci√≥n de versi√≥n: {VersionInfo}", versionInfo);
 
             var estadoTexto = cotizacion.EstadoActual switch
             {
                 'B' => "Borrador",
-                'P' => "Pendiente AprobaciÛn", 
+                'P' => "Pendiente Aprobaci√≥n", 
                 'A' => "Aprobada",
                 'E' => "Enviada",
                 'T' => "Aceptada",
@@ -1334,7 +1339,7 @@ public class CotizacionService : ICotizacionService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al obtener informaciÛn de debugging para cotizaciÛn {CotizacionId}", cotizacionId);
+            _logger.LogError(ex, "Error al obtener informaci√≥n de debugging para cotizaci√≥n {CotizacionId}", cotizacionId);
             return new CotizacionDebugInfoDto(
                 cotizacionId, 
                 'X', 
@@ -1351,40 +1356,40 @@ public class CotizacionService : ICotizacionService
     {
         try
         {
-            _logger.LogInformation("Obteniendo detalle de versiÛn actual para cotizaciÛn {CotizacionId}", cotizacionId);
+            _logger.LogInformation("Obteniendo detalle de versi√≥n actual para cotizaci√≥n {CotizacionId}", cotizacionId);
             
-            // Buscar la cotizaciÛn para obtener el VersionActual
+            // Buscar la cotizaci√≥n para obtener el VersionActual
             var cotizacion = await _context.Cotizaciones
                 .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
 
             if (cotizacion == null)
             {
-                _logger.LogWarning("CotizaciÛn {CotizacionId} no encontrada", cotizacionId);
+                _logger.LogWarning("Cotizaci√≥n {CotizacionId} no encontrada", cotizacionId);
                 return null;
             }
 
-            _logger.LogInformation("CotizaciÛn encontrada: VersionActual={VersionActual}", cotizacion.VersionActual);
+            _logger.LogInformation("Cotizaci√≥n encontrada: VersionActual={VersionActual}", cotizacion.VersionActual);
 
-            // Buscar la versiÛn especÌfica usando CotizacionId y VersionActual
+            // Buscar la versi√≥n espec√≠fica usando CotizacionId y VersionActual
             var version = await _context.CotizacionesVersiones
                 .FirstOrDefaultAsync(v => v.CotizacionId == cotizacionId && v.VersionActual == cotizacion.VersionActual);
 
             if (version == null)
             {
-                _logger.LogWarning("VersiÛn actual {VersionActual} no encontrada para cotizaciÛn {CotizacionId}", 
+                _logger.LogWarning("Versi√≥n actual {VersionActual} no encontrada para cotizaci√≥n {CotizacionId}", 
                     cotizacion.VersionActual, cotizacionId);
                 return null;
             }
 
-            _logger.LogInformation("VersiÛn actual encontrada: VersionId={VersionId}, NumeroVersion={NumeroVersion}", 
+            _logger.LogInformation("Versi√≥n actual encontrada: VersionId={VersionId}, NumeroVersion={NumeroVersion}", 
                 version.VersionId, version.NumeroVersion);
 
-            // Ahora usar el mÈtodo existente con el VersionId correcto
+            // Ahora usar el m√©todo existente con el VersionId correcto
             return await GetCotizacionVersionDetailAsync(version.VersionId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error al obtener detalle de versiÛn actual para cotizaciÛn {CotizacionId}", cotizacionId);
+            _logger.LogError(ex, "Error al obtener detalle de versi√≥n actual para cotizaci√≥n {CotizacionId}", cotizacionId);
             return null;
         }
     }
@@ -1406,6 +1411,271 @@ public class CotizacionService : ICotizacionService
         {
             _logger.LogError(ex, "Error al obtener conteo de cotizaciones por estado");
             return new Dictionary<char, int>();
+        }
+    }
+
+    public async Task<CambiarEstadoResult> CambiarEstadoCotizacionAsync(string cotizacionId, char estadoEsperado, char nuevoEstado, string comentario, int? userId = null)
+    {
+        try
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                // Buscar cotizaci√≥n
+                var cotizacion = await _context.Cotizaciones
+                    .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
+
+                if (cotizacion == null)
+                {
+                    return new CambiarEstadoResult(false, "Cotizaci√≥n no encontrada");
+                }
+
+                // Validar estado actual usando StateTransitionValidator
+                if (!StateTransitionValidator.IsTransitionAllowed(cotizacion.EstadoActual, nuevoEstado))
+                {
+                    var estadoActualTexto = StateTransitionValidator.GetStateName(cotizacion.EstadoActual);
+                    var nuevoEstadoTexto = StateTransitionValidator.GetStateName(nuevoEstado);
+                    return new CambiarEstadoResult(false, 
+                        $"Transici√≥n de estado no permitida: {estadoActualTexto} ? {nuevoEstadoTexto}");
+                }
+
+                // Validar estado esperado
+                if (cotizacion.EstadoActual != estadoEsperado)
+                {
+                    var estadoActualTexto = StateTransitionValidator.GetStateName(cotizacion.EstadoActual);
+                    var estadoEsperadoTexto = StateTransitionValidator.GetStateName(estadoEsperado);
+                    return new CambiarEstadoResult(false, 
+                        $"La cotizaci√≥n est√° en estado '{estadoActualTexto}', se esperaba '{estadoEsperadoTexto}'");
+                }
+
+                // CORRECCI√ìN: Obtener el VersionId correcto de la versi√≥n vigente
+                var versionVigente = await _context.CotizacionesVersiones
+                    .FirstOrDefaultAsync(v => v.CotizacionId == cotizacionId && v.VersionActual == cotizacion.VersionActual);
+
+                if (versionVigente == null)
+                {
+                    _logger.LogError("No se encontr√≥ la versi√≥n vigente para cotizaci√≥n {CotizacionId} con VersionActual {VersionActual}", 
+                        cotizacionId, cotizacion.VersionActual);
+                    return new CambiarEstadoResult(false, "Error: versi√≥n vigente no encontrada");
+                }
+
+                // Aplicar cambio de estado usando CotizacionStateHelper
+                var estadoAnterior = cotizacion.EstadoActual;
+                CotizacionStateHelper.UpdateStateFields(cotizacion, nuevoEstado);
+
+                // Actualizar fecha de env√≠o si es necesario
+                if (nuevoEstado == 'E') // Enviada
+                {
+                    cotizacion.FechaEnvio = DateTime.Now;
+                }
+
+                // Registrar historial dentro de la transacci√≥n usando el VersionId correcto
+                var tipoEvento = CotizacionStateHelper.GetEventType(estadoAnterior, nuevoEstado);
+                await RegistrarHistorialAsync(versionVigente.VersionId, tipoEvento, comentario, userId);
+
+                // Guardar todos los cambios en una sola transacci√≥n
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Estado de cotizaci√≥n {CotizacionId} cambiado de {EstadoAnterior} a {EstadoNuevo}", 
+                    cotizacionId, estadoAnterior, nuevoEstado);
+
+                return new CambiarEstadoResult(true, null);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error en transacci√≥n al cambiar estado de cotizaci√≥n {CotizacionId}", cotizacionId);
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al cambiar estado de cotizaci√≥n {CotizacionId}", cotizacionId);
+            return new CambiarEstadoResult(false, "Error interno al cambiar el estado");
+        }
+    }
+
+    public async Task<CambiarEstadoResult> CambiarEstadoCotizacionBasicoAsync(string cotizacionId, char nuevoEstado, string comentario, string? comentarioAdicional = null, int? userId = null)
+    {
+        try
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var cotizacion = await _context.Cotizaciones
+                    .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
+
+                if (cotizacion == null)
+                {
+                    return new CambiarEstadoResult(false, "Cotizaci√≥n no encontrada");
+                }
+
+                // Para archivado, validar que se puede archivar desde ciertos estados
+                if (nuevoEstado == 'X') // Archivada
+                {
+                    var estadosPermitidos = new[] { 'B', 'T', 'R' }; // Borrador, Aceptada, Rechazada
+                    if (!estadosPermitidos.Contains(cotizacion.EstadoActual))
+                    {
+                        var estadoActualTexto = StateTransitionValidator.GetStateName(cotizacion.EstadoActual);
+                        return new CambiarEstadoResult(false, 
+                            $"No se puede archivar una cotizaci√≥n en estado '{estadoActualTexto}'");
+                    }
+                }
+
+                // CORRECCI√ìN: Obtener el VersionId correcto de la versi√≥n vigente ANTES del cambio de estado
+                var versionVigente = await _context.CotizacionesVersiones
+                    .FirstOrDefaultAsync(v => v.CotizacionId == cotizacionId && v.VersionActual == cotizacion.VersionActual);
+
+                if (versionVigente == null)
+                {
+                    _logger.LogWarning("No se encontr√≥ la versi√≥n vigente para la cotizaci√≥n {CotizacionId} con VersionActual {VersionActual}",
+                        cotizacionId, cotizacion.VersionActual);
+                    return new CambiarEstadoResult(false, "Error: versi√≥n vigente no encontrada");
+                }
+
+                // Aplicar cambio de estado usando CotizacionStateHelper
+                var estadoAnterior = cotizacion.EstadoActual;
+                CotizacionStateHelper.UpdateStateFields(cotizacion, nuevoEstado);
+
+                // ‚ú® NUEVO: Registrar archivado en tabla ArchivoCotizacion con campos separados
+                if (nuevoEstado == 'X') // Archivada
+                {
+                    var archivo = new ArchivoCotizacion
+                    {
+                        CotizacionId = cotizacionId,
+                        VersionArchivada = versionVigente.VersionId, // Usar VersionId en el campo VersionArchivada
+                        FechaArchivado = DateTime.Now,
+                        UsuarioArchiva = userId,
+                        TipoArchivo = 'M', // M=Manual, A=Autom√°tico
+                        MotivoArchivado = comentario, // Motivo obligatorio del modal
+                        Comentario = comentarioAdicional // Comentario adicional opcional del modal
+                    };
+
+                    _context.ArchivosCotizacion.Add(archivo);
+                    
+                    _logger.LogInformation("Registrado archivo de cotizaci√≥n {CotizacionId} con VersionArchivada {VersionId}. Motivo: '{Motivo}', ComentarioAdicional: '{ComentarioAdicional}'", 
+                        cotizacionId, versionVigente.VersionId, comentario, comentarioAdicional ?? "(ninguno)");
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Registrar en historial usando el VersionId correcto - usar el comentario principal
+                var tipoEvento = CotizacionStateHelper.GetEventType(estadoAnterior, nuevoEstado);
+                await RegistrarHistorialAsync(versionVigente.VersionId, tipoEvento, comentario, userId);
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Estado de cotizaci√≥n {CotizacionId} cambiado a {EstadoNuevo} con registro de archivo completado", 
+                    cotizacionId, nuevoEstado);
+
+                return new CambiarEstadoResult(true, null);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error en transacci√≥n al cambiar estado b√°sico de cotizaci√≥n {CotizacionId}", cotizacionId);
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al cambiar estado b√°sico de cotizaci√≥n {CotizacionId}", cotizacionId);
+            return new CambiarEstadoResult(false, "Error interno al cambiar el estado");
+        }
+    }
+
+    public async Task<CambiarEstadoResult> MarcarEnvioERPAsync(string cotizacionId, int? userId = null)
+    {
+        try
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var cotizacion = await _context.Cotizaciones
+                    .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
+
+                if (cotizacion == null)
+                {
+                    return new CambiarEstadoResult(false, "Cotizaci√≥n no encontrada");
+                }
+
+                // Validar usando StateTransitionValidator
+                if (!StateTransitionValidator.CanSendToERP(cotizacion.EstadoActual))
+                {
+                    return new CambiarEstadoResult(false, "Solo se pueden enviar al ERP cotizaciones aceptadas");
+                }
+
+                // Verificar que no haya sido enviada ya
+                if (cotizacion.EnviadoERP == 'S')
+                {
+                    return new CambiarEstadoResult(false, "La cotizaci√≥n ya fue enviada al ERP");
+                }
+
+                // Marcar como enviada al ERP usando CotizacionStateHelper
+                CotizacionStateHelper.MarkAsSentToERP(cotizacion);
+
+                await _context.SaveChangesAsync();
+
+                // CORRECCI√ìN: Obtener el VersionId correcto de la versi√≥n vigente
+                var versionVigente = await _context.CotizacionesVersiones
+                    .FirstOrDefaultAsync(v => v.CotizacionId == cotizacionId && v.VersionActual == cotizacion.VersionActual);
+
+                if (versionVigente != null)
+                {
+                    // Registrar en historial usando el VersionId correcto
+                    await RegistrarHistorialAsync(versionVigente.VersionId, TipoEvento.EnviadaERP, 
+                        "Cotizaci√≥n enviada al ERP", userId);
+                }
+                else
+                {
+                    _logger.LogWarning("No se encontr√≥ la versi√≥n vigente para registrar historial de env√≠o ERP. CotizacionId: {CotizacionId}, VersionActual: {VersionActual}",
+                        cotizacionId, cotizacion.VersionActual);
+                }
+
+                await transaction.CommitAsync();
+
+                _logger.LogInformation("Cotizaci√≥n {CotizacionId} marcada como enviada al ERP", cotizacionId);
+
+                return new CambiarEstadoResult(true, null);
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                _logger.LogError(ex, "Error en transacci√≥n al marcar env√≠o ERP de cotizaci√≥n {CotizacionId}", cotizacionId);
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al marcar env√≠o ERP de cotizaci√≥n {CotizacionId}", cotizacionId);
+            return new CambiarEstadoResult(false, "Error interno al enviar al ERP");
+        }
+    }
+
+    private async Task RegistrarHistorialAsync(int versionId, string tipoEvento, string comentario, int? userId = null)
+    {
+        try
+        {
+            var historial = new HistorialCotizacion
+            {
+                VersionId = versionId,
+                TipoEvento = tipoEvento,
+                FechaEvento = DateTime.Now,
+                UsuarioEvento = userId ?? 0,
+                Comentario = comentario ?? ""
+            };
+
+            _context.HistorialesCotizacion.Add(historial);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al registrar historial para versi√≥n {VersionId}", versionId);
+            // No relanzar la excepci√≥n para no interrumpir el flujo principal
         }
     }
 }

@@ -30,27 +30,19 @@ public class RequiereAlgunPermisoFilter : IAsyncAuthorizationFilter
   {
     var user = context.HttpContext.User;
 
-    if (!user.Identity?.IsAuthenticated == true)
-    {
-      context.Result = new UnauthorizedResult();
-      return;
-    }
+    // Utilizar PermisoHelper para centralizar la lógica de verificación
+    var tieneAlgunPermiso = await PermisoHelper.VerificarAlgunPermisoAsync(_permisoService, user, _codigosPermiso);
 
-    var usuarioId = user.GetUsuarioId();
-    if (usuarioId == 0)
+    if (!tieneAlgunPermiso)
     {
-      context.Result = new UnauthorizedResult();
-      return;
-    }
-
-    foreach (var permiso in _codigosPermiso)
-    {
-      if (await _permisoService.UsuarioTienePermisoAsync(usuarioId, permiso))
+      if (!user.Identity?.IsAuthenticated == true)
       {
-        return;
+        context.Result = new UnauthorizedResult();
+      }
+      else
+      {
+        context.Result = new ForbidResult();
       }
     }
-
-    context.Result = new ForbidResult();
   }
 }

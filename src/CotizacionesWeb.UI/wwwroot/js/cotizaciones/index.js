@@ -154,19 +154,25 @@ document.addEventListener('DOMContentLoaded', function() {
             );
         });
 
-        // Devolver a Borrador (Pendiente -> Borrador)
+        // Devolver a Borrador (Pendiente -> Borrador) - CON NOTA OBLIGATORIA
         $('.btn-devolver-borrador').on('click', function () {
             const cotizacionId = $(this).attr('data-id');
-            const button = $(this);
-
-            mostrarModalConfirmacion(
-                'Devolver a Borrador',
-                '¿Está seguro de que desea devolver esta cotización a estado Borrador?',
-                'warning',
-                function() {
-                    cambiarEstadoCotizacion(cotizacionId, 'DevolverBorrador', button);
-                }
-            );
+            
+            // Abrir modal genérico para solicitar nota
+            abrirModalCambioEstadoConNota({
+                cotizacionId: cotizacionId,
+                estadoOrigen: 'P',
+                estadoDestino: 'B',
+                accion: 'DevolverBorrador',
+                titulo: 'Devolver a Borrador',
+                icono: 'fa-undo',
+                mensaje: 'Está a punto de devolver esta cotización al estado <strong>Borrador</strong>.',
+                etiquetaNota: 'Motivo del rechazo (obligatorio):',
+                placeholder: 'Indique la razón por la cual devuelve la cotización a borrador...',
+                colorHeader: 'bg-warning text-dark',
+                colorBoton: 'btn-warning',
+                textoBoton: 'Devolver a Borrador'
+            });
         });
 
         // Enviar al Cliente (Aprobada -> Enviada)
@@ -201,35 +207,46 @@ document.addEventListener('DOMContentLoaded', function() {
             );
         });
 
-        // Marcar como Rechazada (Enviada -> Rechazada)
+        // Marcar como Rechazada (Enviada -> Rechazada) - CON NOTA OBLIGATORIA
         $('.btn-marcar-rechazada').on('click', function () {
             const cotizacionId = $(this).attr('data-id');
-            const button = $(this);
-
-            mostrarModalConfirmacion(
-                'Marcar como Rechazada',
-                '¿Confirma que el cliente ha rechazado esta cotización?',
-                'danger',
-                function() {
-                    cambiarEstadoCotizacion(cotizacionId, 'MarcarRechazada', button);
-                }
-            );
+            
+            // Abrir modal genérico para solicitar nota
+            abrirModalCambioEstadoConNota({
+                cotizacionId: cotizacionId,
+                estadoOrigen: 'E',
+                estadoDestino: 'R',
+                accion: 'MarcarRechazada',
+                titulo: 'Marcar como Rechazada',
+                icono: 'fa-times-circle',
+                mensaje: 'Está a punto de marcar esta cotización como <strong>Rechazada</strong>.',
+                etiquetaNota: 'Motivo del rechazo (obligatorio):',
+                placeholder: 'Indique por qué el cliente rechazó la cotización...',
+                colorHeader: 'bg-danger text-white',
+                colorBoton: 'btn-danger',
+                textoBoton: 'Marcar como Rechazada'
+            });
         });
 
-        // Archivar Cotización
+        // Archivar Cotización - CON NOTA OBLIGATORIA
         $('.btn-archivar').on('click', function () {
             const cotizacionId = $(this).attr('data-id');
-            const button = $(this);
-
-            mostrarModalConfirmacion(
-                'Archivar Cotización',
-                '¿Está seguro de que desea archivar esta cotización?<br><br>' +
-                '<small class="text-muted">Una cotización archivada no puede ser modificada.</small>',
-                'warning',
-                function() {
-                    cambiarEstadoCotizacion(cotizacionId, 'Archivar', button);
-                }
-            );
+            
+            // Abrir modal genérico para solicitar nota
+            abrirModalCambioEstadoConNota({
+                cotizacionId: cotizacionId,
+                estadoOrigen: $(this).closest('tr').attr('data-estado'), // Estado actual dinámico
+                estadoDestino: 'X',
+                accion: 'Archivar',
+                titulo: 'Archivar Cotización',
+                icono: 'fa-archive',
+                mensaje: 'Está a punto de archivar esta cotización. <strong>Esta acción no se puede deshacer</strong>.',
+                etiquetaNota: 'Motivo del archivado (obligatorio):',
+                placeholder: 'Indique el motivo por el cual se archiva la cotización...',
+                colorHeader: 'bg-dark text-white',
+                colorBoton: 'btn-dark',
+                textoBoton: 'Archivar Cotización'
+            });
         });
 
         // Enviar al ERP
@@ -493,4 +510,125 @@ function aplicarReglasCopia() {
                    .addClass('btn-action-disabled');
         }
     });
+}
+
+function abrirModalCambioEstadoConNota(opciones) {
+    // Configurar el modal con las opciones proporcionadas
+    $('#tituloNotaCambioEstado').html(`<i class="fas ${opciones.icono}"></i> ${opciones.titulo}`);
+    $('#mensajeNotaCambioEstado').html(opciones.mensaje);
+    $('#etiquetaNotaCambioEstado').text(opciones.etiquetaNota);
+    $('#notaCambioEstado').attr('placeholder', opciones.placeholder).val('');
+    $('#contadorNotaCambioEstado').text('0').removeClass('text-warning text-danger').addClass('text-muted');
+    
+    // Configurar límites de caracteres según el tipo de operación
+    if (opciones.estadoDestino === 'X') { // Es archivado
+        // Para archivado: motivo 200 chars, comentario adicional 500 chars
+        $('#notaCambioEstado').attr('maxlength', '200');
+        $('#limiteNotaCambioEstado').text('200');
+        $('#etiquetaNotaCambioEstado').text('Motivo del archivado (obligatorio):');
+        
+        // Mostrar campo adicional
+        $('#grupoComentarioAdicionalArchivo').show();
+        $('#comentarioAdicionalArchivo').val('');
+        $('#contadorComentarioArchivo').text('0').removeClass('text-warning text-danger').addClass('text-muted');
+    } else {
+        // Para otros estados: motivo 500 chars, sin comentario adicional
+        $('#notaCambioEstado').attr('maxlength', '500');
+        $('#limiteNotaCambioEstado').text('500');
+        
+        // Ocultar campo adicional
+        $('#grupoComentarioAdicionalArchivo').hide();
+    }
+    
+    // Configurar campos ocultos
+    $('#cotizacionIdCambioEstado').val(opciones.cotizacionId);
+    $('#estadoOrigenCambioEstado').val(opciones.estadoOrigen);
+    $('#estadoDestinoCambioEstado').val(opciones.estadoDestino);
+    $('#accionCambioEstado').val(opciones.accion);
+    
+    // Configurar estilos del header y botón
+    $('#headerNotaCambioEstado').removeClass().addClass('modal-header ' + opciones.colorHeader);
+    $('#btnConfirmarCambioEstado').removeClass().addClass('btn ' + opciones.colorBoton)
+        .html(`<i class="fas ${opciones.icono}"></i> ${opciones.textoBoton}`);
+    
+    // Mostrar modal
+    $('#modalNotaCambioEstado').modal('show');
+}
+
+function ejecutarCambioEstadoConNota(cotizacionId, estadoOrigen, estadoDestino, nota, button, comentarioAdicional = '') {
+    button.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Procesando...');
+
+    // Preparar los datos para enviar
+    const data = {
+        cotizacionId: cotizacionId,
+        estadoOrigen: estadoOrigen,
+        estadoDestino: estadoDestino,
+        nota: nota,
+        __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+    };
+
+    // Agregar comentario adicional si existe (para archivado)
+    if (comentarioAdicional) {
+        data.comentarioAdicional = comentarioAdicional;
+    }
+
+    $.ajax({
+        url: '/Cotizaciones/CambiarEstadoConNota',
+        type: 'POST',
+        data: data,
+        success: function (response) {
+            if (response.success) {
+                showNotification('success', response.message);
+                
+                // Si el response indica que se debe recargar, hacerlo
+                if (response.shouldReload) {
+                    setTimeout(function () {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    // Restaurar botón en caso de que no se recargue
+                    setTimeout(function () {
+                        location.reload();
+                    }, 1500);
+                }
+            } else {
+                showNotification('error', response.message);
+                // Restaurar botón original usando información del modal
+                restaurarBotonOriginal(button);
+            }
+        },
+        error: function (xhr) {
+            let errorMsg = 'Error al cambiar el estado de la cotización';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            } else if (xhr.status === 403) {
+                errorMsg = 'No tiene permisos para realizar esta operación';
+            } else if (xhr.status === 401) {
+                errorMsg = 'Su sesión ha expirado. Por favor, inicie sesión nuevamente';
+            }
+            
+            showNotification('error', errorMsg);
+            restaurarBotonOriginal(button);
+        }
+    });
+}
+
+function restaurarBotonOriginal(button) {
+    // Obtener información del modal para restaurar el botón
+    const accion = $('#accionCambioEstado').val();
+    const iconos = {
+        'DevolverBorrador': 'fa-undo',
+        'MarcarRechazada': 'fa-times-circle',
+        'Archivar': 'fa-archive'
+    };
+    const textos = {
+        'DevolverBorrador': 'Devolver a Borrador',
+        'MarcarRechazada': 'Marcar como Rechazada',
+        'Archivar': 'Archivar Cotización'
+    };
+    
+    const icono = iconos[accion] || 'fa-edit';
+    const texto = textos[accion] || 'Acción';
+    
+    button.prop('disabled', false).html(`<i class="fas ${icono}"></i> ${texto}`);
 }

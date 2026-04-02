@@ -307,6 +307,7 @@
                                                         class="btn-state btn-state-warning btn-enviar-aprobacion" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Enviar a Aprobación"
+                                                        requiere-permiso="COT_EDIT"
                                                         data-confirm="true">
                                                     <i class="fas fa-paper-plane"></i>
                                                 </button>
@@ -333,6 +334,7 @@
                                                         class="btn-state btn-state-warning btn-devolver-borrador" 
                                                         data-id="@cotizacion.CotizacionId"
                                                         title="Devolver a Borrador"
+                                                        requiere-permiso="COT_APPROVE"
                                                         data-confirm="true">
                                                     <i class="fas fa-undo"></i>
                                                 </button>
@@ -536,6 +538,69 @@
 <!-- Modal para solicitar comentario al copiar versión -->
 @Html.Partial("_ComentarioCopiaModal")
 
+<!-- Modal genérico para cambios de estado con nota obligatoria -->
+<div class="modal fade" id="modalNotaCambioEstado" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header" id="headerNotaCambioEstado">
+                <h5 class="modal-title" id="tituloNotaCambioEstado">
+                    <i class="fas fa-edit"></i> Cambiar Estado
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3" id="mensajeNotaCambioEstado">
+                    Está a punto de cambiar el estado de esta cotización.
+                </p>
+                <div class="form-group">
+                    <label for="notaCambioEstado" class="form-label">
+                        <strong id="etiquetaNotaCambioEstado">Comentario (obligatorio):</strong>
+                    </label>
+                    <textarea id="notaCambioEstado" 
+                              class="form-control" 
+                              rows="4" 
+                              placeholder="Indique el motivo del cambio de estado..."
+                              maxlength="500"
+                              required></textarea>
+                    <div class="form-text">
+                        <span id="contadorNotaCambioEstado">0</span>/<span id="limiteNotaCambioEstado">500</span> caracteres
+                    </div>
+                </div>
+
+                <!-- Campo adicional de comentario para archivado (solo visible cuando es archivado) -->
+                <div class="form-group" id="grupoComentarioAdicionalArchivo" style="display: none;">
+                    <label for="comentarioAdicionalArchivo" class="form-label">
+                        <strong>Comentario adicional para archivo:</strong>
+                    </label>
+                    <textarea id="comentarioAdicionalArchivo" 
+                              class="form-control" 
+                              rows="3" 
+                              placeholder="Ingrese un comentario adicional para el archivo (opcional)..."
+                              maxlength="500"></textarea>
+                    <div class="form-text">
+                        <span id="contadorComentarioArchivo">0</span>/500 caracteres - Este comentario se guardará adicionalmente en el archivo
+                    </div>
+                </div>
+
+                <input type="hidden" id="cotizacionIdCambioEstado" />
+                <input type="hidden" id="estadoOrigenCambioEstado" />
+                <input type="hidden" id="estadoDestinoCambioEstado" />
+                <input type="hidden" id="accionCambioEstado" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarCambioEstado">
+                    <i class="fas fa-check"></i> Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @Html.AntiForgeryToken()
 
 @section Scripts {
@@ -616,6 +681,94 @@
                         btn.prop('disabled', false).html('<i class="fas fa-copy"></i> Crear Nueva Versión');
                     }
                 });
+            });
+
+            // ========================================
+            // MODAL GENÉRICO PARA CAMBIOS DE ESTADO CON NOTA
+            // ========================================
+            
+            // Contador de caracteres para nota de cambio de estado (dinámico según tipo)
+            $('#notaCambioEstado').on('input', function() {
+                const count = $(this).val().length;
+                const limite = parseInt($('#limiteNotaCambioEstado').text());
+                $('#contadorNotaCambioEstado').text(count);
+                
+                // Cambiar color según límite dinámico
+                const porcentajeUso = (count / limite) * 100;
+                if (porcentajeUso > 90) {
+                    $('#contadorNotaCambioEstado').removeClass('text-muted text-warning').addClass('text-danger');
+                } else if (porcentajeUso > 80) {
+                    $('#contadorNotaCambioEstado').removeClass('text-muted text-danger').addClass('text-warning');
+                } else {
+                    $('#contadorNotaCambioEstado').removeClass('text-warning text-danger').addClass('text-muted');
+                }
+            });
+
+            // Contador de caracteres para comentario adicional de archivo
+            $('#comentarioAdicionalArchivo').on('input', function() {
+                const count = $(this).val().length;
+                $('#contadorComentarioArchivo').text(count);
+                
+                // Cambiar color según límite
+                if (count > 450) {
+                    $('#contadorComentarioArchivo').removeClass('text-muted text-warning').addClass('text-danger');
+                } else if (count > 400) {
+                    $('#contadorComentarioArchivo').removeClass('text-muted text-danger').addClass('text-warning');
+                } else {
+                    $('#contadorComentarioArchivo').removeClass('text-warning text-danger').addClass('text-muted');
+                }
+            });
+
+            // Configurar modal de cambio de estado al mostrar
+            $('#modalNotaCambioEstado').on('shown.bs.modal', function() {
+                $('#notaCambioEstado').focus();
+            });
+            
+            // Limpiar modal al cerrar
+            $('#modalNotaCambioEstado').on('hidden.bs.modal', function() {
+                $('#notaCambioEstado').val('');
+                $('#comentarioAdicionalArchivo').val('');
+                $('#contadorNotaCambioEstado').text('0').removeClass('text-warning text-danger').addClass('text-muted');
+                $('#contadorComentarioArchivo').text('0').removeClass('text-warning text-danger').addClass('text-muted');
+                $('#btnConfirmarCambioEstado').prop('disabled', false);
+                
+                // Ocultar el campo adicional de comentario
+                $('#grupoComentarioAdicionalArchivo').hide();
+                
+                // Restaurar límite por defecto
+                $('#notaCambioEstado').attr('maxlength', '500');
+                $('#limiteNotaCambioEstado').text('500');
+                
+                // Limpiar campos ocultos
+                $('#cotizacionIdCambioEstado').val('');
+                $('#estadoOrigenCambioEstado').val('');
+                $('#estadoDestinoCambioEstado').val('');
+                $('#accionCambioEstado').val('');
+            });
+            
+            // Manejar confirmación de cambio de estado
+            $('#btnConfirmarCambioEstado').on('click', function() {
+                const btn = $(this);
+                const nota = $('#notaCambioEstado').val().trim();
+                const comentarioAdicional = $('#comentarioAdicionalArchivo').val().trim();
+                const cotizacionId = $('#cotizacionIdCambioEstado').val();
+                const estadoOrigen = $('#estadoOrigenCambioEstado').val();
+                const estadoDestino = $('#estadoDestinoCambioEstado').val();
+                const accion = $('#accionCambioEstado').val();
+                
+                // Validar nota obligatoria
+                if (!nota || nota.length < 10) {
+                    showNotification('warning', 'Debe proporcionar una nota de al menos 10 caracteres explicando el motivo');
+                    $('#notaCambioEstado').focus();
+                    return;
+                }
+                
+                // Cerrar modal
+                $('#modalNotaCambioEstado').modal('hide');
+                
+                // Ejecutar acción con nota (y comentario adicional para archivado)
+                const buttonElement = $(`.btn-${accion.toLowerCase().replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}[data-id="${cotizacionId}"]`);
+                ejecutarCambioEstadoConNota(cotizacionId, estadoOrigen, estadoDestino, nota, buttonElement, comentarioAdicional);
             });
         });
     </script>

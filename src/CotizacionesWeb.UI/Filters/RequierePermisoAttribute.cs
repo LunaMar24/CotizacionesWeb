@@ -29,24 +29,19 @@ public class PermisoFilter : IAsyncAuthorizationFilter
     {
         var user = context.HttpContext.User;
         
-        if (!user.Identity?.IsAuthenticated == true)
-        {
-            context.Result = new UnauthorizedResult();
-            return;
-        }
-
-        var usuarioId = user.GetUsuarioId();
-        if (usuarioId == 0)
-        {
-            context.Result = new UnauthorizedResult();
-            return;
-        }
-
-        var tienePermiso = await _permisoService.UsuarioTienePermisoAsync(usuarioId, _codigoPermiso);
+        // Utilizar PermisoHelper para centralizar la lógica de verificación
+        var tienePermiso = await PermisoHelper.VerificarPermisoAsync(_permisoService, user, _codigoPermiso);
         
         if (!tienePermiso)
         {
-            context.Result = new ForbidResult();
+            if (!user.Identity?.IsAuthenticated == true)
+            {
+                context.Result = new UnauthorizedResult();
+            }
+            else
+            {
+                context.Result = new ForbidResult();
+            }
         }
     }
 }

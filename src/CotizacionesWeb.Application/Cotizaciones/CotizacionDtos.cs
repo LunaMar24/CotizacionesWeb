@@ -143,6 +143,11 @@ public record ActualizarCotizacionResult(
     string? ErrorMessage
 );
 
+public record CambiarEstadoResult(
+    bool Success,
+    string? ErrorMessage
+);
+
 // DTO para debugging y diagnóstico
 public record CotizacionDebugInfoDto(
     string CotizacionId,
