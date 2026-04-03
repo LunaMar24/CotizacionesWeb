@@ -42,6 +42,10 @@ public class CotizacionFiltrosViewModel
     public DateTime? FechaDesde { get; set; }
     public DateTime? FechaHasta { get; set; }
 
+    // Fechas de archivado (específico para cotizaciones archivadas)
+    public DateTime? FechaArchivadoDesde { get; set; }
+    public DateTime? FechaArchivadoHasta { get; set; }
+
     // Filtros específicos para monto
     public decimal? MontoDesde { get; set; }
     public decimal? MontoHasta { get; set; }
@@ -51,6 +55,13 @@ public class CotizacionFiltrosViewModel
 
     // Filtro específico para moneda
     public string? Moneda { get; set; }
+
+    // Filtro para usuario que archivó (específico para cotizaciones archivadas)
+    public string? UsuarioArchivo { get; set; }
+
+    // Búsqueda en detalle de productos
+    public string? BusquedaProducto { get; set; }
+    public string? BusquedaDescripcion { get; set; }
 
     // Estados seleccionados para filtrar (según nuevos lineamientos)
     public bool FiltroBorrador { get; set; }
@@ -242,4 +253,60 @@ public class InteresadoViewModel
     public string Empresa { get; set; } = string.Empty;
     public char TipoInteresado { get; set; }
     public string TipoInteresadoTexto { get; set; } = string.Empty;
+}
+
+public class ArchivoCotizacionDetalleViewModel
+{
+    // Información del archivo
+    public int ArchivoId { get; set; }
+    public string CotizacionId { get; set; } = string.Empty;
+    public int? VersionArchivada { get; set; }
+    public DateTime FechaArchivado { get; set; }
+    public int? UsuarioArchiva { get; set; }
+    public string? NombreUsuarioArchiva { get; set; }
+    public DateTime? FechaReactivacion { get; set; }
+    public int? UsuarioReactiva { get; set; }
+    public string? NombreUsuarioReactiva { get; set; }
+    public char TipoArchivo { get; set; }
+    public string TipoArchivoTexto { get; set; } = string.Empty;
+    public string? Comentario { get; set; }
+    public string MotivoArchivado { get; set; } = string.Empty;
+
+    // Información de la cotización (del detalle base)
+    public char EstadoActual { get; set; }
+    public string EstadoActualTexto { get; set; } = string.Empty;
+    public DateTime FechaCreacion { get; set; }
+    public DateTime? FechaUltimaActualizacion { get; set; }
+    
+    // Información de la versión archivada
+    public int VersionId { get; set; }
+    public decimal NumeroVersion { get; set; }
+    public DateTime FechaVersion { get; set; }
+    
+    // Información del cliente
+    public string NombreInteresado { get; set; } = string.Empty;
+    public string EmailInteresado { get; set; } = string.Empty;
+    public string EmpresaInteresado { get; set; } = string.Empty;
+    public char TipoInteresado { get; set; } = 'P';
+    
+    // Información financiera
+    public decimal SubTotal { get; set; }
+    public decimal Impuesto { get; set; }
+    public decimal Descuento { get; set; }
+    public decimal Total { get; set; }
+    public string Moneda { get; set; } = string.Empty;
+    public decimal? TipoCambio { get; set; }
+    
+    // Fechas importantes según el estado
+    public DateTime? FechaEnvio { get; set; }
+    public DateTime? FechaAceptacion { get; set; }
+    public DateTime? FechaRechazo { get; set; }
+    public char EnviadoERP { get; set; } = 'N';
+    public DateTime? FechaEnvioERP { get; set; }
+    
+    // Notas de la versión
+    public string? Notas { get; set; }
+    
+    // Líneas de detalle
+    public List<DetalleCotizacionViewModel> Detalles { get; set; } = new();
 }

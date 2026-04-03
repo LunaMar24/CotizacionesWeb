@@ -1,0 +1,352 @@
+/* Estilos específicos para la pantalla de Cotizaciones Archivadas */
+
+/* Secciones de Filtros Específicas para Archivadas */
+.filter-section {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    transition: all 0.3s ease;
+}
+
+.filter-section:hover {
+    background-color: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.filter-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-section-title i {
+    font-size: 0.8rem;
+}
+
+/* Sección especial de búsqueda en detalle */
+.filter-section-special {
+    background-color: #f0f9ff;
+    border-color: #bae6fd;
+}
+
+.filter-section-special:hover {
+    background-color: #e0f2fe;
+    border-color: #7dd3fc;
+}
+
+.filter-section-special .filter-section-title {
+    border-bottom-color: #bae6fd;
+    color: #0c4a6e;
+}
+
+/* Etiquetas de campos de filtro */
+.form-label-sm {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 4px;
+    display: block;
+}
+
+/* Área de botones de acción - mismos colores que index.css */
+.filter-actions {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 8px;
+}
+
+.filter-actions .btn {
+    min-width: 100px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Botón Buscar - mismo estilo que btn-primary de index */
+.filter-actions .btn-primary {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.filter-actions .btn-primary:hover {
+    background-color: #1e40af;
+    border-color: #1e40af;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(30, 64, 175, 0.3);
+    color: white;
+}
+
+/* Botón Limpiar - estilo secundario consistente */
+.filter-actions .btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.filter-actions .btn-secondary:hover {
+    background-color: #545b62;
+    border-color: #545b62;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+    color: white;
+}
+
+/* Utilities específicas para archivadas */
+.gap-2 {
+    gap: 0.5rem !important;
+}
+
+/* Badges específicos para archivadas - mismo estilo que index.css */
+.badge-archived {
+    background-color: #343a40; /* Mismo color que badge-dark-custom */
+    color: white;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 12px;
+    text-transform: capitalize;
+}
+
+.badge-archived:hover {
+    background-color: #23272b; /* Mismo hover que btn-action-dark */
+}
+
+/* Indicador visual para cotizaciones archivadas */
+.cotizacion-archived-indicator {
+    border-left: 4px solid #343a40;
+    background-color: #f8fafc;
+}
+
+/* Información de archivado */
+.archivo-info {
+    background-color: #fef3c7;
+    border: 1px solid #f59e0b; /* Mismo color que btn-action-warning */
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    color: #92400e;
+    margin-top: 8px;
+}
+
+.archivo-info i {
+    margin-right: 4px;
+    color: #f59e0b; /* Consistente con paleta de warning */
+}
+
+/* Botón de reactivación específico - mismo estilo que btn-action-success */
+.btn-reactivar {
+    background-color: #10b981 !important; /* Mismo verde que btn-action-success */
+    border-color: #10b981 !important;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.btn-reactivar:hover {
+    background-color: #059669 !important; /* Mismo hover que btn-action-success */
+    border-color: #059669 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Botones de acción específicos para archivadas - manteniendo consistencia */
+.btn-action-archivadas {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.btn-action-archivadas:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Ver detalle - mismo color que btn-action-edit */
+.btn-action-archivadas.btn-detalle {
+    background-color: #f59e0b;
+}
+
+.btn-action-archivadas.btn-detalle:hover {
+    background-color: #d97706;
+    box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+}
+
+/* Ver historial - mismo color que btn-action-info */
+.btn-action-archivadas.btn-historial {
+    background-color: #3b82f6;
+}
+
+.btn-action-archivadas.btn-historial:hover {
+    background-color: #2563eb;
+    box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* Ver versiones - mismo color que btn-action-secondary */
+.btn-action-archivadas.btn-versiones {
+    background-color: #6366f1;
+}
+
+.btn-action-archivadas.btn-versiones:hover {
+    background-color: #4f46e5;
+    box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Campos de fecha específicos para archivado */
+.fecha-archivado-group {
+    background-color: #fefce8;
+    border: 1px solid #eab308;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.fecha-archivado-group .form-label-sm {
+    color: #a16207;
+    font-weight: 600;
+}
+
+.fecha-archivado-group .form-control-sm {
+    border-color: #eab308;
+    background-color: white;
+}
+
+.fecha-archivado-group .form-control-sm:focus {
+    border-color: #ca8a04;
+    box-shadow: 0 0 0 0.2rem rgba(234, 179, 8, 0.25);
+}
+
+/* Header específico para archivadas - tonos grises consistentes */
+.header-archivadas {
+    background: linear-gradient(135deg, #6c757d 0%, #545b62 100%); /* Gradiente con colores de paleta */
+    color: white;
+    padding: 20px 24px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.header-archivadas .header-title {
+    color: white;
+    margin-bottom: 8px;
+    font-size: 1.75rem !important; 
+    font-weight: 600;
+}
+
+.header-archivadas .header-title i {
+    color: #f8f9fa;
+    margin-right: 10px;
+}
+
+.header-archivadas .header-subtitle {
+    color: #dee2e6;
+    opacity: 0.9;
+    font-size: 0.95rem;
+}
+
+/* Botón "Volver a Gestión" - mismo estilo que btn-secondary */
+.header-archivadas .btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+    padding: 10px 24px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.header-archivadas .btn-secondary:hover {
+    background-color: #545b62;
+    border-color: #545b62;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+    color: white;
+}
+
+/* Responsive específico para archivadas */
+@media (max-width: 768px) {
+    .filter-section {
+        margin-bottom: 12px;
+        padding: 12px;
+    }
+    
+    .filter-section-title {
+        font-size: 0.85rem;
+        margin-bottom: 10px;
+    }
+    
+    .filter-actions {
+        padding: 12px;
+        text-align: center;
+    }
+    
+    .filter-actions .btn {
+        display: block;
+        width: 100%;
+        margin-bottom: 8px;
+        margin-right: 0 !important;
+    }
+    
+    .header-archivadas {
+        padding: 16px 20px;
+        margin-bottom: 16px;
+    }
+    
+    .header-archivadas .header-title {
+        font-size: 1.4rem;
+    }
+    
+    .btn-group-actions {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+}
+
+@media (max-width: 576px) {
+    .filter-section .col-6 {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    
+    .filter-section .form-control-sm {
+        font-size: 0.8rem;
+    }
+    
+    .fecha-archivado-group {
+        padding: 6px;
+    }
+    
+    .btn-action-archivadas {
+        width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+    }
+}

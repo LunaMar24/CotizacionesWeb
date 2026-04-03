@@ -159,3 +159,24 @@ public record CotizacionDebugInfoDto(
     string? VersionInfo,
     bool ExisteEnBase
 );
+
+// DTOs para información de archivo
+public record ArchivoCotizacionDto(
+    int ArchivoId,
+    string CotizacionId,
+    int? VersionArchivada,
+    DateTime FechaArchivado,
+    int? UsuarioArchiva,
+    DateTime? FechaReactivacion,
+    int? UsuarioReactiva,
+    char TipoArchivo,
+    string? Comentario,
+    string MotivoArchivado,
+    string? NombreUsuarioArchiva,
+    string? NombreUsuarioReactiva
+);
+
+public record ArchivoCotizacionDetalleDto(
+    ArchivoCotizacionDto ArchivoInfo,
+    CotizacionVersionDetalleDto CotizacionDetalle
+);

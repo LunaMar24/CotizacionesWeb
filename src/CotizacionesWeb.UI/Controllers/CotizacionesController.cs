@@ -209,7 +209,7 @@ public class CotizacionesController : Controller
   }
 
   [HttpGet("Cotizaciones/Historial/{cotizacionId}")]
-  [RequierePermiso("COT_VIEW")]
+  [RequierePermiso("COT_VIEW_HISTORY")]
   public async Task<IActionResult> Historial(string cotizacionId)
   {
     try
@@ -236,7 +236,7 @@ public class CotizacionesController : Controller
   }
 
   [HttpGet("Cotizaciones/HistorialVersion/{versionId}")]
-  [RequierePermiso("COT_VIEW")]
+  [RequierePermiso("COT_VIEW_HISTORY")]
   public async Task<IActionResult> HistorialVersion(int versionId, string cotizacionId, decimal numeroVersion)
   {
     try
@@ -265,7 +265,7 @@ public class CotizacionesController : Controller
   }
 
   [HttpGet("Cotizaciones/Versiones/{cotizacionId}")]
-  [RequierePermiso("COT_VIEW")]
+  [RequierePermiso("COT_VIEW_VERSIONS")]
   public async Task<IActionResult> Versiones(string cotizacionId)
   {
     try
@@ -1352,6 +1352,149 @@ public class CotizacionesController : Controller
       _logger.LogError(ex, "Error al enviar cotización {CotizacionId} al ERP", cotizacionId);
       return Json(new { success = false, message = "Error interno al enviar al ERP" });
     }
+  }
+
+  [HttpPost]
+  [ValidateAntiForgeryToken]
+  [RequierePermiso("COT_ARCHIVE_REACTIVATE")]
+  public async Task<IActionResult> Reactivar(string cotizacionId, string motivo)
+  {
+    try
+    {
+      // Validar que el motivo sea obligatorio
+      if (string.IsNullOrWhiteSpace(motivo))
+      {
+        return Json(new { success = false, message = "El motivo de reactivación es obligatorio" });
+      }
+
+      if (motivo.Trim().Length < 10)
+      {
+        return Json(new { success = false, message = "El motivo debe tener al menos 10 caracteres" });
+      }
+
+      // TODO: Implementar la lógica de reactivación en el servicio
+      // Por ahora solo preparamos la estructura
+      
+      _logger.LogInformation("Solicitud de reactivación para cotización {CotizacionId} con motivo: {Motivo}", 
+        cotizacionId, motivo);
+      
+      // Simulación de éxito para preparar la estructura
+      return Json(new { 
+        success = false, 
+        message = "Funcionalidad de reactivación pendiente de implementar en el servicio" 
+      });
+      
+      /*
+      // Código futuro cuando se implemente en el servicio:
+      var result = await _cotizacionService.ReactivarCotizacionAsync(cotizacionId, motivo.Trim(), GetCurrentUserId());
+      
+      if (result.Success)
+      {
+        return Json(new { success = true, message = "Cotización reactivada exitosamente" });
+      }
+      
+      return Json(new { success = false, message = result.ErrorMessage });
+      */
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al reactivar cotización {CotizacionId}", cotizacionId);
+      return Json(new { success = false, message = "Error interno al reactivar la cotización" });
+    }
+  }
+
+  [HttpGet("Cotizaciones/ArchivoDetalle/{cotizacionId}")]
+  [RequierePermiso("COT_ARCHIVE_VIEW_DETAIL")]
+  public async Task<IActionResult> ArchivoDetalle(string cotizacionId)
+  {
+    try
+    {
+      var archivoDetalle = await _cotizacionService.GetArchivoCotizacionDetalleAsync(cotizacionId);
+
+      if (archivoDetalle == null)
+      {
+        TempData["Error"] = $"No se encontró información de archivo para la cotización {cotizacionId}";
+        return RedirectToAction("Archivadas");
+      }
+
+      // Mapear a ViewModel
+      var viewModel = new ArchivoCotizacionDetalleViewModel
+      {
+        // Información del archivo
+        ArchivoId = archivoDetalle.ArchivoInfo.ArchivoId,
+        CotizacionId = archivoDetalle.ArchivoInfo.CotizacionId,
+        VersionArchivada = archivoDetalle.ArchivoInfo.VersionArchivada,
+        FechaArchivado = archivoDetalle.ArchivoInfo.FechaArchivado,
+        UsuarioArchiva = archivoDetalle.ArchivoInfo.UsuarioArchiva,
+        NombreUsuarioArchiva = archivoDetalle.ArchivoInfo.NombreUsuarioArchiva,
+        FechaReactivacion = archivoDetalle.ArchivoInfo.FechaReactivacion,
+        UsuarioReactiva = archivoDetalle.ArchivoInfo.UsuarioReactiva,
+        NombreUsuarioReactiva = archivoDetalle.ArchivoInfo.NombreUsuarioReactiva,
+        TipoArchivo = archivoDetalle.ArchivoInfo.TipoArchivo,
+        TipoArchivoTexto = ObtenerTextoTipoArchivo(archivoDetalle.ArchivoInfo.TipoArchivo),
+        Comentario = archivoDetalle.ArchivoInfo.Comentario,
+        MotivoArchivado = archivoDetalle.ArchivoInfo.MotivoArchivado,
+
+        // Información de la cotización
+        EstadoActual = 'X', // Siempre archivada
+        EstadoActualTexto = "Archivada",
+        FechaCreacion = DateTime.Now, // Se obtendría del detalle real si estuviera disponible
+        
+        // Información de la versión
+        VersionId = archivoDetalle.CotizacionDetalle.Version.VersionId,
+        NumeroVersion = archivoDetalle.CotizacionDetalle.Version.NumeroVersion,
+        FechaVersion = archivoDetalle.CotizacionDetalle.Version.FechaVersion,
+
+        // Información del interesado
+        NombreInteresado = archivoDetalle.CotizacionDetalle.Version.NombreInteresado,
+        EmailInteresado = archivoDetalle.CotizacionDetalle.Version.EmailInteresado,
+        EmpresaInteresado = archivoDetalle.CotizacionDetalle.Version.EmpresaInteresado,
+        TipoInteresado = archivoDetalle.CotizacionDetalle.Version.TipoInteresado,
+
+        // Información financiera
+        SubTotal = archivoDetalle.CotizacionDetalle.Version.SubTotal,
+        Impuesto = archivoDetalle.CotizacionDetalle.Version.Impuesto,
+        Descuento = archivoDetalle.CotizacionDetalle.Version.Descuento,
+        Total = archivoDetalle.CotizacionDetalle.Version.Total,
+        Moneda = archivoDetalle.CotizacionDetalle.Version.Moneda,
+        TipoCambio = archivoDetalle.CotizacionDetalle.Version.TipoCambio,
+
+        // Notas
+        Notas = archivoDetalle.CotizacionDetalle.Version.Notas,
+
+        // Líneas de detalle
+        Detalles = archivoDetalle.CotizacionDetalle.Detalles.Select(d => new DetalleCotizacionViewModel
+        {
+          DetalleVersionId = d.DetalleVersionId,
+          ProductoId = d.ProductoId,
+          ProductoNombre = d.ProductoNombre,
+          Cantidad = d.Cantidad,
+          PrecioUnitario = d.PrecioUnitario,
+          Descuento = d.Descuento,
+          PorcentajeImpuesto = d.PorcentajeImpuesto,
+          TotalLinea = d.TotalLinea
+        }).ToList()
+      };
+
+      return View(viewModel);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al obtener detalle de archivo para cotización {CotizacionId}", cotizacionId);
+      TempData["Error"] = "Error al cargar el detalle del archivo de la cotización";
+      return RedirectToAction("Archivadas");
+    }
+  }
+
+  private static string ObtenerTextoTipoArchivo(char tipoArchivo)
+  {
+    return tipoArchivo switch
+    {
+      'M' => "Manual",
+      'A' => "Automático", 
+      'S' => "Sistema",
+      _ => "No definido"
+    };
   }
 
   private int GetCurrentUserId()

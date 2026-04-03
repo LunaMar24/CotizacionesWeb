@@ -1728,4 +1728,79 @@ public class CotizacionService : ICotizacionService
             _logger.LogError(ex, "Error al registrar historial para versión {VersionId}", versionId);
         }
     }
+
+    public async Task<ArchivoCotizacionDetalleDto?> GetArchivoCotizacionDetalleAsync(string cotizacionId)
+    {
+        try
+        {
+            var archivo = await _context.ArchivosCotizacion
+                .Where(a => a.CotizacionId == cotizacionId)
+                .Select(a => new ArchivoCotizacionDto(
+                    a.ArchivoId,
+                    a.CotizacionId,
+                    a.VersionArchivada,
+                    a.FechaArchivado,
+                    a.UsuarioArchiva,
+                    a.FechaReactivacion,
+                    a.UsuarioReactiva,
+                    a.TipoArchivo,
+                    a.Comentario,
+                    a.MotivoArchivado,
+                    "", // NombreUsuarioArchiva - se obtendrá después
+                    ""  // NombreUsuarioReactiva - se obtendrá después
+                ))
+                .FirstOrDefaultAsync();
+
+            if (archivo == null)
+            {
+                _logger.LogWarning("No se encontró archivo para la cotización {CotizacionId}", cotizacionId);
+                return null;
+            }
+
+            // Obtener el detalle de la cotización archivada
+            var cotizacionDetalle = await GetCotizacionCurrentVersionDetailAsync(cotizacionId);
+            
+            if (cotizacionDetalle == null)
+            {
+                _logger.LogWarning("No se encontró detalle de cotización archivada {CotizacionId}", cotizacionId);
+                return null;
+            }
+
+            // Obtener nombres de usuarios (opcional, puede ser null si no existe)
+            string? nombreUsuarioArchiva = null;
+            string? nombreUsuarioReactiva = null;
+
+            if (archivo.UsuarioArchiva.HasValue)
+            {
+                var usuarioArchiva = await _context.Usuarios
+                    .Where(u => u.UsuarioId == archivo.UsuarioArchiva.Value)
+                    .Select(u => u.Nombre)
+                    .FirstOrDefaultAsync();
+                nombreUsuarioArchiva = usuarioArchiva;
+            }
+
+            if (archivo.UsuarioReactiva.HasValue)
+            {
+                var usuarioReactiva = await _context.Usuarios
+                    .Where(u => u.UsuarioId == archivo.UsuarioReactiva.Value)
+                    .Select(u => u.Nombre)
+                    .FirstOrDefaultAsync();
+                nombreUsuarioReactiva = usuarioReactiva;
+            }
+
+            // Crear el DTO completo con nombres de usuarios
+            var archivoCompleto = archivo with
+            {
+                NombreUsuarioArchiva = nombreUsuarioArchiva,
+                NombreUsuarioReactiva = nombreUsuarioReactiva
+            };
+
+            return new ArchivoCotizacionDetalleDto(archivoCompleto, cotizacionDetalle);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener detalle de archivo de cotización {CotizacionId}", cotizacionId);
+            return null;
+        }
+    }
 }

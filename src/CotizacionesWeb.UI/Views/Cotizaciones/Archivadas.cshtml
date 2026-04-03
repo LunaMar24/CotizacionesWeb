@@ -14,11 +14,6 @@
                 Consulta cotizaciones archivadas del sistema. Solo lectura.
             </p>
         </div>
-        <div>
-            <a href="@Url.Action("Index")" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> VOLVER A GESTIÓN
-            </a>
-        </div>
     </div>
 </div>
 
@@ -38,58 +33,114 @@
         </div>
         <div class="card-body">
             <form asp-action="Archivadas" method="get" id="filtrosForm">
-                <div class="row g-3 align-items-center">
-                    <!-- Búsqueda General y Versión -->
-                    <div class="col-md-3">
-                        <div class="mb-2">
-                            <label class="form-label mb-1">Búsqueda General</label>
-                            <input type="text" 
-                                   class="form-control form-control-sm" 
-                                   name="Filtros.Busqueda" 
-                                   value="@Model.Filtros.Busqueda"
-                                   placeholder="ID, cliente...">
-                        </div>
-                        <div>
-                            <label class="form-label mb-1">Versión</label>
-                            <input type="number" 
-                                   step="0.1"
-                                   class="form-control form-control-sm" 
-                                   name="Filtros.Version" 
-                                   value="@Model.Filtros.Version"
-                                   placeholder="1.0">
+                <div class="row g-3">
+                    <!-- SECCIÓN: Búsqueda Principal -->
+                    <div class="col-12">
+                        <div class="filter-section">
+                            <h6 class="filter-section-title">
+                                <i class="fas fa-search text-primary"></i> Búsqueda Principal
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">Búsqueda General</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="Filtros.Busqueda" 
+                                           value="@Model.Filtros.Busqueda"
+                                           placeholder="ID de cotización, nombre de cliente o empresa...">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Versión</label>
+                                    <input type="number" 
+                                           step="0.1"
+                                           class="form-control" 
+                                           name="Filtros.Version" 
+                                           value="@Model.Filtros.Version"
+                                           placeholder="Ej: 1.0, 2.1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Moneda</label>
+                                    <select class="form-control" name="Filtros.Moneda">
+                                        <option value="">Todas las monedas</option>
+                                        @if (ViewBag.MonedasDisponibles != null)
+                                        {
+                                            foreach (var moneda in (List<(string codigo, string simbolo, string nombre)>)ViewBag.MonedasDisponibles)
+                                            {
+                                                <option value="@moneda.codigo" selected="@(Model.Filtros.Moneda == moneda.codigo)">
+                                                    @moneda.simbolo @moneda.codigo - @moneda.nombre
+                                                </option>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <!-- Fallback estático si no hay datos dinámicos -->
+                                            <option value="CRC" selected="@(Model.Filtros.Moneda == "CRC")">? CRC - Colón</option>
+                                            <option value="USD" selected="@(Model.Filtros.Moneda == "USD")">$ USD - Dólar</option>
+                                            <option value="EUR" selected="@(Model.Filtros.Moneda == "EUR")">€ EUR - Euro</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Grupo: Fechas -->
-                    <div class="col-md-3">
-                        <div class="border rounded p-2">
-                            <div class="row mb-2">
-                                <label class="col-sm-4 col-form-label col-form-label-sm">Fecha Desde:</label>
-                                <div class="col-sm-8">
+                    <!-- SECCIÓN: Fechas -->
+                    <div class="col-md-6">
+                        <div class="filter-section">
+                            <h6 class="filter-section-title">
+                                <i class="fas fa-calendar-alt text-info"></i> Fechas
+                            </h6>
+                            <div class="row">
+                                <div class="col-12">
+                                    <label class="form-label text-muted">Fecha de Cotización</label>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label-sm">Desde:</label>
                                     <input type="date" 
                                            class="form-control form-control-sm" 
                                            name="Filtros.FechaDesde" 
                                            value="@Model.Filtros.FechaDesde?.ToString("yyyy-MM-dd")">
                                 </div>
-                            </div>
-                            <div class="row">
-                                <label class="col-sm-4 col-form-label col-form-label-sm">Fecha Hasta:</label>
-                                <div class="col-sm-8">
+                                <div class="col-6">
+                                    <label class="form-label-sm">Hasta:</label>
                                     <input type="date" 
                                            class="form-control form-control-sm" 
                                            name="Filtros.FechaHasta" 
                                            value="@Model.Filtros.FechaHasta?.ToString("yyyy-MM-dd")">
                                 </div>
+                                <div class="col-12 mt-2">
+                                    <label class="form-label text-muted">Fecha de Archivado</label>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label-sm">Desde:</label>
+                                    <input type="date" 
+                                           class="form-control form-control-sm" 
+                                           name="Filtros.FechaArchivadoDesde" 
+                                           value="@Model.Filtros.FechaArchivadoDesde?.ToString("yyyy-MM-dd")">
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label-sm">Hasta:</label>
+                                    <input type="date" 
+                                           class="form-control form-control-sm" 
+                                           name="Filtros.FechaArchivadoHasta" 
+                                           value="@Model.Filtros.FechaArchivadoHasta?.ToString("yyyy-MM-dd")">
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Grupo: Montos -->
-                    <div class="col-md-3">
-                        <div class="border rounded p-2">
-                            <div class="row mb-2">
-                                <label class="col-sm-4 col-form-label col-form-label-sm">Monto Desde:</label>
-                                <div class="col-sm-8">
+                    <!-- SECCIÓN: Filtros Adicionales -->
+                    <div class="col-md-6">
+                        <div class="filter-section">
+                            <h6 class="filter-section-title">
+                                <i class="fas fa-filter text-warning"></i> Filtros Adicionales
+                            </h6>
+                            <div class="row">
+                                <div class="col-12">
+                                    <label class="form-label text-muted">Rango de Montos</label>
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label-sm">Monto Desde:</label>
                                     <input type="number" 
                                            step="0.01"
                                            class="form-control form-control-sm" 
@@ -97,10 +148,8 @@
                                            value="@Model.Filtros.MontoDesde"
                                            placeholder="0.00">
                                 </div>
-                            </div>
-                            <div class="row">
-                                <label class="col-sm-4 col-form-label col-form-label-sm">Monto Hasta:</label>
-                                <div class="col-sm-8">
+                                <div class="col-6">
+                                    <label class="form-label-sm">Monto Hasta:</label>
                                     <input type="number" 
                                            step="0.01"
                                            class="form-control form-control-sm" 
@@ -108,42 +157,60 @@
                                            value="@Model.Filtros.MontoHasta"
                                            placeholder="0.00">
                                 </div>
+                                <div class="col-12 mt-2">
+                                    <label class="form-label">Usuario que Archivó</label>
+                                    <input type="text" 
+                                           class="form-control form-control-sm" 
+                                           name="Filtros.UsuarioArchivo" 
+                                           value="@Model.Filtros.UsuarioArchivo"
+                                           placeholder="Nombre del usuario...">
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Filtro por Moneda y Botones (sin estado porque todas están archivadas) -->
-                    <div class="col-md-3">
-                        <div class="mb-2">
-                            <label class="form-label mb-1">Filtrar por Moneda</label>
-                            <select class="form-control form-control-sm" 
-                                    name="Filtros.Moneda">
-                                <option value="">Todas las monedas</option>
-                                @if (ViewBag.MonedasDisponibles != null)
-                                {
-                                    foreach (var moneda in (List<(string codigo, string simbolo, string nombre)>)ViewBag.MonedasDisponibles)
-                                    {
-                                        <option value="@moneda.codigo" selected="@(Model.Filtros.Moneda == moneda.codigo)">
-                                            @moneda.simbolo @moneda.codigo - @moneda.nombre
-                                        </option>
-                                    }
-                                }
-                                else
-                                {
-                                    <!-- Fallback estático si no hay datos dinámicos -->
-                                    <option value="CRC" selected="@(Model.Filtros.Moneda == "CRC")">? CRC - Colón</option>
-                                    <option value="USD" selected="@(Model.Filtros.Moneda == "USD")">$ USD - Dólar</option>
-                                    <option value="EUR" selected="@(Model.Filtros.Moneda == "EUR")">€ EUR - Euro</option>
-                                }
-                            </select>
+                    <!-- SECCIÓN: Filtro Especial -->
+                    <div class="col-12">
+                        <div class="filter-section filter-section-special">
+                            <h6 class="filter-section-title">
+                                <i class="fas fa-list-ul text-success"></i> Búsqueda en Detalle de Productos
+                            </h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">Código de Producto</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="Filtros.BusquedaProducto" 
+                                           value="@Model.Filtros.BusquedaProducto"
+                                           placeholder="Buscar por código de producto en los detalles...">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Descripción de Producto</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="Filtros.BusquedaDescripcion" 
+                                           value="@Model.Filtros.BusquedaDescripcion"
+                                           placeholder="Buscar por descripción en los detalles...">
+                                </div>
+                            </div>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Busca dentro de los productos y descripciones de las líneas de detalle de las cotizaciones
+                            </small>
                         </div>
-                        <div style="padding-top: 24px;">
-                            <button type="submit" class="btn btn-primary btn-sm btn-block mb-2">
-                                <i class="fas fa-search"></i> Buscar
-                            </button>
-                            <a asp-action="Archivadas" class="btn btn-secondary btn-sm btn-block">
-                                <i class="fas fa-times"></i> Limpiar
-                            </a>
+                    </div>
+
+                    <!-- SECCIÓN: Botones de Acción -->
+                    <div class="col-12">
+                        <div class="filter-actions">
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Buscar
+                                </button>
+                                <a asp-action="Archivadas" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -196,7 +263,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="badge badge-status badge-dark-custom">Archivada</span>
+                                    <span class="badge badge-archived">Archivada</span>
                                 </td>
                                 <td>
                                     <span class="badge badge-version">@FormatHelper.FormatVersion(cotizacion.NumeroVersion)</span>
@@ -224,38 +291,41 @@
                                     <div class="btn-group-actions">
                                         <!-- Ver Detalle -->
                                         <button type="button" 
-                                                class="btn-action btn-action-edit btn-detalle" 
+                                                class="btn-action-archivadas btn-detalle" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Ver Detalle"
-                                                requiere-permiso="COT_ARCHIVE_VIEW_DETAIL">
+                                                requiere-permiso="COT_ARCHIVE_VIEW_DETAIL"
+                                                tipo-restriccion="ocultar">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         
                                         <!-- Ver Historial -->
                                         <button type="button" 
-                                                class="btn-action btn-action-info btn-historial" 
+                                                class="btn-action-archivadas btn-historial" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Ver Historial"
-                                                requiere-permiso="COT_ARCHIVE_VIEW_DETAIL">
+                                                requiere-permiso="COT_VIEW_HISTORY"
+                                                tipo-restriccion="ocultar">
                                             <i class="fas fa-history"></i>
                                         </button>
 
                                         <!-- Ver Versiones -->
                                         <button type="button" 
-                                                class="btn-action btn-action-secondary btn-versiones" 
+                                                class="btn-action-archivadas btn-versiones" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Ver Versiones"
-                                                requiere-permiso="COT_ARCHIVE_VIEW_DETAIL">
+                                                requiere-permiso="COT_VIEW_VERSIONS"
+                                                tipo-restriccion="ocultar">
                                             <i class="fas fa-code-branch"></i>
                                         </button>
 
                                         <!-- Reactivar (si tiene permisos) -->
                                         <button type="button" 
-                                                class="btn-action btn-action-success btn-reactivar" 
+                                                class="btn-reactivar" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Reactivar Cotización"
                                                 requiere-permiso="COT_ARCHIVE_REACTIVATE"
-                                                style="display: none;">
+                                                tipo-restriccion="ocultar">
                                             <i class="fas fa-undo"></i>
                                         </button>
                                     </div>
@@ -302,59 +372,82 @@
     </div>
 </div>
 
+<!-- Modal de Confirmación Genérico -->
+<div class="modal fade" id="modalConfirmacion" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header" id="modalConfirmacionHeader">
+                <h5 class="modal-title" id="modalConfirmacionTitulo">
+                    <i class="fas fa-question-circle"></i> Confirmar Acción
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" id="modalConfirmacionMensaje">
+                <!-- Mensaje dinámico -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarAccion">Aceptar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Reactivación -->
+<div class="modal fade" id="modalReactivacion" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-undo text-success"></i> Reactivar Cotización
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>¿Reactivar cotización archivada?</strong>
+                </div>
+                <p class="mb-3" id="mensajeReactivacion">
+                    Está a punto de reactivar esta cotización archivada. La cotización volverá al estado <strong>Borrador</strong> y podrá editarla nuevamente.
+                </p>
+                <div class="form-group">
+                    <label for="motivoReactivacion" class="form-label">
+                        <strong>Motivo de reactivación (obligatorio):</strong>
+                    </label>
+                    <textarea id="motivoReactivacion" 
+                              class="form-control" 
+                              rows="4" 
+                              placeholder="Explique el motivo por el cual necesita reactivar esta cotización..."
+                              maxlength="500"
+                              required></textarea>
+                    <div class="form-text">
+                        <span id="contadorMotivoReactivacion">0</span>/500 caracteres
+                    </div>
+                </div>
+                <input type="hidden" id="cotizacionIdReactivacion" />
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-success" id="btnConfirmarReactivacion">
+                    <i class="fas fa-undo"></i> Reactivar Cotización
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @Html.AntiForgeryToken()
 
 @section Scripts {
-    <link rel="stylesheet" href="~/css/cotizaciones/index.css" asp-append-version="true">
-    <script src="~/js/cotizaciones/index.js" asp-append-version="true"></script>
-    
-    <script>
-        $(document).ready(function() {
-            // Funcionalidad básica para archivadas (solo consulta)
-            
-            // Ver Historial
-            $('.btn-historial').on('click', function () {
-                const cotizacionId = $(this).attr('data-id');
-                
-                $('#modalHistorialContent').html('<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>');
-                $('#modalHistorial').modal('show');
-                
-                $.get('/Cotizaciones/Historial/' + cotizacionId, function (data) {
-                    $('#modalHistorialContent').html(data);
-                }).fail(function () {
-                    $('#modalHistorialContent').html('<div class="p-4 text-center text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><p>Error al cargar el historial</p></div>');
-                });
-            });
-
-            // Ver Versiones
-            $('.btn-versiones').on('click', function () {
-                const cotizacionId = $(this).attr('data-id');
-                
-                $('#modalVersionesContent').html('<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>');
-                $('#modalVersiones').modal('show');
-                
-                $.get('/Cotizaciones/Versiones/' + cotizacionId, function (data) {
-                    $('#modalVersionesContent').html(data);
-                }).fail(function () {
-                    $('#modalVersionesContent').html('<div class="p-4 text-center text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><p>Error al cargar las versiones</p></div>');
-                });
-            });
-
-            // Ver Detalle
-            $('.btn-detalle').on('click', function () {
-                const cotizacionId = $(this).attr('data-id');
-                
-                // Navegar directamente a la vista de detalle
-                window.location.href = '/Cotizaciones/Detalle/' + cotizacionId;
-            });
-
-            // TODO: Implementar funcionalidad de reactivación cuando se requiera
-            $('.btn-reactivar').on('click', function () {
-                const cotizacionId = $(this).attr('data-id');
-                alert('Funcionalidad de reactivación pendiente de implementar: ' + cotizacionId);
-            });
-        });
-    </script>
+    <link rel="stylesheet" href="~/css/cotizaciones/archivadas.css" asp-append-version="true">
+    <script src="~/js/cotizaciones/archivadas.js" asp-append-version="true"></script>
     
     @if (TempData["Success"] != null)
     {

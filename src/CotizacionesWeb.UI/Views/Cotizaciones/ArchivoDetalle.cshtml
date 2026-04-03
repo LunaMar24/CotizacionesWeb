@@ -1,0 +1,443 @@
+@model CotizacionesWeb.UI.Models.ArchivoCotizacionDetalleViewModel
+@{
+    ViewData["Title"] = $"Archivo Cotización {Model.CotizacionId}";
+}
+
+<!-- Header Principal -->
+<div class="content-header-custom">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h1 class="header-title">
+                <i class="fas fa-archive"></i>
+                Archivo de Cotización @Model.CotizacionId
+                <span class="badge badge-dark-custom ml-2">ARCHIVADA</span>
+            </h1>
+            <p class="header-subtitle">
+                Vista detallada del archivo de cotización con información completa del archivado.
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("Archivadas")" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a Archivadas
+            </a>
+            <button type="button" class="btn btn-primary" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+
+        <!-- Alert de Cotización Archivada -->
+        <div class="alert alert-warning mb-4">
+            <i class="fas fa-archive"></i>
+            <strong>Cotización Archivada:</strong> Esta cotización ha sido archivada el @Model.FechaArchivado.ToString("dd/MM/yyyy HH:mm")
+            y se encuentra en modo de solo lectura.
+            @if (!string.IsNullOrWhiteSpace(Model.NombreUsuarioArchiva))
+            {
+                <span>Archivada por: <strong>@Model.NombreUsuarioArchiva</strong></span>
+            }
+        </div>
+
+        <div class="row">
+            <!-- Información Principal -->
+            <div class="col-lg-8">
+                <!-- Card: Información del Archivo -->
+                <div class="card card-warning card-outline mb-4">
+                    <div class="card-header" data-card-widget="collapse" style="cursor: pointer;">
+                        <h3 class="card-title">
+                            <i class="fas fa-archive"></i> Información del Archivo
+                        </h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">Fecha Archivado:</strong>
+                                        <span>@Model.FechaArchivado.ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">Tipo de Archivo:</strong>
+                                        <span class="badge badge-info">@Model.TipoArchivoTexto</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                @if (!string.IsNullOrWhiteSpace(Model.NombreUsuarioArchiva))
+                                {
+                                    <div class="info-item">
+                                        <div class="d-flex">
+                                            <strong class="info-label">Usuario que Archivó:</strong>
+                                            <span><i class="fas fa-user text-warning"></i> @Model.NombreUsuarioArchiva</span>
+                                        </div>
+                                    </div>
+                                }
+                                @if (Model.FechaReactivacion.HasValue)
+                                {
+                                    <div class="info-item">
+                                        <div class="d-flex">
+                                            <strong class="info-label">Fecha Reactivación:</strong>
+                                            <span class="text-success">@Model.FechaReactivacion.Value.ToString("dd/MM/yyyy HH:mm")</span>
+                                        </div>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(Model.NombreUsuarioReactiva))
+                                    {
+                                        <div class="info-item">
+                                            <div class="d-flex">
+                                                <strong class="info-label">Usuario que Reactivó:</strong>
+                                                <span><i class="fas fa-user text-success"></i> @Model.NombreUsuarioReactiva</span>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                        
+                        <!-- Motivo del Archivado -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="info-item">
+                                    <strong class="info-label d-block mb-2">Motivo del Archivado:</strong>
+                                    <div class="alert alert-secondary">
+                                        <i class="fas fa-quote-left"></i>
+                                        @Model.MotivoArchivado
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Comentario Adicional -->
+                        @if (!string.IsNullOrWhiteSpace(Model.Comentario))
+                        {
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="info-item">
+                                        <strong class="info-label d-block mb-2">Comentario Adicional:</strong>
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-comment"></i>
+                                            @Html.Raw(Html.Encode(Model.Comentario).Replace("\n", "<br>"))
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Card: Información General de la Cotización -->
+                <div class="card card-primary card-outline mb-4">
+                    <div class="card-header" data-card-widget="collapse" style="cursor: pointer;">
+                        <h3 class="card-title">
+                            <i class="fas fa-info-circle"></i> Información General de la Cotización
+                        </h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">ID Cotización:</strong>
+                                        <span class="text-primary font-weight-bold">@Model.CotizacionId</span>
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">Versión:</strong>
+                                        <span class="badge badge-version">@FormatHelper.FormatVersion(Model.NumeroVersion)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                @if (Model.FechaCreacion != DateTime.MinValue)
+                                {
+                                    <div class="info-item">
+                                        <div class="d-flex">
+                                            <strong class="info-label">Fecha Creación:</strong>
+                                            <span>@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</span>
+                                        </div>
+                                    </div>
+                                }
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">Fecha Versión:</strong>
+                                        <span>@Model.FechaVersion.ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Información del Interesado -->
+                <div class="card card-info card-outline mb-4">
+                    <div class="card-header" data-card-widget="collapse" style="cursor: pointer;">
+                        <h3 class="card-title">
+                            <i class="fas fa-user"></i> Información del Interesado
+                        </h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">Nombre:</strong>
+                                        <span>@(string.IsNullOrWhiteSpace(Model.NombreInteresado) ? "No asignado" : Model.NombreInteresado)</span>
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">Email:</strong>
+                                        <span>
+                                            @if (!string.IsNullOrWhiteSpace(Model.EmailInteresado) && Model.EmailInteresado != "N/A")
+                                            {
+                                                <span class="text-info">
+                                                    <i class="fas fa-envelope"></i> @Model.EmailInteresado
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">No asignado</span>
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">Empresa:</strong>
+                                        <span>
+                                            @if (!string.IsNullOrWhiteSpace(Model.EmpresaInteresado))
+                                            {
+                                                <span><i class="fas fa-building text-info"></i> @Model.EmpresaInteresado</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">No asignado</span>
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="d-flex">
+                                        <strong class="info-label">Tipo:</strong>
+                                        <span>
+                                            @switch (Model.TipoInteresado)
+                                            {
+                                                case 'P':
+                                                    <span class="badge badge-info"><i class="fas fa-user"></i> Persona</span>
+                                                    break;
+                                                case 'E':
+                                                    <span class="badge badge-primary"><i class="fas fa-building"></i> Empresa</span>
+                                                    break;
+                                                default:
+                                                    <span class="badge badge-secondary"><i class="fas fa-question"></i> No definido</span>
+                                                    break;
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Líneas de Detalle -->
+                <div class="card card-success card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-list"></i> Líneas de Detalle (Versión Archivada)
+                        </h3>
+                        <div class="card-tools">
+                            <span class="badge badge-success">@Model.Detalles.Count item(s)</span>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (Model.Detalles.Any())
+                        {
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="table table-sm table-striped mb-0">
+                                    <thead class="thead-light sticky-top">
+                                        <tr>
+                                            <th style="background-color: #f8f9fa;">Producto ID</th>
+                                            <th style="background-color: #f8f9fa;">Descripción</th>
+                                            <th class="text-right" style="background-color: #f8f9fa;">Cantidad</th>
+                                            <th class="text-right" style="background-color: #f8f9fa;">Precio Unit.</th>
+                                            <th class="text-right" style="background-color: #f8f9fa;">Descuento</th>
+                                            <th class="text-right" style="background-color: #f8f9fa;">Total Línea</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var detalle in Model.Detalles)
+                                        {
+                                            <tr>
+                                                <td>
+                                                    <strong class="text-primary">@detalle.ProductoId</strong>
+                                                </td>
+                                                <td>@detalle.ProductoNombre</td>
+                                                <td class="text-right">@FormatHelper.FormatNumber(detalle.Cantidad, 2)</td>
+                                                <td class="text-right">@FormatHelper.FormatCurrency(detalle.PrecioUnitario, Model.Moneda)</td>
+                                                <td class="text-right">
+                                                    @if (detalle.Descuento > 0)
+                                                    {
+                                                        <span class="text-danger">-@FormatHelper.FormatCurrency(detalle.Descuento, Model.Moneda)</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="text-muted">-</span>
+                                                    }
+                                                </td>
+                                                <td class="text-right">
+                                                    <strong>@FormatHelper.FormatCurrency(detalle.TotalLinea, Model.Moneda)</strong>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="p-4 text-center text-muted">
+                                <i class="fas fa-inbox fa-2x mb-2"></i>
+                                <p>No hay líneas de detalle registradas</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Derecha -->
+            <div class="col-lg-4">
+                <!-- Card: Resumen Financiero -->
+                <div class="card card-warning card-outline mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-calculator"></i> Resumen Financiero
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="financial-summary">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal:</span>
+                                <strong>@FormatHelper.FormatCurrency(Model.SubTotal, Model.Moneda)</strong>
+                            </div>
+                            @if (Model.Descuento > 0)
+                            {
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Descuento:</span>
+                                    <strong class="text-danger">-@FormatHelper.FormatCurrency(Model.Descuento, Model.Moneda)</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Subtotal Descontado:</span>
+                                    <strong class="text-primary">@FormatHelper.FormatCurrency(Model.SubTotal - Model.Descuento, Model.Moneda)</strong>
+                                </div>
+                            }
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Impuesto (13%):</span>
+                                <strong class="text-info">@FormatHelper.FormatCurrency(Model.Impuesto, Model.Moneda)</strong>
+                            </div>
+                            <hr class="my-3">
+                            <div class="d-flex justify-content-between mb-3">
+                                <span class="h5">Total:</span>
+                                <strong class="h5 text-success">@FormatHelper.FormatCurrency(Model.Total, Model.Moneda)</strong>
+                            </div>
+                            <hr class="my-3">
+                            <div class="text-center text-muted">
+                                <small>
+                                    <strong>Moneda:</strong> @Model.Moneda
+                                </small>
+                            </div>
+
+                            @if (Model.TipoCambio.HasValue && Model.TipoCambio > 0)
+                            {
+                                <div class="text-center text-muted mt-1">
+                                    <small>
+                                        <strong>Tipo de Cambio:</strong> @Model.TipoCambio.Value.ToString("N2")
+                                    </small>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card: Notas de la Versión -->
+                @if (!string.IsNullOrWhiteSpace(Model.Notas))
+                {
+                    <div class="card card-secondary card-outline">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-sticky-note"></i> Notas de la Versión
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0">@Html.Raw(Html.Encode(Model.Notas).Replace("\n", "<br>"))</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+    </div>
+</section>
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/cotizaciones/detalle.css" asp-append-version="true">
+    <style>
+        .info-label {
+            min-width: 130px;
+            margin-right: 10px;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // Inicializar funcionalidad de colapso para las cards
+            $('[data-card-widget="collapse"]').CardWidget();
+
+            // Mejorar la funcionalidad de colapso con animación suave
+            $('.card-header[data-card-widget="collapse"]').on('click', function(e) {
+                if (!$(e.target).closest('.btn').length) {
+                    $(this).find('.btn[data-card-widget="collapse"]').click();
+                }
+            });
+
+            // Cambiar el icono cuando se colapsa/expande
+            $('[data-card-widget="collapse"]').on('expanded.lte.cardwidget', function() {
+                $(this).closest('.card').find('.btn[data-card-widget="collapse"] i')
+                    .removeClass('fa-plus')
+                    .addClass('fa-minus');
+            });
+
+            $('[data-card-widget="collapse"]').on('collapsed.lte.cardwidget', function() {
+                $(this).closest('.card').find('.btn[data-card-widget="collapse"] i')
+                    .removeClass('fa-minus')
+                    .addClass('fa-plus');
+            });
+
+            console.log('?? Vista de Archivo de Cotización cargada');
+        });
+    </script>
+}

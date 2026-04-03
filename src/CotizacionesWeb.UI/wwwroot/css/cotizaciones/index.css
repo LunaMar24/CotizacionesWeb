@@ -75,6 +75,63 @@
     padding: 20px;
 }
 
+/* Secciones de Filtros (estilos base) */
+.filter-section {
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.filter-section-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.filter-section-title i {
+    font-size: 0.8rem;
+}
+
+.filter-section-special {
+    background-color: #f0f9ff;
+    border-color: #bae6fd;
+}
+
+.filter-section-special .filter-section-title {
+    border-bottom-color: #bae6fd;
+}
+
+.form-label-sm {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.filter-actions {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 8px;
+}
+
+.filter-actions .btn {
+    min-width: 100px;
+}
+
+.gap-2 {
+    gap: 0.5rem !important;
+}
+
 /* Filtros en línea */
 .input-group-text.input-icon-custom {
     background-color: var(--color-primary);
@@ -628,7 +685,7 @@ select[name="Filtros.Moneda"] option {
     background-color: #adb5bd !important;
 }
 
-/* Responsive */
+/* Responsive (estilos base comunes) */
 @media (max-width: 768px) {
     .content-header-custom {
         padding: 16px 20px;
@@ -645,6 +702,39 @@ select[name="Filtros.Moneda"] option {
     
     .btn-group-actions {
         flex-wrap: wrap;
+    }
+    
+    /* Ajustes base para filtros en móvil */
+    .filter-section {
+        margin-bottom: 12px;
+        padding: 12px;
+    }
+    
+    .filter-section-title {
+        font-size: 0.85rem;
+        margin-bottom: 10px;
+    }
+    
+    .filter-actions {
+        padding: 12px;
+        text-align: center;
+    }
+    
+    .filter-actions .btn {
+        display: block;
+        width: 100%;
+        margin-bottom: 8px;
+    }
+}
+
+@media (max-width: 576px) {
+    .filter-section .col-6 {
+        padding-left: 5px;
+        padding-right: 5px;
+    }
+    
+    .filter-section .form-control-sm {
+        font-size: 0.8rem;
     }
 }
 
