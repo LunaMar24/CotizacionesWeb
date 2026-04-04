@@ -404,23 +404,182 @@
     }
 }
 
+/* ESTILOS ESPECÍFICOS PARA MODAL DE REACTIVACIÓN */
+
+/* Área de información estática - SIEMPRE VISIBLE */
+#modalReactivacion .alert-info {    
+    border-color: #bee5eb !important;
+    color: #0c5460 !important;
+    border-radius: 8px !important;
+    margin-bottom: 15px !important;
+    padding: 12px 15px !important;
+    border: 1px solid #bee5eb !important;
+    display: block !important; /* Forzar visibilidad */
+}
+
+#modalReactivacion .alert-info i {
+    margin-right: 8px !important;
+    color: #0c5460 !important;
+}
+
+#modalReactivacion .alert-info strong {
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+/* Alertas de error dinámicas */
+#modalReactivacion .alert-danger.dynamic-error {
+    background-color: #f8d7da !important;
+    border-color: #f5c6cb !important;
+    color: #721c24 !important;
+    border-radius: 8px !important;
+    margin-bottom: 15px !important;
+    padding: 12px 15px !important;
+    border: 1px solid #f5c6cb !important;
+    animation: slideInDown 0.3s ease-out;
+}
+
+#modalReactivacion .alert-danger.dynamic-error i {
+    margin-right: 8px !important;
+    color: #721c24 !important;
+}
+
+#modalReactivacion .alert-danger.dynamic-error strong {
+    color: #721c24 !important;
+    font-weight: 600 !important;
+}
+
+/* Animación para alertas dinámicas */
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Botón de cerrar alertas */
+#modalReactivacion .alert .close {
+    padding: 4px 8px;
+    margin: -4px -8px -4px auto;
+    color: inherit;
+    opacity: 0.7;
+    font-size: 1.2rem;
+    font-weight: bold;
+    line-height: 1;
+    text-shadow: none;
+    border: none;
+    background: none;
+    cursor: pointer;
+}
+
+#modalReactivacion .alert .close:hover {
+    opacity: 1;
+}
+
+/* Área del formulario */
+#modalReactivacion .form-group {
+    margin-bottom: 20px;
+}
+
+#modalReactivacion .form-label {
+    color: #495057;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+#modalReactivacion #motivoReactivacion {
+    border-radius: 6px;
+    border: 1px solid #ced4da;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    resize: vertical;
+}
+
+#modalReactivacion #motivoReactivacion:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    outline: none;
+}
+
+/* Contador de caracteres */
+#modalReactivacion .form-text {
+    font-size: 0.85rem;
+    margin-top: 5px;
+}
+
+#modalReactivacion #contadorMotivoReactivacion.text-danger {
+    color: #dc3545 !important;
+    font-weight: 600;
+}
+
+#modalReactivacion #contadorMotivoReactivacion.text-warning {
+    color: #ffc107 !important;
+    font-weight: 600;
+}
+
+/* Botones del modal */
+#modalReactivacion .modal-footer {
+    border-top: 1px solid #dee2e6;
+    padding: 15px 20px;
+}
+
+#modalReactivacion .btn {
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+#modalReactivacion .btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+#modalReactivacion .btn-success:hover:not(:disabled) {
+    background-color: #218838;
+    border-color: #1e7e34;
+    transform: translateY(-1px);
+}
+
+#modalReactivacion .btn-success:disabled {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    cursor: not-allowed;
+}
+
+#modalReactivacion .btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+#modalReactivacion .btn-secondary:hover {
+    background-color: #545b62;
+    border-color: #545b62;
+    transform: translateY(-1px);
+}
+
+/* Responsive para modal */
 @media (max-width: 576px) {
-    .filter-section .col-6 {
-        padding-left: 5px;
-        padding-right: 5px;
+    #modalReactivacion .modal-dialog {
+        margin: 10px;
     }
     
-    .filter-section .form-control-sm {
-        font-size: 0.8rem;
+    #modalReactivacion .alert {
+        padding: 10px 12px !important;
+        margin-bottom: 12px !important;
     }
     
-    .fecha-archivado-group {
-        padding: 6px;
+    #modalReactivacion #motivoReactivacion {
+        font-size: 0.9rem;
     }
     
-    .btn-action-archivadas {
-        width: 32px;
-        height: 32px;
-        font-size: 0.8rem;
+    #modalReactivacion .btn {
+        padding: 10px 16px;
+        font-size: 0.9rem;
     }
 }

@@ -1384,29 +1384,25 @@ public class CotizacionesController : Controller
         return Json(new { success = false, message = "El motivo debe tener al menos 10 caracteres" });
       }
 
-      // TODO: Implementar la lógica de reactivación en el servicio
-      // Por ahora solo preparamos la estructura
+      var currentUserId = GetCurrentUserId();
+      var request = new ReactivarCotizacionRequest(cotizacionId, motivo.Trim());
       
-      _logger.LogInformation("Solicitud de reactivación para cotización {CotizacionId} con motivo: {Motivo}", 
-        cotizacionId, motivo);
-      
-      // Simulación de éxito para preparar la estructura
-      return Json(new { 
-        success = false, 
-        message = "Funcionalidad de reactivación pendiente de implementar en el servicio" 
-      });
-      
-      /*
-      // Código futuro cuando se implemente en el servicio:
-      var result = await _cotizacionService.ReactivarCotizacionAsync(cotizacionId, motivo.Trim(), GetCurrentUserId());
+      var result = await _cotizacionService.ReactivarCotizacionAsync(request, currentUserId);
       
       if (result.Success)
       {
-        return Json(new { success = true, message = "Cotización reactivada exitosamente" });
+        _logger.LogInformation("Cotización {CotizacionId} reactivada exitosamente por usuario {UserId}. Nueva versión: {NuevaVersion}", 
+          cotizacionId, currentUserId, result.NuevaVersion);
+          
+        return Json(new { 
+          success = true, 
+          message = $"Cotización {cotizacionId} reactivada exitosamente como versión {result.NuevaVersion}",
+          cotizacionId = result.CotizacionId,
+          nuevaVersion = result.NuevaVersion
+        });
       }
       
       return Json(new { success = false, message = result.ErrorMessage });
-      */
     }
     catch (Exception ex)
     {

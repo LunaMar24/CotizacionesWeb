@@ -5,14 +5,12 @@
 
 $(document).ready(function() {
     
-    // ===============================
-    // INICIALIZACIÓN
-    // ===============================
+// ===============================
+// INICIALIZACIÓN
+// ===============================
     
-    console.log('??? Pantalla de Cotizaciones Archivadas cargada');
-    
-    // Inicializar tooltips
-    initTooltips();
+// Inicializar tooltips
+initTooltips();
     
     // Configurar eventos de filtros
     initFiltrosArchivadas();
@@ -36,9 +34,7 @@ $(document).ready(function() {
         // Auto-submit al cambiar filtros de fecha
         $('input[type="date"]').on('change', function() {
             const value = $(this).val();
-            if (value) {
-                console.log('?? Filtro de fecha cambiado:', $(this).attr('name'), value);
-            }
+            // Solo procesar si hay valor
         });
         
         // Validación de rangos de fecha
@@ -78,8 +74,7 @@ $(document).ready(function() {
         $('input[name="Filtros.UsuarioArchivo"]').on('input', function() {
             const value = $(this).val();
             if (value && value.length >= 2) {
-                // Aquí iría la lógica de autocomplete
-                console.log('?? Buscando usuarios que coincidan con:', value);
+                // Aquí iría la lógica de autocomplete cuando se implemente
             }
         });
     }
@@ -146,8 +141,6 @@ $(document).ready(function() {
     // ===============================
     
     function verHistorial(cotizacionId) {
-        console.log('?? Cargando historial para:', cotizacionId);
-        
         $('#modalHistorialContent').html(
             '<div class="text-center p-5">' +
             '<div class="spinner-border text-primary mb-3"></div>' +
@@ -159,10 +152,9 @@ $(document).ready(function() {
         $.get('/Cotizaciones/Historial/' + cotizacionId)
             .done(function(data) {
                 $('#modalHistorialContent').html(data);
-                console.log('? Historial cargado exitosamente');
             })
             .fail(function(xhr, status, error) {
-                console.error('? Error al cargar historial:', error);
+                console.error('Error al cargar historial:', error);
                 $('#modalHistorialContent').html(
                     '<div class="p-4 text-center text-danger">' +
                     '<i class="fas fa-exclamation-triangle fa-2x mb-3"></i>' +
@@ -174,8 +166,6 @@ $(document).ready(function() {
     }
     
     function verVersiones(cotizacionId) {
-        console.log('?? Cargando versiones para:', cotizacionId);
-        
         $('#modalVersionesContent').html(
             '<div class="text-center p-5">' +
             '<div class="spinner-border text-primary mb-3"></div>' +
@@ -190,10 +180,9 @@ $(document).ready(function() {
                 
                 // Inicializar eventos específicos para versiones desde archivadas
                 inicializarEventosVersionesArchivadas();
-                console.log('? Versiones cargadas exitosamente');
             })
             .fail(function(xhr, status, error) {
-                console.error('? Error al cargar versiones:', error);
+                console.error('Error al cargar versiones:', error);
                 $('#modalVersionesContent').html(
                     '<div class="p-4 text-center text-danger">' +
                     '<i class="fas fa-exclamation-triangle fa-2x mb-3"></i>' +
@@ -205,8 +194,6 @@ $(document).ready(function() {
     }
     
     function verDetalle(cotizacionId) {
-        console.log('??? Navegando a detalle de archivo de:', cotizacionId);
-        
         // Mostrar indicador de carga
         showNotification('info', 'Cargando detalle del archivo de cotización...');
         
@@ -215,8 +202,6 @@ $(document).ready(function() {
     }
     
     function confirmarReactivacion(cotizacionId) {
-        console.log('?? Solicitando reactivación para:', cotizacionId);
-        
         // Configurar el modal de reactivación
         $('#cotizacionIdReactivacion').val(cotizacionId);
         $('#motivoReactivacion').val('');
@@ -266,7 +251,6 @@ $(document).ready(function() {
         
         // Configurar botón de confirmación
         $('#btnConfirmarAccion').off('click').on('click', function() {
-            console.log('?? Limpiando filtros...');
             $('#modalConfirmacion').modal('hide');
             window.location.href = limpiarUrl;
         });
@@ -280,7 +264,17 @@ $(document).ready(function() {
     // ===============================
     
     function showNotification(type, message, duration = 5000) {
-        // Crear notificación toast personalizada
+        // Usar la función global del sistema si está disponible
+        if (typeof window.showNotification === 'function' && window.showNotification !== showNotification) {
+            try {
+                window.showNotification(type, message);
+                return;
+            } catch (error) {
+                console.warn('Error al usar notificación global, usando fallback local');
+            }
+        }
+        
+        // Fallback: Crear notificación toast personalizada
         const toastId = 'toast-' + Date.now();
         const iconClass = {
             'success': 'fas fa-check-circle text-success',
@@ -316,6 +310,98 @@ $(document).ready(function() {
         });
     }
     
+    // ✅ NUEVA: Función para mostrar alertas dentro de modales
+    function showModalAlert(modalId, message, type = 'info') {
+        // Usar el ID completo del área de alertas
+        const alertId = modalId === 'modalReactivacion' ? 'modalReactivacionAlert' : modalId + 'Alert';
+        const contentId = modalId === 'modalReactivacion' ? 'modalReactivacionAlertContent' : modalId + 'AlertContent';
+        
+        const alertElement = $('#' + alertId);
+        const contentElement = $('#' + contentId);
+        
+        if (alertElement.length && contentElement.length) {
+            // Limpiar clases de tipo anterior
+            alertElement.removeClass('alert-success alert-danger alert-warning alert-info');
+            
+            // Agregar clase del tipo actual
+            alertElement.addClass('alert-' + (type === 'error' ? 'danger' : type));
+            
+            // Configurar icono según el tipo
+            const iconClass = {
+                'success': 'fas fa-check-circle',
+                'error': 'fas fa-exclamation-circle', 
+                'danger': 'fas fa-exclamation-circle',
+                'warning': 'fas fa-exclamation-triangle',
+                'info': 'fas fa-info-circle'
+            }[type] || 'fas fa-info-circle';
+            
+            // Insertar contenido con icono
+            contentElement.html(`<i class="${iconClass}"></i> <strong>${message}</strong>`);
+            
+            // Mostrar alerta
+            alertElement.removeClass('d-none').addClass('d-block');
+            
+            // Hacer scroll al inicio del modal para que sea visible
+            const modalBody = alertElement.closest('.modal-body');
+            if (modalBody.length) {
+                modalBody.animate({ scrollTop: 0 }, 300);
+            }
+        } else {
+            console.warn('Área de alertas no encontrada para modal:', modalId);
+            // Fallback a notificación global
+            showNotification(type === 'danger' ? 'error' : type, message);
+        }
+    }
+    
+    // ✅ NUEVA: Función para ocultar alertas de modales
+    function hideModalAlert(alertId) {
+        const alertElement = $('#' + alertId);
+        if (alertElement.length) {
+            alertElement.removeClass('d-block').addClass('d-none');
+        }
+    }
+    
+    // ✅ Hacer funciones disponibles globalmente
+    window.showModalAlert = showModalAlert;
+    window.hideModalAlert = hideModalAlert;
+    
+    // ✅ Función alternativa para mostrar errores sin depender de estructura específica
+    window.showReactivationError = function(message) {
+        console.log('🚨 Error reactivación:', message);
+        
+        // 1. SIEMPRE mostrar en notificación global para que se vea
+        showNotification('error', message);
+        
+        // 2. TAMBIÉN mostrar en el modal si está abierto
+        const modalBody = $('#modalReactivacion .modal-body');
+        if (modalBody.length && $('#modalReactivacion').hasClass('show')) {
+            // ✅ CORRECCIÓN: Buscar específicamente alertas de error dinámicas por clase
+            let errorAlert = modalBody.find('.alert-danger.dynamic-error').first();
+            
+            if (errorAlert.length === 0) {
+                // ✅ CREAR nueva alerta de error dinámico
+                errorAlert = $(`
+                    <div class="alert alert-danger alert-dismissible dynamic-error" style="margin-bottom: 15px;">
+                        <button type="button" class="close" onclick="$(this).parent().remove()">
+                            <span>&times;</span>
+                        </button>
+                        <i class="fas fa-exclamation-circle"></i> <strong id="reactivation-error-content">${message}</strong>
+                    </div>
+                `);
+                
+                // ✅ INSERTAR al INICIO del modal-body, ANTES de cualquier contenido
+                // Esto asegura que esté visible sin afectar el contenido estático
+                modalBody.prepend(errorAlert);
+            } else {
+                // ✅ Actualizar mensaje existente
+                errorAlert.find('#reactivation-error-content, strong').last().html(message);
+            }
+            
+            // ✅ Scroll al inicio del modal para que sea visible
+            modalBody.animate({ scrollTop: 0 }, 300);
+        }
+    };
+    
     function showConfirmation(title, message, icon, callback) {
         // Usar el modal de confirmación de la página
         $('#modalConfirmacionTitulo').html(`<i class="fas fa-${icon}"></i> ${title}`);
@@ -340,7 +426,6 @@ $(document).ready(function() {
         if ((e.ctrlKey || e.metaKey) && e.keyCode === 13) {
             e.preventDefault();
             $('#filtrosForm').submit();
-            console.log('?? Búsqueda activada via teclado');
         }
         
         // Escape para limpiar filtros
@@ -403,7 +488,11 @@ $(document).ready(function() {
         const cotizacionId = $('#cotizacionIdReactivacion').val();
         
         if (!motivo || motivo.length < 10) {
-            showNotification('warning', 'Debe proporcionar un motivo de al menos 10 caracteres');
+            const errorMessage = 'Debe proporcionar un motivo de al menos 10 caracteres';
+            
+            // ✅ CORRECCIÓN: Mostrar error SOLO en el modal para que el usuario lo vea
+            window.showReactivationError(errorMessage);
+            
             $('#motivoReactivacion').focus();
             return;
         }
@@ -421,24 +510,62 @@ $(document).ready(function() {
                 __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
             },
             success: function(response) {
+                // ✅ CORRECCIÓN: Siempre restablecer el botón primero
                 btn.prop('disabled', false).html('<i class="fas fa-undo"></i> Reactivar Cotización');
                 
-                if (response.success) {
+                if (response && response.success) {
+                    // ✅ Éxito: Cerrar modal y mostrar mensaje de éxito
                     $('#modalReactivacion').modal('hide');
-                    showNotification('success', response.message);
+                    showNotification('success', response.message || 'Cotización reactivada exitosamente');
                     
                     // Recargar página después de un momento para reflejar cambios
                     setTimeout(function() {
                         location.reload();
                     }, 1500);
                 } else {
-                    showNotification('error', response.message);
+                    // ❌ Error del servidor: Mostrar mensaje específico pero mantener modal abierto
+                    const errorMessage = response?.message || 'Error desconocido al reactivar la cotización';
+                    
+                    // ✅ MEJORA: Mostrar error SOLO en el modal para que el usuario lo vea
+                    window.showReactivationError(errorMessage);
+                    
+                    // Enfocar el campo de motivo para que el usuario pueda corregir
+                    $('#motivoReactivacion').focus();
                 }
             },
             error: function(xhr, status, error) {
+                // ✅ CORRECCIÓN: Restablecer botón en caso de error
                 btn.prop('disabled', false).html('<i class="fas fa-undo"></i> Reactivar Cotización');
-                console.error('Error en reactivación:', error);
-                showNotification('error', 'Error al procesar la reactivación');
+                
+                console.error('❌ Error en reactivación:', error);
+                console.error('❌ Status:', status);
+                console.error('❌ Response:', xhr.responseText);
+                
+                // ✅ MEJORA: Mensaje de error más específico según el código de estado
+                let errorMessage = 'Error al procesar la reactivación';
+                
+                if (xhr.status === 403) {
+                    errorMessage = 'No tiene permisos para reactivar esta cotización';
+                } else if (xhr.status === 404) {
+                    errorMessage = 'La cotización no fue encontrada';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Error interno del servidor. Contacte al administrador';
+                } else if (xhr.status === 0) {
+                    errorMessage = 'Error de conexión. Verifique su conexión a internet';
+                } else if (xhr.responseText) {
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.message || errorMessage;
+                    } catch (e) {
+                        // Si no es JSON válido, usar el mensaje por defecto
+                    }
+                }
+                
+                // ✅ MEJORA: Mostrar error SOLO en el modal para que el usuario lo vea
+                window.showReactivationError(errorMessage);
+                
+                // Enfocar el campo para que el usuario pueda reintentar
+                $('#motivoReactivacion').focus();
             }
         });
     });
@@ -449,9 +576,12 @@ $(document).ready(function() {
         $('#contadorMotivoReactivacion').text('0').removeClass('text-warning text-danger').addClass('text-muted');
         $('#cotizacionIdReactivacion').val('');
         $('#btnConfirmarReactivacion').prop('disabled', false).html('<i class="fas fa-undo"></i> Reactivar Cotización');
+        
+        // ✅ CORRECCIÓN: Limpiar solo alertas dinámicas, NO las estáticas
+        hideModalAlert('modalReactivacionAlert');
+        // ✅ Remover solo alertas de error dinámicas, mantener las estáticas
+        $(this).find('.modal-body .alert-danger.dynamic-error').remove();
     });
-    
-    console.log('? JavaScript de Cotizaciones Archivadas inicializado completamente');
     
     // ===============================
     // FUNCIONES ESPECÍFICAS PARA VERSIONES ARCHIVADAS
@@ -463,12 +593,6 @@ $(document).ready(function() {
             const versionId = $(this).attr('data-version-id');
             const cotizacionId = $(this).attr('data-cotizacion-id');
             const fromArchived = $(this).attr('data-from-archived') === 'true';
-
-            console.log('📄 Navegando a detalle de versión desde archivadas:', {
-                versionId: versionId,
-                cotizacionId: cotizacionId,
-                fromArchived: fromArchived
-            });
 
             // Navegar a la vista de detalle de la versión específica con parámetro de origen
             let url = '/Cotizaciones/Detalle/' + cotizacionId + '?versionId=' + versionId;
@@ -485,12 +609,6 @@ $(document).ready(function() {
             const versionId = $(this).attr('data-version-id');
             const cotizacionId = $(this).attr('data-cotizacion-id');
             const numeroVersion = $(this).attr('data-numero-version');
-            
-            console.log('📜 Cargando historial de versión desde archivadas:', {
-                versionId: versionId,
-                cotizacionId: cotizacionId,
-                numeroVersion: numeroVersion
-            });
             
             // Cerrar el modal de versiones primero
             $('#modalVersiones').modal('hide');
@@ -509,7 +627,6 @@ $(document).ready(function() {
                     numeroVersion: numeroVersion
                 }, function (data) {
                     $('#modalHistorialContent').html(data);
-                    console.log('✅ Historial de versión cargado exitosamente');
                 }).fail(function () {
                     $('#modalHistorialContent').html('<div class="p-4 text-center text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><p>Error al cargar el historial de la versión</p></div>');
                 });
@@ -520,8 +637,6 @@ $(document).ready(function() {
                 $('#modalVersiones').trigger('hidden.bs.modal.historialArchivadas');
             }
         });
-        
-        console.log('✅ Eventos de versiones archivadas inicializados');
     }
     
     // ===============================

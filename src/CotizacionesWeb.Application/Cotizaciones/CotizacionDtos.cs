@@ -201,3 +201,17 @@ public record ArchivoCotizacionDetalleDto(
     ArchivoCotizacionDto ArchivoInfo,
     CotizacionVersionDetalleDto CotizacionDetalle
 );
+
+// Request para reactivar cotización archivada
+public record ReactivarCotizacionRequest(
+    string CotizacionId,
+    string MotivoReactivacion
+);
+
+// Result para reactivar cotización archivada
+public record ReactivarCotizacionResult(
+    bool Success,
+    string? ErrorMessage,
+    string? CotizacionId,
+    decimal? NuevaVersion
+);

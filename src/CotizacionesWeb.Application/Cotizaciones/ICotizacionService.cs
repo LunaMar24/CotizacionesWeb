@@ -55,4 +55,7 @@ public interface ICotizacionService
     
     // Obtener detalle completo de archivo de cotización
     Task<ArchivoCotizacionDetalleDto?> GetArchivoCotizacionDetalleAsync(string cotizacionId);
+    
+    // Reactivar cotización archivada
+    Task<ReactivarCotizacionResult> ReactivarCotizacionAsync(ReactivarCotizacionRequest request, int userId);
 }

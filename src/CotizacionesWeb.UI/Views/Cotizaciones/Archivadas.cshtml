@@ -1,4 +1,4 @@
-@model CotizacionesWeb.UI.Models.CotizacionIndexViewModel
+ï»¿@model CotizacionesWeb.UI.Models.CotizacionIndexViewModel
 @{
     ViewData["Title"] = "Cotizaciones Archivadas";
 }
@@ -23,7 +23,7 @@
     <div class="card card-filtros-custom mb-4">
         <div class="card-header">
             <h3 class="card-title">
-                <i class="fas fa-filter"></i> Filtros de Búsqueda
+                <i class="fas fa-filter"></i> Filtros de BÃºsqueda
             </h3>
             <div class="card-tools">
                 <button type="button" class="btn btn-tool" data-card-widget="collapse">
@@ -34,23 +34,23 @@
         <div class="card-body">
             <form asp-action="Archivadas" method="get" id="filtrosForm">
                 <div class="row g-3">
-                    <!-- SECCIÓN: Búsqueda Principal -->
+                    <!-- SECCIÃ“N: BÃºsqueda Principal -->
                     <div class="col-12">
                         <div class="filter-section">
                             <h6 class="filter-section-title">
-                                <i class="fas fa-search text-primary"></i> Búsqueda Principal
+                                <i class="fas fa-search text-primary"></i> BÃºsqueda Principal
                             </h6>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <label class="form-label">Búsqueda General</label>
+                                    <label class="form-label">BÃºsqueda General</label>
                                     <input type="text" 
                                            class="form-control" 
                                            name="Filtros.Busqueda" 
                                            value="@Model.Filtros.Busqueda"
-                                           placeholder="ID de cotización, nombre de cliente o empresa...">
+                                           placeholder="ID de cotizaciÃ³n, nombre de cliente o empresa...">
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">Versión</label>
+                                    <label class="form-label">VersiÃ³n</label>
                                     <input type="number" 
                                            step="0.1"
                                            class="form-control" 
@@ -73,10 +73,10 @@
                                         }
                                         else
                                         {
-                                            <!-- Fallback estático si no hay datos dinámicos -->
-                                            <option value="CRC" selected="@(Model.Filtros.Moneda == "CRC")">? CRC - Colón</option>
-                                            <option value="USD" selected="@(Model.Filtros.Moneda == "USD")">$ USD - Dólar</option>
-                                            <option value="EUR" selected="@(Model.Filtros.Moneda == "EUR")">€ EUR - Euro</option>
+                                            <!-- Fallback estÃ¡tico si no hay datos dinÃ¡micos -->
+                                            <option value="CRC" selected="@(Model.Filtros.Moneda == "CRC")">? CRC - ColÃ³n</option>
+                                            <option value="USD" selected="@(Model.Filtros.Moneda == "USD")">$ USD - DÃ³lar</option>
+                                            <option value="EUR" selected="@(Model.Filtros.Moneda == "EUR")">â‚¬ EUR - Euro</option>
                                         }
                                     </select>
                                 </div>
@@ -84,7 +84,7 @@
                         </div>
                     </div>
 
-                    <!-- SECCIÓN: Fechas -->
+                    <!-- SECCIÃ“N: Fechas -->
                     <div class="col-md-6">
                         <div class="filter-section">
                             <h6 class="filter-section-title">
@@ -92,7 +92,7 @@
                             </h6>
                             <div class="row">
                                 <div class="col-12">
-                                    <label class="form-label text-muted">Fecha de Cotización</label>
+                                    <label class="form-label text-muted">Fecha de CotizaciÃ³n</label>
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label-sm">Desde:</label>
@@ -129,7 +129,7 @@
                         </div>
                     </div>
 
-                    <!-- SECCIÓN: Filtros Adicionales -->
+                    <!-- SECCIÃ“N: Filtros Adicionales -->
                     <div class="col-md-6">
                         <div class="filter-section">
                             <h6 class="filter-section-title">
@@ -158,7 +158,7 @@
                                            placeholder="0.00">
                                 </div>
                                 <div class="col-12 mt-2">
-                                    <label class="form-label">Usuario que Archivó</label>
+                                    <label class="form-label">Usuario que ArchivÃ³</label>
                                     <input type="text" 
                                            class="form-control form-control-sm" 
                                            name="Filtros.UsuarioArchivo" 
@@ -169,42 +169,42 @@
                         </div>
                     </div>
 
-                    <!-- SECCIÓN: Filtro Especial -->
+                    <!-- SECCIÃ“N: Filtro Especial -->
                     <div class="col-12">
                         <div class="filter-section filter-section-special">
                             <h6 class="filter-section-title">
-                                <i class="fas fa-list-ul text-success"></i> Búsqueda en Detalle de Productos
+                                <i class="fas fa-list-ul text-success"></i> BÃºsqueda en Detalle de Productos
                             </h6>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <label class="form-label">Código de Producto</label>
+                                    <label class="form-label">CÃ³digo de Producto</label>
                                     <input type="text" 
                                            class="form-control" 
                                            name="Filtros.BusquedaProducto" 
                                            value="@Model.Filtros.BusquedaProducto"
-                                           placeholder="Buscar por código de producto en los detalles...">
+                                           placeholder="Buscar por cÃ³digo de producto en los detalles...">
                                 </div>
                                 <div class="col-md-6">
                                     <div class="text-muted">
-                                        <label class="form-label text-muted">Descripción de Producto</label>
+                                        <label class="form-label text-muted">DescripciÃ³n de Producto</label>
                                         <input type="text" 
                                                class="form-control" 
                                                disabled
                                                placeholder="No disponible para cotizaciones archivadas">
                                         <small class="text-muted">
-                                            Las descripciones se obtienen dinámicamente del ERP y no están disponibles para búsqueda en archivadas.
+                                            Las descripciones se obtienen dinÃ¡micamente del ERP y no estÃ¡n disponibles para bÃºsqueda en archivadas.
                                         </small>
                                     </div>
                                 </div>
                             </div>
                             <small class="text-muted">
                                 <i class="fas fa-info-circle"></i> 
-                                Busca dentro de los códigos de producto de las líneas de detalle de las cotizaciones archivadas
+                                Busca dentro de los cÃ³digos de producto de las lÃ­neas de detalle de las cotizaciones archivadas
                             </small>
                         </div>
                     </div>
 
-                    <!-- SECCIÓN: Botones de Acción -->
+                    <!-- SECCIÃ“N: Botones de AcciÃ³n -->
                     <div class="col-12">
                         <div class="filter-actions">
                             <div class="d-flex justify-content-end gap-2">
@@ -229,14 +229,14 @@
                 <table class="table table-custom-modern">
                     <thead>
                         <tr>
-                            <th>ID COTIZACIÓN</th>
+                            <th>ID COTIZACIÃ“N</th>
                             <th>CLIENTE</th>
                             <th>EMPRESA</th>
                             <th>MONEDA</th>
-                            <th>USUARIO QUE ARCHIVÓ</th>
-                            <th>VERSIÓN</th>
+                            <th>USUARIO QUE ARCHIVÃ“</th>
+                            <th>VERSIÃ“N</th>
                             <th>MONTO</th>
-                            <th>FECHA CREACIÓN</th>
+                            <th>FECHA CREACIÃ“N</th>
                             <th>FECHA ARCHIVADO</th>
                             <th class="text-center">ACCIONES</th>
                         </tr>
@@ -341,7 +341,7 @@
                                         <button type="button" 
                                                 class="btn-reactivar" 
                                                 data-id="@cotizacion.CotizacionId"
-                                                title="Reactivar Cotización"
+                                                title="Reactivar CotizaciÃ³n"
                                                 requiere-permiso="COT_ARCHIVE_REACTIVATE"
                                                 tipo-restriccion="ocultar">
                                             <i class="fas fa-undo"></i>
@@ -376,7 +376,7 @@
 <div class="modal fade" id="modalHistorial" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content" id="modalHistorialContent">
-            <!-- Contenido cargado dinámicamente -->
+            <!-- Contenido cargado dinÃ¡micamente -->
         </div>
     </div>
 </div>
@@ -385,25 +385,25 @@
 <div class="modal fade" id="modalVersiones" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content" id="modalVersionesContent">
-            <!-- Contenido cargado dinámicamente -->
+            <!-- Contenido cargado dinÃ¡micamente -->
         </div>
     </div>
 </div>
 
-<!-- Modal de Confirmación Genérico -->
+<!-- Modal de ConfirmaciÃ³n GenÃ©rico -->
 <div class="modal fade" id="modalConfirmacion" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header" id="modalConfirmacionHeader">
                 <h5 class="modal-title" id="modalConfirmacionTitulo">
-                    <i class="fas fa-question-circle"></i> Confirmar Acción
+                    <i class="fas fa-question-circle"></i> Confirmar AcciÃ³n
                 </h5>
                 <button type="button" class="close" data-dismiss="modal">
                     <span>&times;</span>
                 </button>
             </div>
             <div class="modal-body" id="modalConfirmacionMensaje">
-                <!-- Mensaje dinámico -->
+                <!-- Mensaje dinÃ¡mico -->
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
@@ -413,34 +413,45 @@
     </div>
 </div>
 
-<!-- Modal para Reactivación -->
+<!-- Modal para ReactivaciÃ³n -->
 <div class="modal fade" id="modalReactivacion" tabindex="-1" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-undo text-success"></i> Reactivar Cotización
+                    <i class="fas fa-undo text-success"></i> Reactivar CotizaciÃ³n
                 </h5>
                 <button type="button" class="close" data-dismiss="modal">
                     <span>&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle"></i>
-                    <strong>¿Reactivar cotización archivada?</strong>
+                <!-- âœ… Ãrea para alertas dinÃ¡micas dentro del modal -->
+                <div id="modalReactivacionAlert" class="alert d-none" role="alert">
+                    <button type="button" class="close" onclick="hideModalAlert('modalReactivacionAlert')">
+                        <span>&times;</span>
+                    </button>
+                    <div id="modalReactivacionAlertContent"></div>
                 </div>
+                
+                <!-- âœ… ÃREA DE INFORMACIÃ“N ESTÃTICA - SIEMPRE VISIBLE -->
+                <div class="alert alert-info mb-3 static-info-area" style="border-radius: 8px;">
+                    <i class="fas fa-info-circle me-2"></i>
+          <strong>Â¿Reactivar CotizaciÃ³n archivada?</strong>
+                </div>
+                
                 <p class="mb-3" id="mensajeReactivacion">
-                    Está a punto de reactivar esta cotización archivada. La cotización volverá al estado <strong>Borrador</strong> y podrá editarla nuevamente.
+                    EstÃ¡ a punto de reactivar esta cotizaciÃ³n archivada. La cotizaciÃ³n volverÃ¡ al estado <strong>Borrador</strong> y podrÃ¡ editarla nuevamente.
                 </p>
+                
                 <div class="form-group">
                     <label for="motivoReactivacion" class="form-label">
-                        <strong>Motivo de reactivación (obligatorio):</strong>
+                        <strong>Motivo de reactivaciÃ³n (obligatorio):</strong>
                     </label>
                     <textarea id="motivoReactivacion" 
                               class="form-control" 
                               rows="4" 
-                              placeholder="Explique el motivo por el cual necesita reactivar esta cotización..."
+                              placeholder="Explique el motivo por el cual necesita reactivar esta cotizaciÃ³n..."
                               maxlength="500"
                               required></textarea>
                     <div class="form-text">
@@ -454,7 +465,7 @@
                     <i class="fas fa-times"></i> Cancelar
                 </button>
                 <button type="button" class="btn btn-success" id="btnConfirmarReactivacion">
-                    <i class="fas fa-undo"></i> Reactivar Cotización
+                    <i class="fas fa-undo"></i> Reactivar CotizaciÃ³n
                 </button>
             </div>
         </div>
