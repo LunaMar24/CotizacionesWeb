@@ -185,17 +185,21 @@
                                            placeholder="Buscar por código de producto en los detalles...">
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Descripción de Producto</label>
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="Filtros.BusquedaDescripcion" 
-                                           value="@Model.Filtros.BusquedaDescripcion"
-                                           placeholder="Buscar por descripción en los detalles...">
+                                    <div class="text-muted">
+                                        <label class="form-label text-muted">Descripción de Producto</label>
+                                        <input type="text" 
+                                               class="form-control" 
+                                               disabled
+                                               placeholder="No disponible para cotizaciones archivadas">
+                                        <small class="text-muted">
+                                            Las descripciones se obtienen dinámicamente del ERP y no están disponibles para búsqueda en archivadas.
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
                             <small class="text-muted">
                                 <i class="fas fa-info-circle"></i> 
-                                Busca dentro de los productos y descripciones de las líneas de detalle de las cotizaciones
+                                Busca dentro de los códigos de producto de las líneas de detalle de las cotizaciones archivadas
                             </small>
                         </div>
                     </div>
@@ -229,11 +233,11 @@
                             <th>CLIENTE</th>
                             <th>EMPRESA</th>
                             <th>MONEDA</th>
-                            <th>ESTADO</th>
+                            <th>USUARIO QUE ARCHIVÓ</th>
                             <th>VERSIÓN</th>
                             <th>MONTO</th>
                             <th>FECHA CREACIÓN</th>
-                            <th>FECHA MODIFICACIÓN</th>
+                            <th>FECHA ARCHIVADO</th>
                             <th class="text-center">ACCIONES</th>
                         </tr>
                     </thead>
@@ -263,7 +267,19 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="badge badge-archived">Archivada</span>
+                                    @if (!string.IsNullOrWhiteSpace(cotizacion.UsuarioQueArchivo))
+                                    {
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-user text-warning mr-1"></i>
+                                            <span class="text-dark">@cotizacion.UsuarioQueArchivo</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">
+                                            <i class="fas fa-question-circle"></i> No disponible
+                                        </span>
+                                    }
                                 </td>
                                 <td>
                                     <span class="badge badge-version">@FormatHelper.FormatVersion(cotizacion.NumeroVersion)</span>
@@ -275,14 +291,16 @@
                                     <i class="far fa-calendar"></i> @cotizacion.FechaCreacion.ToString("dd/MM/yyyy")
                                 </td>
                                 <td>
-                                    @if (cotizacion.FechaUltimaActualizacion.HasValue)
+                                    @if (cotizacion.FechaArchivado.HasValue)
                                     {
-                                        <i class="far fa-clock"></i> @cotizacion.FechaUltimaActualizacion.Value.ToString("dd/MM/yyyy")
-                                        <small class="text-muted d-block">Archivada</small>
+                                        <i class="far fa-archive"></i> @cotizacion.FechaArchivado.Value.ToString("dd/MM/yyyy")
+                                        <small class="text-muted d-block">@cotizacion.FechaArchivado.Value.ToString("HH:mm")</small>
                                     }
                                     else
                                     {
-                                        <span class="text-muted">-</span>
+                                        <span class="text-muted">
+                                            <i class="fas fa-question-circle"></i> No disponible
+                                        </span>
                                     }
                                 </td>
 

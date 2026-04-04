@@ -34,6 +34,10 @@ public class CotizacionViewModel
     public DateTime? FechaRechazo { get; set; }
     public char EnviadoERP { get; set; } = 'N';
     public DateTime? FechaEnvioERP { get; set; }
+    
+    // Campos específicos para cotizaciones archivadas
+    public string? UsuarioQueArchivo { get; set; }
+    public DateTime? FechaArchivado { get; set; }
 }
 
 public class CotizacionFiltrosViewModel
@@ -152,6 +156,7 @@ public class DetalleCotizacionViewModel
     public int DetalleVersionId { get; set; }
     public string ProductoId { get; set; } = string.Empty;
     public string ProductoNombre { get; set; } = string.Empty;
+    public string Descripcion { get; set; } = string.Empty;
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }
@@ -238,6 +243,7 @@ public class DetalleEditarViewModel
     public int DetalleVersionId { get; set; }
     public string ProductoId { get; set; } = string.Empty;
     public string ProductoNombre { get; set; } = string.Empty;
+    public string Descripcion { get; set; } = string.Empty;
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }

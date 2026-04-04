@@ -395,9 +395,14 @@ function inicializarEventosVersiones() {
     $('.btn-detalle-version').on('click', function () {
         const versionId = $(this).attr('data-version-id');
         const cotizacionId = $(this).attr('data-cotizacion-id');
+        const fromArchived = $(this).attr('data-from-archived') === 'true';
 
-        // Navegar a la vista de detalle de la versión específica
-        window.location.href = '/Cotizaciones/Detalle/' + cotizacionId + '?versionId=' + versionId;
+        // Navegar a la vista de detalle de la versión específica con parámetro de origen
+        let url = '/Cotizaciones/Detalle/' + cotizacionId + '?versionId=' + versionId;
+        if (fromArchived) {
+            url += '&fromArchived=true';
+        }
+        window.location.href = url;
     });
 
     // NUEVO: Ver Historial de Versión Específica
@@ -434,6 +439,9 @@ function inicializarEventosVersiones() {
         }
     });
 }
+
+// Hacer la función disponible globalmente
+window.inicializarEventosVersiones = inicializarEventosVersiones;
 
 function mostrarModalConfirmacion(titulo, mensaje, tipo, onConfirm) {
     const headerClasses = {

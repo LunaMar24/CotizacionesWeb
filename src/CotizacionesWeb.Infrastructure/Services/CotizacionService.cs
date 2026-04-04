@@ -356,6 +356,7 @@ public class CotizacionService : ICotizacionService
             d.VersionId,
             d.ProductoId,
             d.ProductoId, // TODO: Obtener nombre del producto desde ERP
+            d.Descripcion, // Descripcion almacenada en la base de datos
             d.Cantidad,
             d.PrecioUnitario,
             d.Descuento,
@@ -804,6 +805,7 @@ public class CotizacionService : ICotizacionService
                     {
                         VersionId = nuevaVersion.VersionId,
                         ProductoId = detalle.ProductoId,
+                        Descripcion = detalle.Descripcion,
                         Cantidad = detalle.Cantidad,
                         PrecioUnitario = detalle.PrecioUnitario,
                         Descuento = detalle.Descuento,
@@ -952,6 +954,7 @@ public class CotizacionService : ICotizacionService
             {
                 // Actualizar registro existente (preserva CreatedAt y CreatedBy)
                 detalleExistente.ProductoId = detalleRequest.ProductoId;
+                detalleExistente.Descripcion = detalleRequest.Descripcion;
                 detalleExistente.Cantidad = detalleRequest.Cantidad;
                 detalleExistente.PrecioUnitario = detalleRequest.PrecioUnitario;
                 detalleExistente.Descuento = detalleRequest.Descuento;
@@ -976,6 +979,7 @@ public class CotizacionService : ICotizacionService
             {
                 VersionId = versionId,
                 ProductoId = detalleRequest.ProductoId,
+                Descripcion = detalleRequest.Descripcion,
                 Cantidad = detalleRequest.Cantidad,
                 PrecioUnitario = detalleRequest.PrecioUnitario,
                 Descuento = detalleRequest.Descuento,
@@ -1801,6 +1805,153 @@ public class CotizacionService : ICotizacionService
         {
             _logger.LogError(ex, "Error al obtener detalle de archivo de cotización {CotizacionId}", cotizacionId);
             return null;
+        }
+    }
+
+    // Nuevo método específico para archivadas con filtros adicionales
+    public async Task<List<CotizacionListDto>> GetCotizacionesArchivadasAsync(GetCotizacionesArchivadasRequest request)
+    {
+        try
+        {
+            // Usar una consulta con JOIN explícito para incluir información del archivo
+            var query = from cot in _context.Cotizaciones
+                        join ver in _context.CotizacionesVersiones
+                            on new { cot.CotizacionId, VersionId = cot.VersionActual }
+                            equals new { ver.CotizacionId, VersionId = ver.VersionActual }
+                        join archivo in _context.ArchivosCotizacion
+                            on cot.CotizacionId equals archivo.CotizacionId
+                        join usuario in _context.Usuarios
+                            on archivo.UsuarioArchiva equals usuario.UsuarioId into usuarioGroup
+                        from usuario in usuarioGroup.DefaultIfEmpty()
+                        select new { Cotizacion = cot, Version = ver, Archivo = archivo, UsuarioArchivo = usuario };
+
+            // ✨ FILTRO ESPECÍFICO: Solo cotizaciones archivadas (X)
+            query = query.Where(x => x.Cotizacion.EstadoActual == 'X');
+
+            // Filtrar por rango de fechas de cotización
+            if (request.FechaDesde.HasValue)
+            {
+                var fechaDesdeInicioDia = request.FechaDesde.Value.Date;
+                query = query.Where(x => x.Cotizacion.CreatedAt >= fechaDesdeInicioDia);
+            }
+
+            if (request.FechaHasta.HasValue)
+            {
+                var fechaHastaFinDia = request.FechaHasta.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(x => x.Cotizacion.CreatedAt <= fechaHastaFinDia);
+            }
+
+            // Filtrar por fechas de archivado (ya incluidas en el query principal)
+            if (request.FechaArchivadoDesde.HasValue)
+            {
+                var fechaArchivadoDesde = request.FechaArchivadoDesde.Value.Date;
+                query = query.Where(x => x.Archivo.FechaArchivado >= fechaArchivadoDesde);
+            }
+
+            if (request.FechaArchivadoHasta.HasValue)
+            {
+                var fechaArchivadoHasta = request.FechaArchivadoHasta.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(x => x.Archivo.FechaArchivado <= fechaArchivadoHasta);
+            }
+
+            // Filtrar por usuario que archivó (ya incluido en el query principal)
+            if (!string.IsNullOrWhiteSpace(request.UsuarioArchivo))
+            {
+                var usuarioTerm = request.UsuarioArchivo.ToLower().Trim();
+                query = query.Where(x => x.UsuarioArchivo != null && x.UsuarioArchivo.Nombre.ToLower().Contains(usuarioTerm));
+            }
+
+            // Filtrar por búsqueda en detalle de productos
+            if (!string.IsNullOrWhiteSpace(request.BusquedaProducto))
+            {
+                var productoTerm = request.BusquedaProducto.ToLower().Trim();
+                var queryConDetalle = from q in query
+                                      join detalle in _context.DetallesCotizacionVersion
+                                          on q.Version.VersionId equals detalle.VersionId
+                                      where detalle.ProductoId.ToLower().Contains(productoTerm)
+                                      select q;
+
+                query = queryConDetalle.Distinct();
+            }
+
+            // Nota: La búsqueda por descripción de producto no está disponible 
+            // ya que DetalleCotizacionVersion solo almacena ProductoId
+            // La descripción se obtiene dinámicamente del ERP
+
+            // Filtrar por búsqueda general (solo texto: ID, Nombre, Empresa)
+            if (!string.IsNullOrWhiteSpace(request.Busqueda))
+            {
+                var busqueda = request.Busqueda.ToLower();
+                query = query.Where(x =>
+                    x.Cotizacion.CotizacionId.ToLower().Contains(busqueda) ||
+                    x.Version.NombreInteresado.ToLower().Contains(busqueda) ||
+                    x.Version.EmpresaInteresado.ToLower().Contains(busqueda)
+                );
+            }
+
+            // Filtrar por rango de monto
+            if (request.MontoDesde.HasValue)
+            {
+                query = query.Where(x => x.Cotizacion.MontoCotizacion >= request.MontoDesde.Value);
+            }
+
+            if (request.MontoHasta.HasValue)
+            {
+                query = query.Where(x => x.Cotizacion.MontoCotizacion <= request.MontoHasta.Value);
+            }
+
+            // Filtrar por versión específica
+            if (request.Version.HasValue)
+            {
+                query = query.Where(x => x.Version.NumeroVersion == request.Version.Value);
+            }
+
+            // Filtrar por moneda específica
+            if (!string.IsNullOrWhiteSpace(request.Moneda))
+            {
+                var moneda = request.Moneda.Trim().ToUpper();
+                query = query.Where(x => x.Cotizacion.Moneda.ToUpper() == moneda);
+            }
+
+            var resultados = await query
+                .OrderByDescending(x => x.Cotizacion.ModifiedAt) // Ordenar por fecha de modificación (fecha de archivado)
+                .ToListAsync();
+
+            _logger.LogInformation("Cotizaciones archivadas obtenidas con filtros específicos: {Count} registros", resultados.Count);
+
+            return resultados.Select(result =>
+            {
+                var c = result.Cotizacion;
+                var versionVigente = result.Version;
+                
+                return new CotizacionListDto(
+                    0,  // FASE 3: El DTO aún espera un ID numérico, usar 0 temporalmente
+                    c.CotizacionId,
+                    c.InteresadoId,
+                    versionVigente?.NombreInteresado ?? "",
+                    versionVigente?.EmpresaInteresado ?? "",
+                    c.EstadoActual,
+                    c.VersionActual,
+                    versionVigente?.NumeroVersion ?? 1.0m,
+                    c.CreatedAt,
+                    c.ModifiedAt,
+                    c.MontoCotizacion,
+                    c.FechaEnvio,
+                    c.Moneda,
+                    c.FechaAceptacion,
+                    c.FechaRechazo,
+                    c.EnviadoERP,
+                    c.FechaEnvioERP,
+                    // Información específica del archivo
+                    result.UsuarioArchivo?.Nombre,
+                    result.Archivo?.FechaArchivado
+                );
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener cotizaciones archivadas con filtros específicos");
+            throw;
         }
     }
 }

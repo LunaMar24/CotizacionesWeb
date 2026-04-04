@@ -22,6 +22,7 @@ public class CrearDetalleRequest
 {
     public string ProductoId { get; set; } = string.Empty;
     public string ProductoNombre { get; set; } = string.Empty;
+    public string Descripcion { get; set; } = string.Empty;
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }

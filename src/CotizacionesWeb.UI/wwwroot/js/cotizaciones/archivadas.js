@@ -1,12 +1,12 @@
-/**
- * JavaScript especÌfico para la pantalla de Cotizaciones Archivadas
- * Maneja la funcionalidad de filtros, modales y acciones especÌficas de archivadas
+Ôªø/**
+ * JavaScript espec√≠fico para la pantalla de Cotizaciones Archivadas
+ * Maneja la funcionalidad de filtros, modales y acciones espec√≠ficas de archivadas
  */
 
 $(document).ready(function() {
     
     // ===============================
-    // INICIALIZACI”N
+    // INICIALIZACI√ìN
     // ===============================
     
     console.log('??? Pantalla de Cotizaciones Archivadas cargada');
@@ -17,14 +17,14 @@ $(document).ready(function() {
     // Configurar eventos de filtros
     initFiltrosArchivadas();
     
-    // Configurar botones de acciÛn
+    // Configurar botones de acci√≥n
     initBotonesAccion();
     
     // Configurar modales
     initModales();
     
     // ===============================
-    // FUNCIONES DE INICIALIZACI”N
+    // FUNCIONES DE INICIALIZACI√ìN
     // ===============================
     
     function initTooltips() {
@@ -41,15 +41,15 @@ $(document).ready(function() {
             }
         });
         
-        // ValidaciÛn de rangos de fecha
+        // Validaci√≥n de rangos de fecha
         validateDateRanges();
         
-        // Auto-complete para usuario que archivÛ
+        // Auto-complete para usuario que archiv√≥
         initUsuarioArchivoAutocomplete();
     }
     
     function validateDateRanges() {
-        // Validar rango de fecha de cotizaciÛn
+        // Validar rango de fecha de cotizaci√≥n
         $('input[name="Filtros.FechaDesde"], input[name="Filtros.FechaHasta"]').on('change', function() {
             const desde = $('input[name="Filtros.FechaDesde"]').val();
             const hasta = $('input[name="Filtros.FechaHasta"]').val();
@@ -73,12 +73,12 @@ $(document).ready(function() {
     }
     
     function initUsuarioArchivoAutocomplete() {
-        // TODO: Implementar autocomplete para usuario que archivÛ
+        // TODO: Implementar autocomplete para usuario que archiv√≥
         // cuando se conecte con el servicio de usuarios
         $('input[name="Filtros.UsuarioArchivo"]').on('input', function() {
             const value = $(this).val();
             if (value && value.length >= 2) {
-                // AquÌ irÌa la lÛgica de autocomplete
+                // Aqu√≠ ir√≠a la l√≥gica de autocomplete
                 console.log('?? Buscando usuarios que coincidan con:', value);
             }
         });
@@ -106,14 +106,14 @@ $(document).ready(function() {
             verDetalle(cotizacionId);
         });
 
-        // Reactivar CotizaciÛn (funcionalidad futura)
+        // Reactivar Cotizaci√≥n (funcionalidad futura)
         $('.btn-reactivar').on('click', function(e) {
             e.preventDefault();
             const cotizacionId = $(this).attr('data-id');
             confirmarReactivacion(cotizacionId);
         });
         
-        // Limpiar filtros con confirmaciÛn
+        // Limpiar filtros con confirmaci√≥n
         $('a[href*="Archivadas"]:contains("Limpiar")').on('click', function(e) {
             const filtrosActivos = contarFiltrosActivos();
             if (filtrosActivos > 0) {
@@ -131,7 +131,7 @@ $(document).ready(function() {
             );
         });
         
-        // Ajustar tamaÒo de modales seg˙n contenido
+        // Ajustar tama√±o de modales seg√∫n contenido
         $('#modalHistorial').on('show.bs.modal', function() {
             $(this).find('.modal-dialog').addClass('modal-lg');
         });
@@ -167,7 +167,7 @@ $(document).ready(function() {
                     '<div class="p-4 text-center text-danger">' +
                     '<i class="fas fa-exclamation-triangle fa-2x mb-3"></i>' +
                     '<h5>Error al cargar el historial</h5>' +
-                    '<p class="text-muted">Por favor, intÈntalo de nuevo m·s tarde.</p>' +
+                    '<p class="text-muted">Por favor, int√©ntalo de nuevo m√°s tarde.</p>' +
                     '</div>'
                 );
             });
@@ -187,6 +187,9 @@ $(document).ready(function() {
         $.get('/Cotizaciones/Versiones/' + cotizacionId)
             .done(function(data) {
                 $('#modalVersionesContent').html(data);
+                
+                // Inicializar eventos espec√≠ficos para versiones desde archivadas
+                inicializarEventosVersionesArchivadas();
                 console.log('? Versiones cargadas exitosamente');
             })
             .fail(function(xhr, status, error) {
@@ -195,7 +198,7 @@ $(document).ready(function() {
                     '<div class="p-4 text-center text-danger">' +
                     '<i class="fas fa-exclamation-triangle fa-2x mb-3"></i>' +
                     '<h5>Error al cargar las versiones</h5>' +
-                    '<p class="text-muted">Por favor, intÈntalo de nuevo m·s tarde.</p>' +
+                    '<p class="text-muted">Por favor, int√©ntalo de nuevo m√°s tarde.</p>' +
                     '</div>'
                 );
             });
@@ -205,16 +208,16 @@ $(document).ready(function() {
         console.log('??? Navegando a detalle de archivo de:', cotizacionId);
         
         // Mostrar indicador de carga
-        showNotification('info', 'Cargando detalle del archivo de cotizaciÛn...');
+        showNotification('info', 'Cargando detalle del archivo de cotizaci√≥n...');
         
-        // Navegar a la vista especÌfica de detalle de archivo
+        // Navegar a la vista espec√≠fica de detalle de archivo
         window.location.href = '/Cotizaciones/ArchivoDetalle/' + cotizacionId;
     }
     
     function confirmarReactivacion(cotizacionId) {
-        console.log('?? Solicitando reactivaciÛn para:', cotizacionId);
+        console.log('?? Solicitando reactivaci√≥n para:', cotizacionId);
         
-        // Configurar el modal de reactivaciÛn
+        // Configurar el modal de reactivaci√≥n
         $('#cotizacionIdReactivacion').val(cotizacionId);
         $('#motivoReactivacion').val('');
         $('#contadorMotivoReactivacion').text('0');
@@ -251,17 +254,17 @@ $(document).ready(function() {
     function confirmarLimpiarFiltros(limpiarUrl) {
         const filtrosActivos = contarFiltrosActivos();
         
-        // Configurar modal de confirmaciÛn
+        // Configurar modal de confirmaci√≥n
         $('#modalConfirmacionTitulo').html('<i class="fas fa-broom"></i> Limpiar Filtros');
         $('#modalConfirmacionMensaje').html(
-            `<p>øDeseas limpiar todos los filtros activos?</p>
+            `<p>¬øDeseas limpiar todos los filtros activos?</p>
              <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
-                Se eliminar·n <strong>${filtrosActivos}</strong> filtro${filtrosActivos !== 1 ? 's' : ''} aplicado${filtrosActivos !== 1 ? 's' : ''}
+                Se eliminar√°n <strong>${filtrosActivos}</strong> filtro${filtrosActivos !== 1 ? 's' : ''} aplicado${filtrosActivos !== 1 ? 's' : ''}
              </div>`
         );
         
-        // Configurar botÛn de confirmaciÛn
+        // Configurar bot√≥n de confirmaci√≥n
         $('#btnConfirmarAccion').off('click').on('click', function() {
             console.log('?? Limpiando filtros...');
             $('#modalConfirmacion').modal('hide');
@@ -273,11 +276,11 @@ $(document).ready(function() {
     }
     
     // ===============================
-    // FUNCIONES DE NOTIFICACI”N
+    // FUNCIONES DE NOTIFICACI√ìN
     // ===============================
     
     function showNotification(type, message, duration = 5000) {
-        // Crear notificaciÛn toast personalizada
+        // Crear notificaci√≥n toast personalizada
         const toastId = 'toast-' + Date.now();
         const iconClass = {
             'success': 'fas fa-check-circle text-success',
@@ -302,7 +305,7 @@ $(document).ready(function() {
         // Mostrar toast
         toast.fadeIn();
         
-        // Auto-ocultar despuÈs del tiempo especificado
+        // Auto-ocultar despu√©s del tiempo especificado
         setTimeout(() => {
             toast.fadeOut(() => toast.remove());
         }, duration);
@@ -314,11 +317,11 @@ $(document).ready(function() {
     }
     
     function showConfirmation(title, message, icon, callback) {
-        // Usar el modal de confirmaciÛn de la p·gina
+        // Usar el modal de confirmaci√≥n de la p√°gina
         $('#modalConfirmacionTitulo').html(`<i class="fas fa-${icon}"></i> ${title}`);
         $('#modalConfirmacionMensaje').html(message);
         
-        // Configurar botÛn de confirmaciÛn
+        // Configurar bot√≥n de confirmaci√≥n
         $('#btnConfirmarAccion').off('click').on('click', function() {
             $('#modalConfirmacion').modal('hide');
             if (callback) callback();
@@ -337,7 +340,7 @@ $(document).ready(function() {
         if ((e.ctrlKey || e.metaKey) && e.keyCode === 13) {
             e.preventDefault();
             $('#filtrosForm').submit();
-            console.log('?? B˙squeda activada via teclado');
+            console.log('?? B√∫squeda activada via teclado');
         }
         
         // Escape para limpiar filtros
@@ -364,9 +367,9 @@ $(document).ready(function() {
         }
     );
     
-    // Mostrar informaciÛn adicional en tooltips
+    // Mostrar informaci√≥n adicional en tooltips
     $('.badge-archived').tooltip({
-        title: 'Esta cotizaciÛn ha sido archivada y est· en modo de solo lectura',
+        title: 'Esta cotizaci√≥n ha sido archivada y est√° en modo de solo lectura',
         placement: 'top'
     });
     
@@ -374,12 +377,12 @@ $(document).ready(function() {
     // EVENT HANDLERS PARA MODALES
     // ===============================
     
-    // Modal de ReactivaciÛn
+    // Modal de Reactivaci√≥n
     $('#modalReactivacion').on('shown.bs.modal', function() {
         $('#motivoReactivacion').focus();
     });
     
-    // Contador de caracteres para motivo de reactivaciÛn
+    // Contador de caracteres para motivo de reactivaci√≥n
     $('#motivoReactivacion').on('input', function() {
         const count = $(this).val().length;
         $('#contadorMotivoReactivacion').text(count);
@@ -393,7 +396,7 @@ $(document).ready(function() {
         }
     });
     
-    // Confirmar reactivaciÛn
+    // Confirmar reactivaci√≥n
     $('#btnConfirmarReactivacion').on('click', function() {
         const btn = $(this);
         const motivo = $('#motivoReactivacion').val().trim();
@@ -405,10 +408,10 @@ $(document).ready(function() {
             return;
         }
         
-        // Deshabilitar botÛn y mostrar loading
+        // Deshabilitar bot√≥n y mostrar loading
         btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Reactivando...');
         
-        // Enviar solicitud de reactivaciÛn
+        // Enviar solicitud de reactivaci√≥n
         $.ajax({
             url: '/Cotizaciones/Reactivar',
             type: 'POST',
@@ -418,13 +421,13 @@ $(document).ready(function() {
                 __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
             },
             success: function(response) {
-                btn.prop('disabled', false).html('<i class="fas fa-undo"></i> Reactivar CotizaciÛn');
+                btn.prop('disabled', false).html('<i class="fas fa-undo"></i> Reactivar Cotizaci√≥n');
                 
                 if (response.success) {
                     $('#modalReactivacion').modal('hide');
                     showNotification('success', response.message);
                     
-                    // Recargar p·gina despuÈs de un momento para reflejar cambios
+                    // Recargar p√°gina despu√©s de un momento para reflejar cambios
                     setTimeout(function() {
                         location.reload();
                     }, 1500);
@@ -433,9 +436,9 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                btn.prop('disabled', false).html('<i class="fas fa-undo"></i> Reactivar CotizaciÛn');
-                console.error('Error en reactivaciÛn:', error);
-                showNotification('error', 'Error al procesar la reactivaciÛn');
+                btn.prop('disabled', false).html('<i class="fas fa-undo"></i> Reactivar Cotizaci√≥n');
+                console.error('Error en reactivaci√≥n:', error);
+                showNotification('error', 'Error al procesar la reactivaci√≥n');
             }
         });
     });
@@ -445,10 +448,90 @@ $(document).ready(function() {
         $('#motivoReactivacion').val('');
         $('#contadorMotivoReactivacion').text('0').removeClass('text-warning text-danger').addClass('text-muted');
         $('#cotizacionIdReactivacion').val('');
-        $('#btnConfirmarReactivacion').prop('disabled', false).html('<i class="fas fa-undo"></i> Reactivar CotizaciÛn');
+        $('#btnConfirmarReactivacion').prop('disabled', false).html('<i class="fas fa-undo"></i> Reactivar Cotizaci√≥n');
     });
     
     console.log('? JavaScript de Cotizaciones Archivadas inicializado completamente');
+    
+    // ===============================
+    // FUNCIONES ESPEC√çFICAS PARA VERSIONES ARCHIVADAS
+    // ===============================
+    
+    function inicializarEventosVersionesArchivadas() {
+        // Manejar click en "Ver Detalle" desde modal de versiones de cotizaciones archivadas
+        $('.btn-detalle-version').off('click').on('click', function () {
+            const versionId = $(this).attr('data-version-id');
+            const cotizacionId = $(this).attr('data-cotizacion-id');
+            const fromArchived = $(this).attr('data-from-archived') === 'true';
+
+            console.log('üìÑ Navegando a detalle de versi√≥n desde archivadas:', {
+                versionId: versionId,
+                cotizacionId: cotizacionId,
+                fromArchived: fromArchived
+            });
+
+            // Navegar a la vista de detalle de la versi√≥n espec√≠fica con par√°metro de origen
+            let url = '/Cotizaciones/Detalle/' + cotizacionId + '?versionId=' + versionId;
+            if (fromArchived) {
+                url += '&fromArchived=true';
+            }
+            
+            showNotification('info', 'Cargando detalle de versi√≥n...');
+            window.location.href = url;
+        });
+
+        // Manejar click en "Ver Historial" desde modal de versiones de cotizaciones archivadas
+        $('.btn-historial-version').off('click').on('click', function () {
+            const versionId = $(this).attr('data-version-id');
+            const cotizacionId = $(this).attr('data-cotizacion-id');
+            const numeroVersion = $(this).attr('data-numero-version');
+            
+            console.log('üìú Cargando historial de versi√≥n desde archivadas:', {
+                versionId: versionId,
+                cotizacionId: cotizacionId,
+                numeroVersion: numeroVersion
+            });
+            
+            // Cerrar el modal de versiones primero
+            $('#modalVersiones').modal('hide');
+            
+            // Esperar a que se cierre completamente antes de abrir el historial
+            $('#modalVersiones').on('hidden.bs.modal.historialArchivadas', function () {
+                // Remover el event listener para evitar m√∫ltiples bindings
+                $(this).off('hidden.bs.modal.historialArchivadas');
+                
+                // Mostrar la modal de historial
+                $('#modalHistorialContent').html('<div class="text-center p-5"><div class="spinner-border text-primary"></div></div>');
+                $('#modalHistorial').modal('show');
+                
+                $.get('/Cotizaciones/HistorialVersion/' + versionId, {
+                    cotizacionId: cotizacionId,
+                    numeroVersion: numeroVersion
+                }, function (data) {
+                    $('#modalHistorialContent').html(data);
+                    console.log('‚úÖ Historial de versi√≥n cargado exitosamente');
+                }).fail(function () {
+                    $('#modalHistorialContent').html('<div class="p-4 text-center text-danger"><i class="fas fa-exclamation-triangle fa-2x mb-2"></i><p>Error al cargar el historial de la versi√≥n</p></div>');
+                });
+            });
+            
+            // Trigger el cierre si la modal ya est√° cerrada
+            if (!$('#modalVersiones').hasClass('show')) {
+                $('#modalVersiones').trigger('hidden.bs.modal.historialArchivadas');
+            }
+        });
+        
+        console.log('‚úÖ Eventos de versiones archivadas inicializados');
+    }
+    
+    // ===============================
+    // FUNCIONES GLOBALES (accesibles desde cualquier parte)
+    // ===============================
+    
+    // Hacer la funci√≥n disponible globalmente para que pueda ser llamada 
+    // desde archivos cargados din√°micamente o cuando el modal se reutilice
+    window.inicializarEventosVersiones = inicializarEventosVersionesArchivadas;
+    window.inicializarEventosVersionesArchivadas = inicializarEventosVersionesArchivadas;
 });
 
 // ===============================

@@ -20,7 +20,10 @@ public record CotizacionListDto(
     DateTime? FechaAceptacion,
     DateTime? FechaRechazo,
     char EnviadoERP,
-    DateTime? FechaEnvioERP
+    DateTime? FechaEnvioERP,
+    // Campos específicos para cotizaciones archivadas
+    string? UsuarioQueArchivo = null,
+    DateTime? FechaArchivado = null
 );
 
 public record CotizacionVersionDto(
@@ -47,6 +50,7 @@ public record DetalleCotizacionDto(
     int VersionId,
     string ProductoId,
     string ProductoNombre,
+    string Descripcion,
     decimal Cantidad,
     decimal PrecioUnitario,
     decimal Descuento,
@@ -79,6 +83,22 @@ public record GetCotizacionesListRequest(
     decimal? MontoHasta,
     decimal? Version,
     string? Moneda
+);
+
+// Request específico para cotizaciones archivadas con filtros adicionales
+public record GetCotizacionesArchivadasRequest(
+    string? Busqueda,
+    DateTime? FechaDesde,
+    DateTime? FechaHasta,
+    DateTime? FechaArchivadoDesde,
+    DateTime? FechaArchivadoHasta,
+    decimal? MontoDesde,
+    decimal? MontoHasta,
+    decimal? Version,
+    string? Moneda,
+    string? UsuarioArchivo,
+    string? BusquedaProducto,
+    string? BusquedaDescripcion
 );
 
 public record CopiarVersionRequest(
@@ -117,6 +137,7 @@ public record ActualizarDetalleRequest
     public int DetalleVersionId { get; set; } // 0 = nuevo detalle, >0 = actualizar existente
     public string ProductoId { get; set; } = string.Empty;
     public string ProductoNombre { get; set; } = string.Empty;
+    public string Descripcion { get; set; } = string.Empty;
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
     public decimal Descuento { get; set; }

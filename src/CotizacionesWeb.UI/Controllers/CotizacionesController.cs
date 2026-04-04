@@ -151,15 +151,19 @@ public class CotizacionesController : Controller
         TempData["Warning"] = "Moneda no soportada. Se muestran todas las monedas.";
       }
 
-      var request = new GetCotizacionesListRequest(
-          null, // Estados siempre null para archivadas
+      var request = new GetCotizacionesArchivadasRequest(
           filtros.Busqueda,
           filtros.FechaDesde,
           filtros.FechaHasta,
+          filtros.FechaArchivadoDesde,
+          filtros.FechaArchivadoHasta,
           filtros.MontoDesde,
           filtros.MontoHasta,
           filtros.Version,
-          filtros.Moneda
+          filtros.Moneda,
+          filtros.UsuarioArchivo,
+          filtros.BusquedaProducto,
+          filtros.BusquedaDescripcion
       );
 
       var cotizaciones = await _cotizacionService.GetCotizacionesArchivadasAsync(request);
@@ -187,7 +191,10 @@ public class CotizacionesController : Controller
           FechaAceptacion = c.FechaAceptacion,
           FechaRechazo = c.FechaRechazo,
           EnviadoERP = c.EnviadoERP,
-          FechaEnvioERP = c.FechaEnvioERP
+          FechaEnvioERP = c.FechaEnvioERP,
+          // Campos específicos para cotizaciones archivadas
+          UsuarioQueArchivo = c.UsuarioQueArchivo,
+          FechaArchivado = c.FechaArchivado
         }).ToList(),
         Filtros = filtros
       };
@@ -407,7 +414,7 @@ public class CotizacionesController : Controller
 
   [HttpGet("Cotizaciones/Detalle/{cotizacionId}")]
   [RequierePermiso("COT_VIEW_DETAIL")]
-  public async Task<IActionResult> Detalle(string cotizacionId, int? versionId = null)
+  public async Task<IActionResult> Detalle(string cotizacionId, int? versionId = null, bool fromArchived = false)
   {
     try
     {
@@ -485,6 +492,7 @@ public class CotizacionesController : Controller
           DetalleVersionId = d.DetalleVersionId,
           ProductoId = d.ProductoId,
           ProductoNombre = d.ProductoNombre,
+          Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
           Descuento = d.Descuento,
@@ -495,6 +503,7 @@ public class CotizacionesController : Controller
 
       ViewBag.EsVersionEspecifica = versionId.HasValue;
       ViewBag.NumeroVersionMostrada = detalleDto.Version.NumeroVersion;
+      ViewBag.FromArchived = fromArchived; // Nueva bandera para saber de dónde viene
 
       return View(viewModel);
     }
@@ -645,6 +654,7 @@ public class CotizacionesController : Controller
         {
           ProductoId = d.ProductoId,
           ProductoNombre = d.ProductoNombre,
+          Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
           Descuento = d.Descuento,
@@ -760,6 +770,7 @@ public class CotizacionesController : Controller
           DetalleVersionId = d.DetalleVersionId,
           ProductoId = d.ProductoId,
           ProductoNombre = d.ProductoNombre,
+          Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
           Descuento = d.Descuento,
@@ -1015,6 +1026,7 @@ public class CotizacionesController : Controller
           DetalleVersionId = d.DetalleVersionId,
           ProductoId = d.ProductoId,
           ProductoNombre = d.ProductoNombre,
+          Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
           Descuento = d.Descuento,
@@ -1468,6 +1480,7 @@ public class CotizacionesController : Controller
           DetalleVersionId = d.DetalleVersionId,
           ProductoId = d.ProductoId,
           ProductoNombre = d.ProductoNombre,
+          Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
           Descuento = d.Descuento,

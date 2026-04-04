@@ -26,6 +26,10 @@ public class DetalleCotizacionVersionConfiguration : IEntityTypeConfiguration<De
                .HasMaxLength(20)
                .IsRequired();
         
+        builder.Property(d => d.Descripcion)
+               .HasMaxLength(254)
+               .IsRequired();
+        
         builder.Property(d => d.Cantidad)
                .HasColumnType("decimal(18,4)")
                .IsRequired();

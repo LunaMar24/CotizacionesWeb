@@ -1,6 +1,6 @@
-/* Estilos especÌficos para la pantalla de Cotizaciones Archivadas */
+Ôªø/* Estilos espec√≠ficos para la pantalla de Cotizaciones Archivadas */
 
-/* Secciones de Filtros EspecÌficas para Archivadas */
+/* Secciones de Filtros Espec√≠ficas para Archivadas */
 .filter-section {
     background-color: #f9fafb;
     border: 1px solid #e5e7eb;
@@ -31,7 +31,7 @@
     font-size: 0.8rem;
 }
 
-/* SecciÛn especial de b˙squeda en detalle */
+/* Secci√≥n especial de b√∫squeda en detalle */
 .filter-section-special {
     background-color: #f0f9ff;
     border-color: #bae6fd;
@@ -56,7 +56,7 @@
     display: block;
 }
 
-/* ¡rea de botones de acciÛn - mismos colores que index.css */
+/* √Årea de botones de acci√≥n - mismos colores que index.css */
 .filter-actions {
     background-color: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -74,7 +74,7 @@
     letter-spacing: 0.5px;
 }
 
-/* BotÛn Buscar - mismo estilo que btn-primary de index */
+/* Bot√≥n Buscar - mismo estilo que btn-primary de index */
 .filter-actions .btn-primary {
     background-color: var(--color-primary);
     border-color: var(--color-primary);
@@ -91,7 +91,7 @@
     color: white;
 }
 
-/* BotÛn Limpiar - estilo secundario consistente */
+/* Bot√≥n Limpiar - estilo secundario consistente */
 .filter-actions .btn-secondary {
     background-color: #6c757d;
     border-color: #6c757d;
@@ -109,12 +109,12 @@
     color: white;
 }
 
-/* Utilities especÌficas para archivadas */
+/* Utilities espec√≠ficas para archivadas */
 .gap-2 {
     gap: 0.5rem !important;
 }
 
-/* Badges especÌficos para archivadas - mismo estilo que index.css */
+/* Badges espec√≠ficos para archivadas - mismo estilo que index.css */
 .badge-archived {
     background-color: #343a40; /* Mismo color que badge-dark-custom */
     color: white;
@@ -135,7 +135,7 @@
     background-color: #f8fafc;
 }
 
-/* InformaciÛn de archivado */
+/* Informaci√≥n de archivado */
 .archivo-info {
     background-color: #fef3c7;
     border: 1px solid #f59e0b; /* Mismo color que btn-action-warning */
@@ -151,7 +151,7 @@
     color: #f59e0b; /* Consistente con paleta de warning */
 }
 
-/* BotÛn de reactivaciÛn especÌfico - mismo estilo que btn-action-success */
+/* Bot√≥n de reactivaci√≥n espec√≠fico - mismo estilo que btn-action-success */
 .btn-reactivar {
     background-color: #10b981 !important; /* Mismo verde que btn-action-success */
     border-color: #10b981 !important;
@@ -169,7 +169,81 @@
     box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
 }
 
-/* Botones de acciÛn especÌficos para archivadas - manteniendo consistencia */
+/* BOTONES DE ACCI√ìN PARA MODALES - HEREDAR DE index.css */
+/* Asegurar que los estilos de botones del modal funcionen desde archivadas */
+.btn-group-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.btn-action {
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.btn-action:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-action:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Colores de botones seg√∫n la imagen */
+.btn-action-edit {
+    background-color: #f59e0b; /* Amarillo/Naranja - Editar */
+}
+
+.btn-action-edit:hover {
+    background-color: #d97706;
+}
+
+.btn-action-info {
+    background-color: #3b82f6; /* Azul - Info/Historial */
+}
+
+.btn-action-info:hover {
+    background-color: #2563eb;
+}
+
+.btn-action-secondary {
+    background-color: #6366f1; /* Morado/Azul - Versiones */
+}
+
+.btn-action-secondary:hover {
+    background-color: #4f46e5;
+}
+
+.btn-action-copy {
+    background-color: #10b981; /* Verde - Copiar */
+}
+
+.btn-action-copy:hover {
+    background-color: #059669;
+}
+
+.btn-action-delete {
+    background-color: #ef4444; /* Rojo - Duplicar/Eliminar */
+}
+
+.btn-action-delete:hover {
+    background-color: #dc2626;
+}
+
+/* Botones de acci√≥n espec√≠ficos para archivadas - manteniendo consistencia */
 .btn-action-archivadas {
     width: 36px;
     height: 36px;
@@ -219,7 +293,7 @@
     box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
 }
 
-/* Campos de fecha especÌficos para archivado */
+/* Campos de fecha espec√≠ficos para archivado */
 .fecha-archivado-group {
     background-color: #fefce8;
     border: 1px solid #eab308;
@@ -242,7 +316,7 @@
     box-shadow: 0 0 0 0.2rem rgba(234, 179, 8, 0.25);
 }
 
-/* Header especÌfico para archivadas - tonos grises consistentes */
+/* Header espec√≠fico para archivadas - tonos grises consistentes */
 .header-archivadas {
     background: linear-gradient(135deg, #6c757d 0%, #545b62 100%); /* Gradiente con colores de paleta */
     color: white;
@@ -269,7 +343,7 @@
     font-size: 0.95rem;
 }
 
-/* BotÛn "Volver a GestiÛn" - mismo estilo que btn-secondary */
+/* Bot√≥n "Volver a Gesti√≥n" - mismo estilo que btn-secondary */
 .header-archivadas .btn-secondary {
     background-color: #6c757d;
     border-color: #6c757d;
@@ -291,7 +365,7 @@
     color: white;
 }
 
-/* Responsive especÌfico para archivadas */
+/* Responsive espec√≠fico para archivadas */
 @media (max-width: 768px) {
     .filter-section {
         margin-bottom: 12px;

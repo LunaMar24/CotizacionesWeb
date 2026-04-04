@@ -412,6 +412,7 @@ function inicializarSelect2Productos() {
             // Obtener porcentaje de impuesto según configuración del sistema
             const porcentajeImpuesto = obtenerPorcentajeImpuesto(data.porcentajeImpuesto);
             $('#modalPorcentajeImpuesto').val(porcentajeImpuesto);
+            $('#modalPorcentajeImpuestoDisplay').val(porcentajeImpuesto.toFixed(2) + '%');
             
             console.log(`💰 Impuesto configurado: ${porcentajeImpuesto}% (ERP: ${data.porcentajeImpuesto || 'N/A'})`);
             
@@ -583,6 +584,7 @@ function abrirModalDetalle(index) {
         $('#modalPrecioUnitario').val(precio);
         $('#modalDescuento').val(descuento);
         $('#modalPorcentajeImpuesto').val(porcentajeImpuesto);
+        $('#modalPorcentajeImpuestoDisplay').val(porcentajeImpuesto.toFixed(2) + '%');
         
         calcularTotalLinea();
     } else {
@@ -590,6 +592,7 @@ function abrirModalDetalle(index) {
         $('#modalEditarDetalleTitle').html('<i class="fas fa-plus"></i> Agregar Detalle');
         $('#modalCantidad').val('1');
         $('#modalDescuento').val('0');
+        $('#modalPorcentajeImpuestoDisplay').val('0%');
     }
     
     $('#modalEditarDetalle').modal('show');
@@ -616,6 +619,7 @@ function guardarDetalle() {
         actualizarFilaDetalle(detalleEditandoIndex, {
             productoId: productoId,
             productoNombre: productoNombre,
+            descripcion: $('#modalDescripcionProducto').val() || '',
             cantidad: cantidad,
             precioUnitario: precio,
             descuento: descuento,
@@ -628,6 +632,7 @@ function guardarDetalle() {
             detalleVersionId: 0, // Nuevo registro
             productoId: productoId,
             productoNombre: productoNombre,
+            descripcion: $('#modalDescripcionProducto').val() || '',
             cantidad: cantidad,
             precioUnitario: precio,
             descuento: descuento,
@@ -665,11 +670,20 @@ function actualizarFilaDetalle(index, datos) {
         fila.find('.descuento-display').removeClass('text-danger').addClass('text-muted').text('-');
     }
     
+    // Actualizar display del porcentaje de impuesto
+    const $porcentajeCell = fila.find('td').eq(5); // La sexta columna (índice 5) es la del porcentaje
+    if (datos.porcentajeImpuesto > 0) {
+        $porcentajeCell.html(`<span class="badge badge-info">${datos.porcentajeImpuesto.toFixed(2)}%</span>`);
+    } else {
+        $porcentajeCell.html(`<span class="badge badge-secondary">0%</span>`);
+    }
+    
     fila.find('.total-linea-display').text(formatCurrency(datos.totalLinea));
     
     // Actualizar inputs ocultos
     fila.find('input[name$=".ProductoId"]').val(datos.productoId);
     fila.find('input[name$=".ProductoNombre"]').val(datos.productoNombre);
+    fila.find('input[name$=".Descripcion"]').val(datos.descripcion || '');
     fila.find('input[name$=".Cantidad"]').val(datos.cantidad.toString());
     fila.find('input[name$=".PrecioUnitario"]').val(datos.precioUnitario.toString());
     fila.find('input[name$=".Descuento"]').val(datos.descuento.toString());
@@ -752,6 +766,7 @@ function agregarNuevaFilaDetalle(datos) {
             <td>
                 <span class="producto-nombre">${datos.productoNombre}</span>
                 <input type="hidden" name="Detalles[${nuevoIndex}].ProductoNombre" value="${datos.productoNombre}" />
+                <input type="hidden" name="Detalles[${nuevoIndex}].Descripcion" value="${datos.descripcion || ''}" />
             </td>
             <td class="text-right">
                 <span class="cantidad-display">${formatNumber(datos.cantidad, 2)}</span>
@@ -767,6 +782,12 @@ function agregarNuevaFilaDetalle(datos) {
                     `<span class="text-muted descuento-display">-</span>`
                 }
                 <input type="hidden" name="Detalles[${nuevoIndex}].Descuento" value="${datos.descuento.toString()}" />
+            </td>
+            <td class="text-right">
+                ${datos.porcentajeImpuesto > 0 ? 
+                    `<span class="badge badge-info">${datos.porcentajeImpuesto.toFixed(2)}%</span>` :
+                    `<span class="badge badge-secondary">0%</span>`
+                }
             </td>
             <td class="text-right">
                 <strong class="total-linea-display">${formatCurrency(datos.totalLinea)}</strong>
@@ -954,6 +975,8 @@ function limpiarModalDetalle() {
     $('#modalPrecioUnitario').val('');
     $('#modalDescuento').val('0');
     $('#modalPorcentajeImpuesto').val('0');
+    $('#modalPorcentajeImpuestoDisplay').val('0%');
+    $('#modalDescripcionProducto').val('');
     $('#modalTotalLinea').text(formatCurrency(0));
     $('#detalleIndex').val('');
     $('#detalleVersionId').val('');

@@ -45,7 +45,9 @@ public class RequierePermisoTagHelper : TagHelper
                 }
                 else if (output.TagName == "button")
                 {
-                    output.Attributes.SetAttribute("style", "cursor: not-allowed; opacity: 0.5;");
+                    // CAMBIO: No modificar el estilo de botones, solo deshabilitarlos
+                    // Para que mantengan su apariencia visual original con colores
+                    output.Attributes.SetAttribute("style", "cursor: not-allowed; opacity: 0.7;");
                 }
             }
         }

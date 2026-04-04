@@ -5,7 +5,11 @@ public interface ICotizacionService
     // Listar cotizaciones (versión actual vigente)
     Task<List<CotizacionListDto>> GetCotizacionesListAsync(GetCotizacionesListRequest request);
     
-    // Listar cotizaciones archivadas
+    // Listar cotizaciones archivadas con filtros específicos
+    Task<List<CotizacionListDto>> GetCotizacionesArchivadasAsync(GetCotizacionesArchivadasRequest request);
+    
+    // Método legacy para mantener compatibilidad (deprecated)
+    [Obsolete("Use GetCotizacionesArchivadasAsync(GetCotizacionesArchivadasRequest) instead")]
     Task<List<CotizacionListDto>> GetCotizacionesArchivadasAsync(GetCotizacionesListRequest request);
     
     // Obtener historial de la versión actual de una cotización
