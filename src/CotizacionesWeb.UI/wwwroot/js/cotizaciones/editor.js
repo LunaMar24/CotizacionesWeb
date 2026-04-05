@@ -1,23 +1,19 @@
-﻿// ========================================
-// COTIZACIONES EDITAR - JavaScript
-// ========================================
-
-// Variables globales
-let productosDisponibles = []; // Se cargará dinámicamente desde ERP vía Select2
+﻿// Variables globales
+let productosDisponibles = [];
 let monedaActual = 'CRC';
 let detalleEditandoIndex = -1;
-let estadoActual = 'B'; // Estado actual de la cotización
-let esNuevaCotizacion = false; // Indica si es una nueva cotización
+let estadoActual = 'B';
+let esNuevaCotizacion = false;
 
 $(document).ready(function() {
-if (typeof $ === 'undefined') {
-    console.error('jQuery no está disponible');
-    return;
-}
+    if (typeof $ === 'undefined') {
+        console.error('jQuery no está disponible');
+        return;
+    }
     
-if (typeof $.fn.CardWidget === 'undefined') {
-    console.warn('AdminLTE CardWidget no está disponible');
-}
+    if (typeof $.fn.CardWidget === 'undefined') {
+        console.warn('AdminLTE CardWidget no está disponible');
+    }
     
 // ✅ La inicialización de window.cotizacionGuardada se hace en inicializarVista()
     
@@ -25,27 +21,20 @@ if (typeof $.fn.CardWidget === 'undefined') {
 // Los navegadores modernos NO permiten usar modales personalizados en beforeunload
 // Este evento solo se dispara para: cerrar tab, cerrar ventana, refresh (F5)
 // Para navegación interna (links, botones), usamos modal Bootstrap más abajo
-$(window).on('beforeunload', function(e) {
-    if (verificarCambiosSinGuardar()) {
-        // Mensaje genérico (navegadores modernos muestran su propio texto)
-        const mensaje = 'Tiene cambios sin guardar que se perderán';
-        e.returnValue = mensaje;
-        return mensaje;
-    }
-});
+    $(window).on('beforeunload', function(e) {
+        if (verificarCambiosSinGuardar()) {
+            const mensaje = 'Tiene cambios sin guardar que se perderán';
+            e.returnValue = mensaje;
+            return mensaje;
+        }
+    });
     
-    // ✅ NAVEGACIÓN INTERNA: Usar modal Bootstrap (mejor UX)
-    // Interceptar clicks en enlaces para mostrar confirmación con modal
+    // Interceptar clicks en enlaces para confirmar salida con cambios
     $(document).on('click', 'a[href]:not(.btn-guardar):not([data-toggle])', function(e) {
         const href = $(this).attr('href');
         
         if (href && href !== '#' && !href.startsWith('#') && href !== window.location.href) {
             const hayCambios = verificarCambiosSinGuardar();
-            console.log('🔍 Click en enlace detectado:', {
-                href: href,
-                hayCambios: hayCambios,
-                cotizacionGuardada: window.cotizacionGuardada
-            });
             
             if (hayCambios) {
                 e.preventDefault();
@@ -55,15 +44,10 @@ $(window).on('beforeunload', function(e) {
         }
     });
     
-    // Botón específico de "Volver al Listado" (mayor prioridad)
+    // Control específico para botón "Volver al Listado"
     $('a[href*="/Cotizaciones"]:contains("Volver al Listado"), a[href="/Cotizaciones"], a[href$="/Cotizaciones/Index"]').on('click', function(e) {
         const href = $(this).attr('href');
         const hayCambios = verificarCambiosSinGuardar();
-        console.log('🔍 Click en "Volver al Listado":', {
-            href: href,
-            hayCambios: hayCambios,
-            cotizacionGuardada: window.cotizacionGuardada
-        });
         
         if (hayCambios) {
             e.preventDefault();
@@ -77,43 +61,17 @@ $(window).on('beforeunload', function(e) {
         window.cotizacionGuardada = false;
     });
     
-    // Marcar cambios al interactuar con líneas de detalle
     $(document).on('click', '#btnAgregarLinea, .btn-editar-detalle, .btn-eliminar-detalle, #btnGuardarDetalle', function() {
         window.cotizacionGuardada = false;
-        console.log('🔄 Interacción con líneas de detalle: marcando como cambios sin guardar');
     });
     
-    // Detectar cambios en versión y tipo de cambio
     $(document).on('change', '#NumeroVersion, #TipoCambio', function() {
         window.cotizacionGuardada = false;
     });
     
-    // ✅ REMOVER el listener global de moneda - se maneja dinámicamente
-    // $(document).on('change', '#MonedaSelect', function() {
-    //     window.cotizacionGuardada = false;
-    // });
-    
     inicializarVista();
     configurarEventos();
     cargarDatosTemporales();
-    
-    // ✅ FUNCIÓN DE DEBUG GLOBAL para verificar campos del modal
-    window.debugModalDescripcion = function() {
-        console.log('=== DEBUG MODAL DESCRIPCIÓN ===');
-        console.log('Campo existe?:', $('#modalDescripcionProducto').length > 0);
-        console.log('Valor actual:', $('#modalDescripcionProducto').val());
-        console.log('Tipo de elemento:', $('#modalDescripcionProducto').prop('type'));
-        console.log('Es visible?:', $('#modalDescripcionProducto').is(':visible'));
-        console.log('Está deshabilitado?:', $('#modalDescripcionProducto').is(':disabled'));
-        console.log('Todos los inputs con mismo ID:', $('input[id="modalDescripcionProducto"]').length);
-        console.log('==============================');
-        
-        // Probar establecer un valor
-        $('#modalDescripcionProducto').val('PRUEBA DE DEBUG');
-        console.log('Después de establecer valor:', $('#modalDescripcionProducto').val());
-        
-        return $('#modalDescripcionProducto');
-    };
 });
 
 // ========================================
@@ -121,21 +79,22 @@ $(window).on('beforeunload', function(e) {
 // ========================================
 
 function inicializarVista() {
-if (window.FormatConfig) {
-    monedaActual = window.FormatConfig.moneda || 'CRC';
-    estadoActual = window.FormatConfig.estado || 'B';
-    esNuevaCotizacion = window.FormatConfig.esNuevaCotizacion || false;
-} else {
-    monedaActual = $('#formEditarCotizacion').find('input[name="Moneda"]').val() || 'CRC';
-    const estadoBadge = $('.header-title .badge').text().trim();
-    estadoActual = detectarEstadoDeTexto(estadoBadge);
-    esNuevaCotizacion = false;
-}
+    if (window.FormatConfig) {
+        monedaActual = window.FormatConfig.moneda || 'CRC';
+        estadoActual = window.FormatConfig.estado || 'B';
+        esNuevaCotizacion = window.FormatConfig.esNuevaCotizacion || false;
+    } else {
+        monedaActual = $('#formEditarCotizacion').find('input[name="Moneda"]').val() || 'CRC';
+        const estadoBadge = $('.header-title .badge').text().trim();
+        estadoActual = detectarEstadoDeTexto(estadoBadge);
+        esNuevaCotizacion = false;
+    }
             
-const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
-    window.FormatUtils.isEditable(estadoActual) : 
-    (estadoActual === 'B');
+    const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
+        window.FormatUtils.isEditable(estadoActual) : 
+        (estadoActual === 'B');
     
+    // Inicializar AdminLTE CardWidget
     if (typeof $.fn.CardWidget !== 'undefined') {
         try {
             $('[data-card-widget="collapse"]').CardWidget();
@@ -144,6 +103,7 @@ const esEditable = (typeof window.FormatUtils !== 'undefined') ?
         }
     }
     
+    // Permitir colapsar cards haciendo click en el header
     $('.card-header[data-card-widget="collapse"]').on('click', function(e) {
         if (!$(e.target).closest('.btn').length) {
             $(this).find('.btn[data-card-widget="collapse"]').click();
@@ -158,16 +118,8 @@ const esEditable = (typeof window.FormatUtils !== 'undefined') ?
         mostrarAvisoNoEditable();
     }
     
-    // ✅ INICIALIZAR ESTADO DE GUARDADO según el contexto
-    if (esNuevaCotizacion) {
-        // Para nuevas cotizaciones, comenzar sin cambios pendientes
-        window.cotizacionGuardada = true;
-    } else {
-        // Para ediciones, comenzar sin cambios pendientes (estado inicial)
-        window.cotizacionGuardada = true;
-    }
-    
-    console.log('💾 Estado inicial de guardado:', window.cotizacionGuardada);
+    // Inicializar estado de guardado
+    window.cotizacionGuardada = true;
     
     // Almacenar valores originales para detección de cambios
     const $notas = $('textarea[name="Notas"]');
@@ -175,54 +127,44 @@ const esEditable = (typeof window.FormatUtils !== 'undefined') ?
         $notas.data('original-value', $notas.val().trim());
     }
     
-    // ✅ ALMACENAR MONEDA ORIGINAL para detección de cambios
     window._monedaOriginal = monedaActual;
-    console.log('💾 Moneda original almacenada:', window._monedaOriginal);
     
     // Almacenar valor original de la versión
     const versionTexto = $('#versionValor').text().trim();
     const matchVersion = versionTexto.match(/v?(\d+\.\d+)/);
     window._versionOriginal = matchVersion ? matchVersion[1] : '1.0';
     
-    // ✅ MEJORADO: Inicialización del tipo de cambio original
+    // Inicializar tipo de cambio original
     const $tipoCambio = $('#TipoCambio');
     if ($tipoCambio.length > 0) {
         $tipoCambio.data('original-value', $tipoCambio.val());
         window._tipoCambioOriginal = $tipoCambio.val();
     } else {
-        // Si no existe el input, leer del display
         const tipoCambioTexto = $('#tipoCambioValor').text().trim();
         if (tipoCambioTexto && tipoCambioTexto !== 'No definido') {
             const match = tipoCambioTexto.match(/[\d,]+\.?\d*/);
             const valor = match ? match[0].replace(/,/g, '') : '';
             window._tipoCambioOriginal = valor;
         } else {
-            // ✅ NUEVO: Si es nueva cotización y hay tipo de cambio en FormatConfig, usarlo
             if (esNuevaCotizacion && window.FormatConfig && window.FormatConfig.tipoCambio) {
                 window._tipoCambioOriginal = window.FormatConfig.tipoCambio.toString();
-                // Actualizar el display también
                 const tipoCambioFormateado = parseFloat(window.FormatConfig.tipoCambio).toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 });
                 $('#tipoCambioValor').text(tipoCambioFormateado);
-                console.log('💱 Inicializando tipo de cambio para nueva cotización:', window.FormatConfig.tipoCambio);
             } else {
                 window._tipoCambioOriginal = '';
             }
         }
     }
     
-    console.log('💱 Tipo de cambio original almacenado:', window._tipoCambioOriginal);
-    
     setTimeout(function() {
         verificarYActualizarEstadoMoneda();
-    }, 500); // Aumentar el delay para asegurar que el DOM esté listo
+    }, 500);
 }
 
-/**
- * Detecta el estado a partir del texto del badge
- */
+// Detecta el estado a partir del texto del badge
 function detectarEstadoDeTexto(texto) {
     if (typeof window.FormatConfig !== 'undefined' && window.FormatConfig.estados) {
         const estados = window.FormatConfig.estados;
@@ -285,8 +227,6 @@ function configurarEventos() {
         $('#btnGuardarDetalle').on('click', guardarDetalle);
         $('#modalCantidad, #modalPrecioUnitario, #modalDescuento').on('input', calcularTotalLinea);
         
-        // Nota: El evento de cambio de producto ahora lo maneja Select2 en inicializarSelect2Productos()
-        
         $('#modalEditarDetalle').on('hidden.bs.modal', limpiarModalDetalle);
     } else {
         $('.form-control, .btn-success, .btn-warning, .btn-danger').on('click', function(e) {
@@ -302,43 +242,33 @@ function configurarEventos() {
 }
 
 function cargarDatosTemporales() {
-    // Los productos se cargarán dinámicamente desde el ERP mediante Select2 con AJAX
     const esEditable = (typeof window.FormatUtils !== 'undefined') ? 
         window.FormatUtils.isEditable(estadoActual) : 
         (estadoActual === 'B');
     
     if (esEditable) {
-        // Inicializar Select2 con búsqueda remota al ERP
         inicializarSelect2Productos();
     }
 }
 
-/**
- * Inicializa Select2 en el campo de productos con búsqueda remota al ERP
- */
+// Inicializa Select2 para búsqueda de productos en el ERP
 function inicializarSelect2Productos() {
     const $select = $('#modalProductoId');
     
-    // Verificar que el elemento existe
     if ($select.length === 0) {
-        console.error('❌ El elemento #modalProductoId no existe en el DOM');
+        console.error('El elemento #modalProductoId no existe en el DOM');
         return;
     }
     
-    // Verificar si Select2 ya está inicializado y destruirlo si es necesario
     if ($select.hasClass('select2-hidden-accessible')) {
-        console.log('🔄 Destruyendo Select2 existente...');
         $select.select2('destroy');
     }
     
-    console.log('✅ Inicializando Select2 en #modalProductoId...');
-    
-    // Configurar Select2 con AJAX
     $select.select2({
         theme: 'bootstrap4',
         placeholder: 'Busque un producto por código o descripción...',
         allowClear: true,
-        dropdownParent: $('#modalEditarDetalle'), // IMPORTANTE: Asociar al modal
+        dropdownParent: $('#modalEditarDetalle'),
         language: {
             inputTooShort: function() {
                 return 'Ingrese al menos 2 caracteres para buscar';
@@ -357,15 +287,9 @@ function inicializarSelect2Productos() {
         ajax: {
             url: '/Cotizaciones/BuscarProductosErp',
             dataType: 'json',
-            delay: 400, // Debounce de 400ms
+            delay: 400,
             data: function(params) {
-                // Obtener moneda actual de la cotización
                 const moneda = obtenerMonedaActual();
-                
-                console.log('🔍 Buscando productos:', {
-                    moneda: moneda,
-                    textoBusqueda: params.term
-                });
                 
                 return {
                     moneda: moneda,
@@ -373,14 +297,11 @@ function inicializarSelect2Productos() {
                 };
             },
             processResults: function(response) {
-                console.log('📦 Respuesta del servidor:', response);
-                
                 if (!response.success) {
                     showNotification('error', response.message || 'Error al buscar productos');
                     return { results: [] };
                 }
                 
-                // Mapear respuesta al formato de Select2
                 const productos = response.data.map(function(producto) {
                     return {
                         id: producto.value,
@@ -390,8 +311,6 @@ function inicializarSelect2Productos() {
                         impuesto: producto.impuesto
                     };
                 });
-                
-                console.log('✅ Productos mapeados:', productos.length, 'items');
                 
                 return { results: productos };
             },
@@ -404,72 +323,50 @@ function inicializarSelect2Productos() {
         templateSelection: formatProductoSelection
     });
     
-    console.log('✅ Select2 inicializado correctamente');
-    
     // Evento al seleccionar un producto
     $select.on('select2:select', function(e) {
         const data = e.params.data;
-        console.log('✅ Producto seleccionado:', data);
         
         if (data) {
-            // Auto-llenar descripción
             if (data.text) {
-                // Extraer solo la descripción (después del guión)
                 const partes = data.text.split(' - ');
                 const descripcion = partes.length > 1 ? partes.slice(1).join(' - ') : data.text;
                 
-                // ✅ ASEGURAR QUE SE ACTUALIZA EL CAMPO CORRECTO
                 const $descripcionField = $('#modalDescripcionProducto');
                 if ($descripcionField.length > 0) {
                     $descripcionField.val(descripcion.trim());
-                    console.log('📝 Descripción actualizada:', descripcion.trim());
                 } else {
-                    console.error('❌ Campo #modalDescripcionProducto no encontrado');
+                    console.error('Campo #modalDescripcionProducto no encontrado');
                 }
             }
             
-            // Auto-llenar precio
             if (data.precio !== null && data.precio !== undefined) {
                 $('#modalPrecioUnitario').val(data.precio);
             } else {
                 $('#modalPrecioUnitario').val('0');
             }
             
-            // Obtener porcentaje de impuesto según configuración del sistema
             const porcentajeImpuesto = obtenerPorcentajeImpuesto(data.porcentajeImpuesto);
             $('#modalPorcentajeImpuesto').val(porcentajeImpuesto);
             $('#modalPorcentajeImpuestoDisplay').val(porcentajeImpuesto.toFixed(2) + '%');
             
-            console.log(`💰 Impuesto configurado: ${porcentajeImpuesto}% (ERP: ${data.porcentajeImpuesto || 'N/A'})`);
-            
-            // Recalcular total de línea
             calcularTotalLinea();
         }
     });
     
-    // Evento al limpiar selección
     $select.on('select2:clear', function() {
-        console.log('🧹 Limpiando selección de producto');
         $('#modalDescripcionProducto').val('');
         $('#modalPrecioUnitario').val('');
         calcularTotalLinea();
     });
-    
-    // Evento al abrir el dropdown
-    $select.on('select2:open', function() {
-        console.log('📂 Dropdown de Select2 abierto');
-    });
 }
 
-/**
- * Formatea el resultado del producto en el dropdown de Select2
- */
+// Formatea el resultado del producto en el dropdown de Select2
 function formatProductoResult(producto) {
     if (producto.loading) {
         return producto.text;
     }
     
-    // Separar código y descripción
     const partes = producto.text.split(' - ');
     const codigo = partes[0] || '';
     const descripcion = partes.length > 1 ? partes.slice(1).join(' - ') : '';
@@ -487,15 +384,12 @@ function formatProductoResult(producto) {
     return $resultado;
 }
 
-/**
- * Formatea la selección del producto en el campo de Select2
- */
+// Formatea la selección del producto en el campo de Select2
 function formatProductoSelection(producto) {
     if (!producto.id) {
         return producto.text;
     }
     
-    // Mostrar solo código - descripción en el campo seleccionado
     return producto.text;
 }
 
@@ -515,21 +409,16 @@ function formatProductoSelection(producto) {
  * - Si porcentajeErp es null/undefined → fallback a TASA_IMPUESTO del sistema
  */
 function obtenerPorcentajeImpuesto(porcentajeErp) {
-    // Obtener configuración desde window.ConfigImpuestos (configurado en la vista Razor)
     const usarImpuestosErp = window.ConfigImpuestos?.usarImpuestosErp || 'S';
     const tasaImpuesto = parseFloat(window.ConfigImpuestos?.tasaImpuesto) || 13.0;
     
-    // Si se debe usar impuestos del ERP y viene un valor válido del ERP
     if (usarImpuestosErp === 'S' && porcentajeErp !== null && porcentajeErp !== undefined) {
         const porcentaje = parseFloat(porcentajeErp);
         if (!isNaN(porcentaje) && porcentaje >= 0) {
-            console.log(`✅ Usando porcentaje del ERP: ${porcentaje}%`);
             return porcentaje;
         }
     }
     
-    // Fallback: usar tasa de impuesto del sistema
-    console.log(`📋 Usando tasa de impuesto del sistema: ${tasaImpuesto}%`);
     return tasaImpuesto;
 }
 
@@ -654,7 +543,7 @@ function guardarDetalle() {
     } else {
         // Agregar nueva línea
         agregarNuevaFilaDetalle({
-            detalleVersionId: 0, // Nuevo registro
+            detalleVersionId: 0,
             productoId: productoId,
             descripcion: descripcion,
             cantidad: cantidad,
@@ -665,13 +554,9 @@ function guardarDetalle() {
         });
     }
     
-    // Recalcular totales (esto llamará a verificarYActualizarEstadoMoneda)
     recalcularTotales();
-    
-    // Marcar como cambios sin guardar
     window.cotizacionGuardada = false;
     
-    // Cerrar modal
     $('#modalEditarDetalle').modal('hide');
     
     showNotification('success', 'Detalle guardado correctamente');
@@ -768,13 +653,10 @@ function agregarNuevaFilaDetalle(datos) {
     const esLineaNueva = datos.detalleVersionId === 0;
     const claseIndicador = esLineaNueva ? 'linea-nueva' : 'linea-persistente';
     
-    // Determinar indicador visual
     let iconoEstado = '';
     if (esLineaNueva) {
-        // Línea nueva (no guardada en BD)
         iconoEstado = '<i class="fas fa-plus-circle text-success indicador-estado" title="Línea nueva"></i>';
     }
-    // Si es línea persistente, no mostrar indicador inicialmente (se mostrará al editar)
     
     const nuevaFila = `
         <tr data-detalle-id="${datos.detalleVersionId}" data-index="${nuevoIndex}" class="${claseIndicador}">
@@ -834,14 +716,12 @@ function agregarNuevaFilaDetalle(datos) {
     tbody.append(nuevaFila);
     actualizarContadorLineas();
     
-    // ✅ IMPORTANTE: Verificar estado de moneda después de agregar línea
     setTimeout(() => {
         verificarYActualizarEstadoMoneda();
     }, 100);
 }
 
 function eliminarDetalle(index) {
-    // ✅ USAR MODAL BOOTSTRAP en lugar de confirm() nativo
     mostrarModalConfirmacion(
         'Eliminar Detalle',
         '¿Está seguro de que desea eliminar esta línea de detalle?<br><br>' +
@@ -850,7 +730,7 @@ function eliminarDetalle(index) {
         function() {
             ejecutarEliminacionDetalle(index);
         },
-        null, // No necesita callback de cancelación
+        null,
         {
             btnTextoConfirmar: 'Eliminar',
             btnTextoCancelar: 'Cancelar'
@@ -859,25 +739,21 @@ function eliminarDetalle(index) {
 }
 
 function ejecutarEliminacionDetalle(index) {
-const fila = $(`tr[data-index="${index}"]`);
-const detalleVersionId = parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0;
-const productoDescripcion = fila.find('.producto-descripcion').text();
+    const fila = $(`tr[data-index="${index}"]`);
+    const detalleVersionId = parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0;
+    const productoDescripcion = fila.find('.producto-descripcion').text();
     
-// ✅ IMPORTANTE: Marcar como cambios sin guardar ANTES de eliminar
-window.cotizacionGuardada = false;
-console.log('🗑️ ANTES de eliminar: marcando como cambios sin guardar');
+    window.cotizacionGuardada = false;
     
-if (detalleVersionId > 0) {
-    showNotification('info', `Línea persistente "${productoDescripcion}" marcada para eliminación. Se eliminará de BD al guardar.`);
-}
+    if (detalleVersionId > 0) {
+        showNotification('info', `Línea persistente "${productoDescripcion}" marcada para eliminación. Se eliminará de BD al guardar.`);
+    }
     
     fila.remove();
     reindexarFilasDetalle();
     recalcularTotales();
     
-    // ✅ REFORZAR: Asegurar que se mantenga como cambios sin guardar
     window.cotizacionGuardada = false;
-    console.log('🗑️ DESPUÉS de eliminar: confirmando cambios sin guardar');
     
     showNotification('success', 'Detalle eliminado correctamente');
     
@@ -898,13 +774,10 @@ if (detalleVersionId > 0) {
         }
     }
     
-    // ✅ VERIFICAR ESTADO DESPUÉS DE ELIMINAR para actualizar detección de cambios
     setTimeout(() => {
         verificarYActualizarEstadoMoneda();
-        // Asegurar que el estado se mantiene como sin guardar
         if (window.cotizacionGuardada !== false) {
             window.cotizacionGuardada = false;
-            console.log('🗑️ FORZANDO estado sin guardar después de eliminar');
         }
     }, 100);
 }
@@ -984,7 +857,6 @@ function calcularTotalLinea() {
 function limpiarModalDetalle() {
     $('#formEditarDetalle')[0].reset();
     
-    // Limpiar Select2
     const $selectProducto = $('#modalProductoId');
     if ($selectProducto.hasClass('select2-hidden-accessible')) {
         $selectProducto.val(null).trigger('change');
@@ -992,7 +864,6 @@ function limpiarModalDetalle() {
         $selectProducto.val('');
     }
     
-    // ✅ ASEGURAR LIMPIEZA EXPLÍCITA DE TODOS LOS CAMPOS
     $('#modalDescripcionProducto').val('');
     $('#modalCantidad').val('1');
     $('#modalPrecioUnitario').val('');
@@ -1003,20 +874,13 @@ function limpiarModalDetalle() {
     $('#detalleIndex').val('');
     $('#detalleVersionId').val('');
     
-    // Limpiar clases de validación
     $('#formEditarDetalle .is-invalid').removeClass('is-invalid');
     $('#formEditarDetalle .invalid-feedback').remove();
-    
-    console.log('🧹 Modal limpiado - verificando campos:');
-    console.log('- Descripción:', $('#modalDescripcionProducto').val());
-    console.log('- Producto ID:', $('#modalProductoId').val());
-    console.log('- Cantidad:', $('#modalCantidad').val());
 }
 
 function actualizarContadorLineas() {
     const totalLineas = $('#tablaDetalles tbody tr').length;
     
-    // Texto simplificado: solo mostrar total de líneas
     const textoContador = totalLineas === 0 ? '0 líneas' : 
                          totalLineas === 1 ? '1 línea' : 
                          `${totalLineas} líneas`;
@@ -1066,7 +930,6 @@ function guardarCotizacion() {
         return;
     }
     
-    // Verificar si es creación o edición
     if (esNuevaCotizacion) {
         ejecutarGuardadoCreacion();
     } else {
@@ -1077,7 +940,6 @@ function guardarCotizacion() {
 function ejecutarGuardadoCreacion() {
     const btn = $('#btnGuardar');
     
-    // Leer valores desde los spans de solo lectura
     let nombreInteresado = $('#NombreInteresado').text().trim();
     if (nombreInteresado === 'No asignado') {
         nombreInteresado = '';
@@ -1086,12 +948,10 @@ function ejecutarGuardadoCreacion() {
     const totalLineas = $('#tablaDetalles tbody tr').length;
     const erroresValidacion = [];
     
-    // Validación ESTRICTA para creación: interesado obligatorio
     if (!nombreInteresado) {
         erroresValidacion.push('• El nombre del interesado es obligatorio');
     }
     
-    // Validación ESTRICTA para creación: al menos una línea obligatoria
     if (totalLineas === 0) {
         erroresValidacion.push('• Debe agregar al menos una línea de producto');
     }
@@ -1101,13 +961,11 @@ function ejecutarGuardadoCreacion() {
                            erroresValidacion.join('<br>') +
                            '<br><br><small class="text-muted">Por favor corrija estos campos y vuelva a intentar.</small>';
         
-        // ✅ MODAL BOOTSTRAP para mostrar errores de validación
         mostrarModalConfirmacion(
             'Errores de Validación',
             mensajeError,
             'warning',
             function() {
-                // Al cerrar, enfocar el primer campo con error
                 if (!nombreInteresado) {
                     $('#btnBuscarHubSpot').focus();
                 } else if (totalLineas === 0) {
@@ -1249,7 +1107,6 @@ function continuarGuardadoCreacion() {
 function ejecutarGuardadoCotizacion() {
     const btn = $('#btnGuardar');
     
-    // Leer valores desde los spans de solo lectura
     let nombreInteresado = $('#NombreInteresado').text().trim();
     if (nombreInteresado === 'No asignado') {
         nombreInteresado = '';
@@ -1258,13 +1115,11 @@ function ejecutarGuardadoCotizacion() {
     const totalLineas = $('#tablaDetalles tbody tr').length;
     const erroresValidacion = [];
     
-    // Validar solo el nombre del interesado (el email no es obligatorio)
     if (!nombreInteresado) {
         erroresValidacion.push('• El nombre del interesado es obligatorio');
     }
     
     if (totalLineas === 0) {
-        // ✅ MODAL BOOTSTRAP para confirmación de guardado sin productos
         mostrarModalConfirmacion(
             'Cotización Sin Productos',
             '¿Está seguro de que desea guardar la cotización sin líneas de productos?<br><br>' +
@@ -1274,7 +1129,6 @@ function ejecutarGuardadoCotizacion() {
                 continuarGuardadoSinValidacionLineas();
             },
             function() {
-                // Usuario canceló, restaurar botón
                 btn.prop('disabled', false).html('<i class="fas fa-save"></i> Guardar Cambios');
             },
             {
@@ -1290,13 +1144,11 @@ function ejecutarGuardadoCotizacion() {
                            erroresValidacion.join('<br>') +
                            '<br><br><small class="text-muted">Por favor corrija estos campos y vuelva a intentar.</small>';
         
-        // ✅ MODAL BOOTSTRAP para mostrar errores de validación (no es confirmación, es informativo)
         mostrarModalConfirmacion(
             'Errores de Validación',
             mensajeError,
             'warning',
             function() {
-                // Al cerrar, enfocar el primer campo con error
                 $('#NombreInteresado').focus();
             },
             null,
