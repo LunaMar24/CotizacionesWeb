@@ -117,7 +117,14 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
       using var stream = new FileStream(rutaPlantilla, FileMode.Open, FileAccess.Read);
       using var document = WordprocessingDocument.Open(stream, false);
 
-      var body = document.MainDocumentPart?.Document?.Body;
+      var mainDocumentPart = document.MainDocumentPart;
+      if (mainDocumentPart == null)
+      {
+        return placeholders;
+      }
+
+      // Buscar placeholders en el body del documento
+      var body = mainDocumentPart.Document?.Body;
       if (body != null)
       {
         var textos = body.Descendants<Text>();
@@ -127,6 +134,42 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
           {
             var placeholdersEncontrados = ExtraerPlaceholders(texto.Text);
             placeholders.AddRange(placeholdersEncontrados);
+          }
+        }
+      }
+
+      // Buscar placeholders en encabezados
+      foreach (var headerPart in mainDocumentPart.HeaderParts)
+      {
+        var header = headerPart.Header;
+        if (header != null)
+        {
+          var textos = header.Descendants<Text>();
+          foreach (var texto in textos)
+          {
+            if (!string.IsNullOrEmpty(texto.Text))
+            {
+              var placeholdersEncontrados = ExtraerPlaceholders(texto.Text);
+              placeholders.AddRange(placeholdersEncontrados);
+            }
+          }
+        }
+      }
+
+      // Buscar placeholders en pies de página
+      foreach (var footerPart in mainDocumentPart.FooterParts)
+      {
+        var footer = footerPart.Footer;
+        if (footer != null)
+        {
+          var textos = footer.Descendants<Text>();
+          foreach (var texto in textos)
+          {
+            if (!string.IsNullOrEmpty(texto.Text))
+            {
+              var placeholdersEncontrados = ExtraerPlaceholders(texto.Text);
+              placeholders.AddRange(placeholdersEncontrados);
+            }
           }
         }
       }
@@ -223,26 +266,28 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
     // Abrir documento en memoria para edición
     using (var document = WordprocessingDocument.Open(memoryStream, true))
     {
-      var body = document.MainDocumentPart?.Document?.Body;
-      if (body == null)
+      var mainDocumentPart = document.MainDocumentPart;
+      if (mainDocumentPart?.Document?.Body == null)
       {
         throw new InvalidOperationException("El documento no tiene un cuerpo válido");
       }
 
-      // 1. Reemplazar placeholders simples
-      await ReemplazarPlaceholdersSimples(body, datos);
+      var body = mainDocumentPart.Document.Body;
 
-      // 2. Generar y reemplazar bloque de detalle
+      // 1. Reemplazar placeholders simples en body, encabezados y pies de página
+      await ReemplazarPlaceholdersSimples(mainDocumentPart, datos);
+
+      // 2. Generar y reemplazar bloque de detalle (solo en body)
       await ReemplazarBloqueDetalle(body, datos);
 
       // Guardar cambios
-      document.MainDocumentPart.Document.Save();
+      mainDocumentPart.Document.Save();
     }
 
     return memoryStream.ToArray();
   }
 
-  private async Task ReemplazarPlaceholdersSimples(Body body, CotizacionDocumentDto datos)
+  private async Task ReemplazarPlaceholdersSimples(MainDocumentPart mainDocumentPart, CotizacionDocumentDto datos)
   {
     var placeholders = new Dictionary<string, string>
         {
@@ -265,12 +310,45 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
             { "{{TOTAL}}", FormatearMoneda(datos.Total, datos.Moneda) }
         };
 
+    // 1. Reemplazar placeholders en el body del documento
+    var body = mainDocumentPart.Document.Body;
     foreach (var placeholder in placeholders)
     {
       ReemplazarTextoEnDocumento(body, placeholder.Key, placeholder.Value);
     }
+    _logger.LogDebug("Placeholders simples reemplazados en body: {Count}", placeholders.Count);
 
-    _logger.LogDebug("Placeholders simples reemplazados: {Count}", placeholders.Count);
+    // 2. Reemplazar placeholders en encabezados (HeaderParts)
+    int encabezadosProcesados = 0;
+    foreach (var headerPart in mainDocumentPart.HeaderParts)
+    {
+      var header = headerPart.Header;
+      if (header != null)
+      {
+        foreach (var placeholder in placeholders)
+        {
+          ReemplazarTextoEnEncabezadoPiePagina(header, placeholder.Key, placeholder.Value);
+        }
+        encabezadosProcesados++;
+      }
+    }
+    _logger.LogDebug("Placeholders simples reemplazados en {Count} encabezados", encabezadosProcesados);
+
+    // 3. Reemplazar placeholders en pies de página (FooterParts)
+    int piesPaginaProcesados = 0;
+    foreach (var footerPart in mainDocumentPart.FooterParts)
+    {
+      var footer = footerPart.Footer;
+      if (footer != null)
+      {
+        foreach (var placeholder in placeholders)
+        {
+          ReemplazarTextoEnEncabezadoPiePagina(footer, placeholder.Key, placeholder.Value);
+        }
+        piesPaginaProcesados++;
+      }
+    }
+    _logger.LogDebug("Placeholders simples reemplazados en {Count} pies de página", piesPaginaProcesados);
   }
 
   private async Task ReemplazarBloqueDetalle(Body body, CotizacionDocumentDto datos)
@@ -522,8 +600,26 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
   }
 
   /// <summary>
+  /// Reemplaza texto en encabezados y pies de página usando la misma lógica que el body
+  /// </summary>
+  private void ReemplazarTextoEnEncabezadoPiePagina(OpenXmlElement elemento, string placeholder, string reemplazo)
+  {
+    _logger.LogDebug("Reemplazando placeholder en encabezado/pie de página: {Placeholder} por {Reemplazo}", placeholder, reemplazo);
+
+    // Aplicar la misma estrategia híbrida que se usa para el body
+    bool reemplazadoExitoso = ReemplazarTextoConservandoFormato(elemento, placeholder, reemplazo);
+
+    if (!reemplazadoExitoso)
+    {
+      _logger.LogDebug("Reemplazo en encabezado/pie falló, usando método robusto como fallback");
+      ReemplazarTextoRobustoFallback(elemento, placeholder, reemplazo);
+    }
+  }
+
+  /// <summary>
   /// Intenta reemplazar placeholders conservando el formato original de la plantilla
   /// Recorre runs individuales para mantener estilos, negritas, colores, etc.
+  /// Maneja saltos de línea creando elementos Break de OpenXML
   /// </summary>
   private bool ReemplazarTextoConservandoFormato(OpenXmlElement elemento, string placeholder, string reemplazo)
   {
@@ -536,11 +632,33 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
       {
         _logger.LogDebug("Placeholder encontrado en Text element: {Texto}", textElement.Text);
 
-        // Reemplazar SOLO el contenido del Text, manteniendo el Run y su formato
-        textElement.Text = textElement.Text.Replace(placeholder, reemplazo);
-        reemplazadoAlMenosUno = true;
+        // Obtener el run padre para preservar formato
+        var runPadre = textElement.Parent as Run;
+        if (runPadre != null)
+        {
+          // Reemplazar considerando saltos de línea
+          var textoReemplazado = textElement.Text.Replace(placeholder, reemplazo);
+          
+          if (ContienesSaltosDeLinea(reemplazo))
+          {
+            // El texto de reemplazo contiene saltos de línea - crear estructura compleja
+            CrearTextoConSaltosDeLinea(runPadre, textElement, textoReemplazado);
+          }
+          else
+          {
+            // Reemplazo simple sin saltos de línea
+            textElement.Text = textoReemplazado;
+          }
 
-        _logger.LogDebug("Texto reemplazado conservando formato: {NuevoTexto}", textElement.Text);
+          reemplazadoAlMenosUno = true;
+          _logger.LogDebug("Texto reemplazado conservando formato: {NuevoTexto}", textoReemplazado);
+        }
+        else
+        {
+          // Fallback si no hay run padre
+          textElement.Text = textElement.Text.Replace(placeholder, reemplazo);
+          reemplazadoAlMenosUno = true;
+        }
       }
     }
 
@@ -555,8 +673,80 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
   }
 
   /// <summary>
+  /// Verifica si el texto contiene saltos de línea
+  /// </summary>
+  private bool ContienesSaltosDeLinea(string texto)
+  {
+    return !string.IsNullOrEmpty(texto) && (texto.Contains('\n') || texto.Contains('\r'));
+  }
+
+  /// <summary>
+  /// Crea estructura de texto con saltos de línea usando elementos Break de OpenXML
+  /// </summary>
+  private void CrearTextoConSaltosDeLinea(Run runPadre, Text textoOriginal, string textoConSaltos)
+  {
+    // Clonar las propiedades de formato del run original
+    var runProperties = runPadre.Elements<RunProperties>().FirstOrDefault()?.CloneNode(true) as RunProperties;
+
+    // Obtener el párrafo padre
+    var parrafoPadre = runPadre.Parent as Paragraph;
+    if (parrafoPadre == null) return;
+
+    // Dividir el texto en líneas
+    var lineas = textoConSaltos.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+
+    // Remover el texto original
+    textoOriginal.Remove();
+
+    // Si el run solo contenía el texto que estamos reemplazando, reemplazamos todo el run
+    if (!runPadre.Elements<Text>().Any())
+    {
+      // Crear nuevos elementos para cada línea
+      for (int i = 0; i < lineas.Length; i++)
+      {
+        var linea = lineas[i];
+        
+        if (i == 0)
+        {
+          // Primera línea: reutilizar el run existente
+          if (runProperties != null)
+          {
+            runPadre.RemoveAllChildren<RunProperties>();
+            runPadre.PrependChild(runProperties.CloneNode(true));
+          }
+          runPadre.AppendChild(new Text(linea));
+        }
+        else
+        {
+          // Líneas subsecuentes: crear nuevo run después de un salto de línea
+          var nuevoRun = new Run();
+          if (runProperties != null)
+          {
+            nuevoRun.AppendChild(runProperties.CloneNode(true));
+          }
+
+          // Agregar salto de línea antes del texto
+          nuevoRun.AppendChild(new Break());
+          nuevoRun.AppendChild(new Text(linea));
+
+          // Insertar después del run actual
+          parrafoPadre.InsertAfter(nuevoRun, runPadre);
+          runPadre = nuevoRun; // Actualizar referencia para la siguiente iteración
+        }
+      }
+    }
+    else
+    {
+      // El run contiene más texto además del que estamos reemplazando
+      // En este caso, es más complejo, así que usamos el método simple por ahora
+      runPadre.AppendChild(new Text(textoConSaltos));
+    }
+  }
+
+  /// <summary>
   /// Intenta reemplazar texto que puede estar fragmentado entre múltiples runs
   /// conservando el formato del primer run donde aparece el placeholder
+  /// Maneja saltos de línea creando elementos Break de OpenXML
   /// </summary>
   private bool ReemplazarTextoFragmentado(OpenXmlElement elemento, string placeholder, string reemplazo)
   {
@@ -571,13 +761,13 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
       {
         _logger.LogDebug("Placeholder fragmentado encontrado en párrafo: {Texto}", textoCompleto);
 
-        // Buscar el run que contiene el inicio del placeholder
+        // Buscar el run que contiene el formato a preservar
         var runs = parrafo.Elements<Run>().ToList();
         var runFormato = EncontrarRunConFormatoPlaceholder(runs, placeholder);
 
         if (runFormato != null)
         {
-          // Crear nuevo run con el texto reemplazado usando el formato del run original
+          // Crear nuevo contenido con el texto reemplazado
           var nuevoTexto = textoCompleto.Replace(placeholder, reemplazo);
           var runProperties = runFormato.Elements<RunProperties>().FirstOrDefault()?.CloneNode(true) as RunProperties;
 
@@ -588,14 +778,22 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
             run.Remove();
           }
 
-          // Crear nuevo run con formato preservado
-          var nuevoRun = new Run();
-          if (runProperties != null)
+          if (ContienesSaltosDeLinea(nuevoTexto))
           {
-            nuevoRun.Append(runProperties);
+            // El texto contiene saltos de línea - crear estructura compleja
+            CrearRunsConSaltosDeLinea(parrafo, nuevoTexto, runProperties);
           }
-          nuevoRun.Append(new Text(nuevoTexto));
-          parrafo.Append(nuevoRun);
+          else
+          {
+            // Crear nuevo run simple con formato preservado
+            var nuevoRun = new Run();
+            if (runProperties != null)
+            {
+              nuevoRun.Append(runProperties);
+            }
+            nuevoRun.Append(new Text(nuevoTexto));
+            parrafo.Append(nuevoRun);
+          }
 
           _logger.LogDebug("Placeholder fragmentado reemplazado conservando formato: {NuevoTexto}", nuevoTexto);
           reemplazadoAlMenosUno = true;
@@ -604,6 +802,35 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
     }
 
     return reemplazadoAlMenosUno;
+  }
+
+  /// <summary>
+  /// Crea múltiples runs con saltos de línea para un párrafo
+  /// </summary>
+  private void CrearRunsConSaltosDeLinea(Paragraph parrafo, string textoConSaltos, RunProperties? runProperties)
+  {
+    var lineas = textoConSaltos.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+
+    for (int i = 0; i < lineas.Length; i++)
+    {
+      var linea = lineas[i];
+      var nuevoRun = new Run();
+      
+      // Aplicar formato si está disponible
+      if (runProperties != null)
+      {
+        nuevoRun.Append(runProperties.CloneNode(true));
+      }
+
+      // Agregar salto de línea antes del texto (excepto para la primera línea)
+      if (i > 0)
+      {
+        nuevoRun.Append(new Break());
+      }
+
+      nuevoRun.Append(new Text(linea));
+      parrafo.Append(nuevoRun);
+    }
   }
 
   /// <summary>
@@ -627,6 +854,7 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
 
   /// <summary>
   /// Método robusto como fallback cuando el reemplazo conservando formato falla
+  /// Maneja saltos de línea creando elementos Break de OpenXML
   /// </summary>
   private void ReemplazarTextoRobustoFallback(OpenXmlElement elemento, string placeholder, string reemplazo)
   {
@@ -652,9 +880,17 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
           run.Remove();
         }
 
-        // Crear nuevo run básico
-        var nuevoRun = new Run(new Text(nuevoTexto));
-        parrafo.Append(nuevoRun);
+        if (ContienesSaltosDeLinea(nuevoTexto))
+        {
+          // Crear múltiples runs con saltos de línea
+          CrearRunsConSaltosDeLinea(parrafo, nuevoTexto, null);
+        }
+        else
+        {
+          // Crear nuevo run básico
+          var nuevoRun = new Run(new Text(nuevoTexto));
+          parrafo.Append(nuevoRun);
+        }
 
         _logger.LogDebug("Fallback aplicado - formato básico preservado: {NuevoTexto}", nuevoTexto);
       }
