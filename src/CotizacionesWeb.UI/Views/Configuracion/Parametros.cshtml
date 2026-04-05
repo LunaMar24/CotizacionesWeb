@@ -142,58 +142,103 @@
                                         <input type="hidden" name="codigo" value="@parametro.Codigo" />
                                         <input type="hidden" name="categoriaSeleccionada" value="@ViewBag.CategoriaSeleccionada" />
                                         
-                                        <div class="input-group">
-                                            @if (parametro.TipoValor == "Booleano")
-                                            {
-                                                <select name="valor" class="form-control parametro-input" data-tipo="@parametro.TipoValor">
-                                                    <option value="S" selected="@(parametro.Valor == "S")">Sí (S)</option>
-                                                    <option value="N" selected="@(parametro.Valor == "N")">No (N)</option>
-                                                </select>
-                                            }
-                                            else if (parametro.EsSensitivo)
-                                            {
-                                                <!-- Parámetro sensitivo editable: input tipo password con botón toggle -->
-                                                <input type="password" 
-                                                       name="valor" 
-                                                       value="@parametro.Valor" 
-                                                       class="form-control parametro-input parametro-input-sensitivo"
-                                                       data-tipo="@parametro.TipoValor"
-                                                       data-es-sensitivo="true"
-                                                       placeholder="@parametro.ValorPorDefecto" />
-                                            }
-                                            else
-                                            {
-                                                <input type="text" 
-                                                       name="valor" 
-                                                       value="@parametro.Valor" 
-                                                       class="form-control parametro-input"
-                                                       data-tipo="@parametro.TipoValor"
-                                                       placeholder="@parametro.ValorPorDefecto" />
-                                            }
-                                            <div class="input-group-append">
-                                                @if (parametro.EsSensitivo && parametro.PuedeEditarActual)
-                                                {
-                                                    <button type="button" 
-                                                            class="btn btn-outline-secondary btn-toggle-visibility"
-                                                            data-toggle="tooltip"
-                                                            title="Mostrar/Ocultar valor">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                }
+                                        @* Casos especiales primero - TEXTAREA *@
+                                        @if (parametro.Codigo.StartsWith("COT_") && 
+                                             (parametro.Codigo.Contains("CONDICIONES") || 
+                                              parametro.Codigo.Contains("NOTAS") || 
+                                              parametro.Codigo.Contains("TITULO") || 
+                                              parametro.Codigo.Contains("VIGENCIA") ||
+                                              ViewBag.CategoriaSeleccionada?.ToString() == "Plantilla Cotización"))
+                                        {
+                                            <!-- LAYOUT ESPECIAL PARA TEXTAREA -->
+                                            <!-- Contador de caracteres centrado ARRIBA del textarea -->
+                                            <div class="text-center mb-2">
+                                                <small class="text-muted">
+                                                    <span class="character-count">@(parametro.Valor?.Length ?? 0)</span>/1000 caracteres
+                                                </small>
+                                            </div>
+                                            
+                                            <!-- Textarea independiente -->
+                                            <textarea name="valor" 
+                                                      class="form-control parametro-input parametro-textarea"
+                                                      data-tipo="@parametro.TipoValor"
+                                                      placeholder="@parametro.ValorPorDefecto"
+                                                      rows="4"
+                                                      maxlength="1000"
+                                                      style="resize: vertical; min-height: 100px;">@parametro.Valor</textarea>
+                                            
+                                            <!-- Botones debajo del textarea -->
+                                            <div class="mt-2 text-right">
                                                 <button type="submit" class="btn btn-primary">
                                                     <i class="fas fa-save"></i> Guardar
                                                 </button>
                                                 @if (!string.IsNullOrEmpty(parametro.ValorPorDefecto))
                                                 {
                                                     <button type="button" 
-                                                            class="btn btn-outline-secondary btn-resetear"
+                                                            class="btn btn-outline-secondary btn-resetear ml-2"
                                                             data-codigo="@parametro.Codigo"
                                                             title="Resetear al valor por defecto">
                                                         <i class="fas fa-undo"></i>
                                                     </button>
                                                 }
                                             </div>
-                                        </div>
+                                        }
+                                        else
+                                        {
+                                            <!-- LAYOUT NORMAL PARA INPUT -->
+                                            <div class="input-group">
+                                                @if (parametro.TipoValor == "Booleano")
+                                                {
+                                                    <select name="valor" class="form-control parametro-input" data-tipo="@parametro.TipoValor">
+                                                        <option value="S" selected="@(parametro.Valor == "S")">Sí (S)</option>
+                                                        <option value="N" selected="@(parametro.Valor == "N")">No (N)</option>
+                                                    </select>
+                                                }
+                                                else if (parametro.EsSensitivo)
+                                                {
+                                                    <!-- Parámetro sensitivo editable: input tipo password con botón toggle -->
+                                                    <input type="password" 
+                                                           name="valor" 
+                                                           value="@parametro.Valor" 
+                                                           class="form-control parametro-input parametro-input-sensitivo"
+                                                           data-tipo="@parametro.TipoValor"
+                                                           data-es-sensitivo="true"
+                                                           placeholder="@parametro.ValorPorDefecto" />
+                                                }
+                                                else
+                                                {
+                                                    <input type="text" 
+                                                           name="valor" 
+                                                           value="@parametro.Valor" 
+                                                           class="form-control parametro-input"
+                                                           data-tipo="@parametro.TipoValor"
+                                                           placeholder="@parametro.ValorPorDefecto" />
+                                                }
+                                                <div class="input-group-append">
+                                                    @if (parametro.EsSensitivo && parametro.PuedeEditarActual)
+                                                    {
+                                                        <button type="button" 
+                                                                class="btn btn-outline-secondary btn-toggle-visibility"
+                                                                data-toggle="tooltip"
+                                                                title="Mostrar/Ocultar valor">
+                                                            <i class="fas fa-eye"></i>
+                                                        </button>
+                                                    }
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="fas fa-save"></i> Guardar
+                                                    </button>
+                                                    @if (!string.IsNullOrEmpty(parametro.ValorPorDefecto))
+                                                    {
+                                                        <button type="button" 
+                                                                class="btn btn-outline-secondary btn-resetear"
+                                                                data-codigo="@parametro.Codigo"
+                                                                title="Resetear al valor por defecto">
+                                                            <i class="fas fa-undo"></i>
+                                                        </button>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
                                     </form>
                                 }
                                 else

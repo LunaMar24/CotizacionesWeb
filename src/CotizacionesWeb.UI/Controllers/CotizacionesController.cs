@@ -163,7 +163,7 @@ public class CotizacionesController : Controller
           filtros.Moneda,
           filtros.UsuarioArchivo,
           filtros.BusquedaProducto,
-          filtros.BusquedaDescripcion
+          filtros.BusquedaDescripcion // ? Ahora habilitado para búsqueda por descripción
       );
 
       var cotizaciones = await _cotizacionService.GetCotizacionesArchivadasAsync(request);
@@ -194,7 +194,10 @@ public class CotizacionesController : Controller
           FechaEnvioERP = c.FechaEnvioERP,
           // Campos específicos para cotizaciones archivadas
           UsuarioQueArchivo = c.UsuarioQueArchivo,
-          FechaArchivado = c.FechaArchivado
+          FechaArchivado = c.FechaArchivado,
+          // ?? Nuevos campos para controlar reactivación
+          FechaReactivacion = c.FechaReactivacion,
+          UsuarioQueReactivo = c.UsuarioQueReactivo
         }).ToList(),
         Filtros = filtros
       };
@@ -1514,5 +1517,34 @@ public class CotizacionesController : Controller
       return userId;
     }
     return 0;
+  }
+
+  [HttpGet]
+  [RequierePermiso("COT_ARCHIVE_REACTIVATE")]
+  public async Task<IActionResult> VerificarEstadoReactivacion(string cotizacionId)
+  {
+    try
+    {
+      var archivoInfo = await _cotizacionService.GetArchivoCotizacionDetalleAsync(cotizacionId);
+      
+      if (archivoInfo == null)
+      {
+        return Json(new { success = false, message = "Información de archivo no encontrada" });
+      }
+
+      var yaFueReactivada = archivoInfo.ArchivoInfo.FechaReactivacion.HasValue;
+      
+      return Json(new { 
+        success = true, 
+        yaFueReactivada = yaFueReactivada,
+        fechaReactivacion = archivoInfo.ArchivoInfo.FechaReactivacion?.ToString("yyyy-MM-dd HH:mm"),
+        usuarioQueReactivo = archivoInfo.ArchivoInfo.NombreUsuarioReactiva
+      });
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al verificar estado de reactivación para cotización {CotizacionId}", cotizacionId);
+      return Json(new { success = false, message = "Error al verificar estado de reactivación" });
+    }
   }
 }

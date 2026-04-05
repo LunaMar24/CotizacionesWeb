@@ -23,7 +23,10 @@ public record CotizacionListDto(
     DateTime? FechaEnvioERP,
     // Campos específicos para cotizaciones archivadas
     string? UsuarioQueArchivo = null,
-    DateTime? FechaArchivado = null
+    DateTime? FechaArchivado = null,
+    // ?? Nuevos campos para controlar reactivación
+    DateTime? FechaReactivacion = null,
+    string? UsuarioQueReactivo = null
 );
 
 public record CotizacionVersionDto(

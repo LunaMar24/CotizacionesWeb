@@ -38,6 +38,10 @@ public class CotizacionViewModel
     // Campos específicos para cotizaciones archivadas
     public string? UsuarioQueArchivo { get; set; }
     public DateTime? FechaArchivado { get; set; }
+    
+    // ?? Nuevos campos para controlar reactivación
+    public DateTime? FechaReactivacion { get; set; }
+    public string? UsuarioQueReactivo { get; set; }
 }
 
 public class CotizacionFiltrosViewModel

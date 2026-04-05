@@ -18,6 +18,9 @@ function initConfiguracionParametros() {
     initToggleVisibilidadSensitivos();
     initRevelarSecretoBloqueado();
     
+    // Nueva funcionalidad para textareas de plantilla
+    initParametrosPlantilla();
+    
     console.log('Sistema de configuración de parámetros inicializado');
 }
 
@@ -584,3 +587,178 @@ $(document).on('click', '.categoria-tab', function() {
         }
     });
 });
+    
+// ============================================
+// FUNCIONALIDADES PARA PARÁMETROS DE PLANTILLA
+// ============================================
+
+/**
+ * Inicializar funcionalidades específicas para parámetros de plantilla de cotización
+ */
+function initParametrosPlantilla() {
+    // Inicializar contador de caracteres para textareas
+    initContadorCaracteres();
+    
+    // Mejorar UX del textarea
+    initTextareaUX();
+    
+    console.log('Funcionalidades de parámetros de plantilla inicializadas');
+}
+
+/**
+ * Contador de caracteres en tiempo real para textareas
+ */
+function initContadorCaracteres() {
+    $('.parametro-textarea').each(function() {
+        const $textarea = $(this);
+        const $contador = $textarea.closest('.parametro-control').find('.character-count');
+        
+        if ($contador.length === 0) {
+            console.warn('No se encontró contador para textarea');
+            return;
+        }
+        
+        // Función para actualizar contador
+        const actualizarContador = function() {
+            const longitudActual = $textarea.val().length;
+            const longitudMaxima = parseInt($textarea.attr('maxlength')) || 1000;
+            
+            // Actualizar número
+            $contador.text(longitudActual);
+            
+            // Cambiar estilo según proximidad al límite
+            $contador.removeClass('warning danger');
+            
+            const porcentaje = (longitudActual / longitudMaxima) * 100;
+            if (porcentaje >= 95) {
+                $contador.addClass('danger');
+            } else if (porcentaje >= 80) {
+                $contador.addClass('warning');
+            }
+            
+            // Efecto visual cuando se alcanza el límite
+            if (longitudActual >= longitudMaxima) {
+                $contador.addClass('animate-pulse');
+                setTimeout(() => $contador.removeClass('animate-pulse'), 1000);
+            }
+        };
+        
+        // Eventos
+        $textarea.on('input keyup paste', actualizarContador);
+        
+        // Actualizar al cargar
+        actualizarContador();
+    });
+}
+
+/**
+ * Mejorar UX del textarea para plantillas
+ */
+function initTextareaUX() {
+    $('.parametro-textarea').each(function() {
+        const $textarea = $(this);
+        
+        // Auto-resize basado en contenido
+        autoResizeTextarea($textarea);
+        
+        // Atajos de teclado útiles
+        $textarea.on('keydown', function(e) {
+            // Ctrl+Enter para enviar formulario
+            if (e.ctrlKey && e.key === 'Enter') {
+                e.preventDefault();
+                $textarea.closest('form').submit();
+            }
+            
+            // Tab para insertar espacios en lugar de cambiar foco (útil para formato)
+            if (e.key === 'Tab' && !e.shiftKey) {
+                e.preventDefault();
+                insertarTextoEnCursor($textarea[0], '    '); // 4 espacios
+            }
+        });
+        
+        // Guardar estado inicial para detectar cambios
+        $textarea.data('valor-inicial', $textarea.val());
+        
+        // Detectar cambios para UX
+        $textarea.on('input', function() {
+            const $form = $textarea.closest('form');
+            const valorInicial = $textarea.data('valor-inicial');
+            const valorActual = $textarea.val();
+            
+            if (valorActual !== valorInicial) {
+                $form.addClass('has-changes');
+                $form.find('button[type="submit"]').removeClass('btn-outline-primary').addClass('btn-primary');
+            } else {
+                $form.removeClass('has-changes');
+                $form.find('button[type="submit"]').removeClass('btn-primary').addClass('btn-outline-primary');
+            }
+        });
+        
+        // Placeholder animado
+        if ($textarea.attr('placeholder')) {
+            $textarea.on('focus blur', function() {
+                $textarea.closest('.parametro-card').toggleClass('textarea-focused');
+            });
+        }
+    });
+}
+
+/**
+ * Auto-resize del textarea basado en el contenido
+ */
+function autoResizeTextarea($textarea) {
+    const textarea = $textarea[0];
+    
+    const resize = function() {
+        // Resetear altura para calcular correctamente
+        textarea.style.height = 'auto';
+        
+        // Calcular altura necesaria
+        const scrollHeight = textarea.scrollHeight;
+        const minHeight = 100; // Altura mínima
+        const maxHeight = 400; // Altura máxima
+        
+        const nuevaAltura = Math.max(minHeight, Math.min(maxHeight, scrollHeight));
+        textarea.style.height = nuevaAltura + 'px';
+        
+        // Mostrar scrollbar solo si se alcanza el máximo
+        if (scrollHeight > maxHeight) {
+            textarea.style.overflowY = 'scroll';
+        } else {
+            textarea.style.overflowY = 'hidden';
+        }
+    };
+    
+    // Eventos
+    $textarea.on('input keyup paste', resize);
+    
+    // Resize inicial
+    setTimeout(resize, 100);
+}
+
+/**
+ * Insertar texto en la posición del cursor
+ */
+function insertarTextoEnCursor(textarea, texto) {
+    const inicio = textarea.selectionStart;
+    const fin = textarea.selectionEnd;
+    const valorActual = textarea.value;
+    
+    const nuevoValor = valorActual.substring(0, inicio) + texto + valorActual.substring(fin);
+    textarea.value = nuevoValor;
+    
+    // Mantener cursor después del texto insertado
+    const nuevaPosicion = inicio + texto.length;
+    textarea.setSelectionRange(nuevaPosicion, nuevaPosicion);
+    
+    // Trigger eventos para actualizar contador
+    $(textarea).trigger('input');
+}
+
+/**
+ * Funciones de ayuda para plantillas - SIMPLIFICADAS
+ */
+function insertarVariablePlantilla($textarea, variable) {
+    const variableTexto = `{{${variable}}}`;
+    insertarTextoEnCursor($textarea[0], variableTexto);
+}

@@ -53,6 +53,9 @@ initTooltips();
             if (desde && hasta && desde > hasta) {
                 showNotification('warning', 'La fecha "Desde" no puede ser mayor que la fecha "Hasta"');
                 $(this).val('');
+                
+                // ✅ MEJORA: Scroll al inicio para ver el mensaje de validación
+                scrollToTop();
             }
         });
         
@@ -64,6 +67,9 @@ initTooltips();
             if (desde && hasta && desde > hasta) {
                 showNotification('warning', 'La fecha de archivado "Desde" no puede ser mayor que la fecha "Hasta"');
                 $(this).val('');
+                
+                // ✅ MEJORA: Scroll al inicio para ver el mensaje de validación
+                scrollToTop();
             }
         });
     }
@@ -106,6 +112,13 @@ initTooltips();
             e.preventDefault();
             const cotizacionId = $(this).attr('data-id');
             confirmarReactivacion(cotizacionId);
+        });
+
+        // Duplicar Cotización (nueva funcionalidad)
+        $('.btn-duplicar').on('click', function(e) {
+            e.preventDefault();
+            const cotizacionId = $(this).attr('data-id');
+            confirmarDuplicacion(cotizacionId);
         });
         
         // Limpiar filtros con confirmación
@@ -210,7 +223,53 @@ initTooltips();
         // Mostrar el modal
         $('#modalReactivacion').modal('show');
     }
+
+    function confirmarDuplicacion(cotizacionId) {
+        // Configurar el modal de confirmación para duplicar
+        $('#modalConfirmacionTitulo').html('<i class="fas fa-copy text-primary"></i> Duplicar Cotización Archivada');
+        $('#modalConfirmacionMensaje').html(`
+            <div class="alert alert-info mb-3">
+                <i class="fas fa-info-circle"></i>
+                <strong>¿Duplicar cotización ${cotizacionId}?</strong>
+            </div>
+            <p class="mb-3">
+                Se creará una <strong>nueva cotización independiente</strong> basada en los datos 
+                de la cotización archivada <strong>${cotizacionId}</strong>.
+            </p>
+            <div class="alert alert-warning mb-0">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Importante:</strong> La nueva cotización:
+                <ul class="mb-0 mt-2">
+                    <li>Tendrá un <strong>código</strong> diferente</li>
+                    <li>Estará en estado <strong>Borrador</strong></li>
+                    <li>Podrá ser editada normalmente</li>
+                    <li>La cotización original permanecerá archivada</li>
+                </ul>
+            </div>
+        `);
+        
+        // Configurar botón de confirmación
+        $('#btnConfirmarAccion').off('click').on('click', function() {
+            $('#modalConfirmacion').modal('hide');
+            ejecutarDuplicacion(cotizacionId);
+        });
+        
+        // Mostrar modal
+        $('#modalConfirmacion').modal('show');
+    }
     
+    // ===============================
+    // UTILIDADES GLOBALES
+    // ===============================
+
+    // ✅ NUEVA: Función para hacer scroll suave al inicio de la página
+    function scrollToTop(duration = 300) {
+        $('html, body').animate({ scrollTop: 0 }, duration);
+    }
+
+    // ✅ Hacer la función disponible globalmente
+    window.scrollToTop = scrollToTop;
+
     // ===============================
     // UTILIDADES DE FILTROS
     // ===============================
@@ -252,7 +311,14 @@ initTooltips();
         // Configurar botón de confirmación
         $('#btnConfirmarAccion').off('click').on('click', function() {
             $('#modalConfirmacion').modal('hide');
-            window.location.href = limpiarUrl;
+            
+            // ✅ MEJORA: Scroll al inicio antes de navegar para mejor transición
+            scrollToTop();
+            
+            // Pequeña pausa para completar el scroll antes de navegar
+            setTimeout(function() {
+                window.location.href = limpiarUrl;
+            }, 200);
         });
         
         // Mostrar modal
@@ -516,12 +582,21 @@ initTooltips();
                 if (response && response.success) {
                     // ✅ Éxito: Cerrar modal y mostrar mensaje de éxito
                     $('#modalReactivacion').modal('hide');
-                    showNotification('success', response.message || 'Cotización reactivada exitosamente');
                     
-                    // Recargar página después de un momento para reflejar cambios
+                    // 🆕 Mensaje actualizado para reflejar que se creó una nueva cotización
+                    const mensaje = response.cotizacionId && response.nuevaVersion
+                        ? `Nueva cotización ${response.cotizacionId} creada exitosamente (versión ${response.nuevaVersion})`
+                        : (response.message || 'Nueva cotización creada exitosamente por reactivación');
+                    
+                    showNotification('success', mensaje);
+                    
+                    // ✅ MEJORA: Scroll al inicio de la página para ver el mensaje
+                    scrollToTop();
+                    
+                    // 🆕 Redirigir al listado normal después de un momento para ver la nueva cotización
                     setTimeout(function() {
-                        location.reload();
-                    }, 1500);
+                        window.location.href = '/Cotizaciones'; // Ir al listado normal donde aparecerá la nueva cotización
+                    }, 2000);
                 } else {
                     // ❌ Error del servidor: Mostrar mensaje específico pero mantener modal abierto
                     const errorMessage = response?.message || 'Error desconocido al reactivar la cotización';
@@ -586,6 +661,79 @@ initTooltips();
     // ===============================
     // FUNCIONES ESPECÍFICAS PARA VERSIONES ARCHIVADAS
     // ===============================
+
+    function ejecutarDuplicacion(cotizacionId) {
+        // Mostrar notificación de progreso
+        showNotification('info', 'Duplicando cotización...');
+        
+        // Enviar solicitud de duplicación
+        $.ajax({
+            url: '/Cotizaciones/Duplicar',
+            type: 'POST',
+            data: {
+                cotizacionId: cotizacionId,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            },
+            success: function(response) {
+                if (response && response.success) {
+                    // ✅ Éxito: Mostrar mensaje de éxito
+                    showNotification('success', response.message || 'Cotización duplicada exitosamente');
+                    
+                    // ✅ MEJORA: Scroll al inicio de la página para ver el mensaje
+                    scrollToTop();
+                    
+                    // Opcional: Redirigir a la nueva cotización
+                    if (response.cotizacionId) {
+                        setTimeout(function() {
+                            // Redirigir al listado normal donde aparecerá la nueva cotización
+                            window.location.href = '/Cotizaciones';
+                        }, 2000);
+                    }
+                } else {
+                    // ❌ Error del servidor
+                    const errorMessage = response?.message || 'Error al duplicar la cotización';
+                    showNotification('error', errorMessage);
+                    
+                    // ✅ MEJORA: Scroll al inicio para ver el error
+                    scrollToTop();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Error en duplicación:', error);
+                console.error('❌ Status:', status);
+                console.error('❌ Response:', xhr.responseText);
+                
+                // ✅ Mensaje de error específico según el código de estado
+                let errorMessage = 'Error al procesar la duplicación';
+                
+                if (xhr.status === 403) {
+                    errorMessage = 'No tiene permisos para duplicar esta cotización';
+                } else if (xhr.status === 404) {
+                    errorMessage = 'La cotización no fue encontrada';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Error interno del servidor. Contacte al administrador';
+                } else if (xhr.status === 0) {
+                    errorMessage = 'Error de conexión. Verifique su conexión a internet';
+                } else if (xhr.responseText) {
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.message || errorMessage;
+                    } catch (e) {
+                        // Si no es JSON válido, usar el mensaje por defecto
+                    }
+                }
+                
+                showNotification('error', errorMessage);
+                
+                // ✅ MEJORA: Scroll al inicio para ver el error
+                scrollToTop();
+            }
+        });
+    }
+    
+    // ===============================
+    // FUNCIONES ESPECÍFICAS PARA VERSIONES ARCHIVADAS
+    // ===============================
     
     function inicializarEventosVersionesArchivadas() {
         // Manejar click en "Ver Detalle" desde modal de versiones de cotizaciones archivadas
@@ -635,6 +783,29 @@ initTooltips();
             // Trigger el cierre si la modal ya está cerrada
             if (!$('#modalVersiones').hasClass('show')) {
                 $('#modalVersiones').trigger('hidden.bs.modal.historialArchivadas');
+            }
+        });
+
+        // ✅ NUEVO: Manejar click en "Duplicar" desde modal de versiones de cotizaciones archivadas
+        $('.btn-duplicar-version').off('click').on('click', function () {
+            const cotizacionId = $(this).attr('data-cotizacion-id');
+            const versionId = $(this).attr('data-version-id');
+            
+            // Cerrar el modal de versiones primero
+            $('#modalVersiones').modal('hide');
+            
+            // Esperar a que se cierre completamente antes de mostrar confirmación
+            $('#modalVersiones').on('hidden.bs.modal.duplicarArchivadas', function () {
+                // Remover el event listener para evitar múltiples bindings
+                $(this).off('hidden.bs.modal.duplicarArchivadas');
+                
+                // Mostrar confirmación de duplicación
+                confirmarDuplicacion(cotizacionId);
+            });
+            
+            // Trigger el cierre si la modal ya está cerrada
+            if (!$('#modalVersiones').hasClass('show')) {
+                $('#modalVersiones').trigger('hidden.bs.modal.duplicarArchivadas');
             }
         });
     }

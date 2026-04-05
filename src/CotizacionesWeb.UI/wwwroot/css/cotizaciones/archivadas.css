@@ -1,5 +1,14 @@
 ﻿/* Estilos específicos para la pantalla de Cotizaciones Archivadas */
 
+/* ====================================
+   NOTA: SCROLL AUTOMÁTICO AL COMPLETAR OPERACIONES
+   ====================================
+   Las operaciones críticas (reactivación, duplicación, errores) 
+   incluyen scroll automático al inicio de la página vía JavaScript.
+   Esto se implementa con la función scrollToTop() en archivadas.js
+   para asegurar que el usuario vea las notificaciones importantes.
+   ==================================== */
+
 /* Secciones de Filtros Específicas para Archivadas */
 .filter-section {
     background-color: #f9fafb;
@@ -291,6 +300,16 @@
 .btn-action-archivadas.btn-versiones:hover {
     background-color: #4f46e5;
     box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Duplicar - mismo color que btn-action-delete (rojo) */
+.btn-action-archivadas.btn-duplicar {
+    background-color: #ef4444;
+}
+
+.btn-action-archivadas.btn-duplicar:hover {
+    background-color: #dc2626;
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
 }
 
 /* Campos de fecha específicos para archivado */

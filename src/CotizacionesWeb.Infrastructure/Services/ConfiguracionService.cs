@@ -41,7 +41,7 @@ public class ConfiguracionService : IConfiguracionService
         { "Archivos", ("Configuración de almacenamiento", "fas fa-folder") },
         { "Reportes", ("Configuración de informes", "fas fa-chart-bar") },
         { "Negocio", ("Reglas generales del negocio", "fas fa-briefcase") },
-        { "Formato", ("Configuración de formatos", "fas fa-file-alt") }
+        { "Plantilla Cotización", ("Configuración para la plantilla de cotización", "fas fa-file-invoice") }
     };
 
     public ConfiguracionService(

@@ -185,21 +185,21 @@
                                            placeholder="Buscar por código de producto en los detalles...">
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="text-muted">
-                                        <label class="form-label text-muted">Descripción de Producto</label>
-                                        <input type="text" 
-                                               class="form-control" 
-                                               disabled
-                                               placeholder="No disponible para cotizaciones archivadas">
-                                        <small class="text-muted">
-                                            Las descripciones se obtienen dinámicamente del ERP y no están disponibles para búsqueda en archivadas.
-                                        </small>
-                                    </div>
+                                    <label class="form-label">Descripción de Producto</label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           name="Filtros.BusquedaDescripcion"
+                                           value="@Model.Filtros.BusquedaDescripcion"
+                                           placeholder="Buscar por descripción de producto en los detalles...">
+                                    <small class="text-muted">
+                                        <i class="fas fa-search"></i> 
+                                        Busca dentro de las descripciones de producto almacenadas en las cotizaciones archivadas.
+                                    </small>
                                 </div>
                             </div>
                             <small class="text-muted">
                                 <i class="fas fa-info-circle"></i> 
-                                Busca dentro de los códigos de producto de las líneas de detalle de las cotizaciones archivadas
+                                Busca dentro de los códigos de producto y descripciones almacenadas en las líneas de detalle de las cotizaciones archivadas
                             </small>
                         </div>
                     </div>
@@ -346,6 +346,16 @@
                                                 tipo-restriccion="ocultar">
                                             <i class="fas fa-undo"></i>
                                         </button>
+
+                                        <!-- Duplicar (si tiene permisos) -->
+                                        <button type="button" 
+                                                class="btn-action-archivadas btn-duplicar" 
+                                                data-id="@cotizacion.CotizacionId"
+                                                title="Duplicar Cotización"
+                                                requiere-permiso="COT_DUPLICATE"
+                                                tipo-restriccion="ocultar">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -437,12 +447,25 @@
                 <!-- ✅ ÁREA DE INFORMACIÓN ESTÁTICA - SIEMPRE VISIBLE -->
                 <div class="alert alert-info mb-3 static-info-area" style="border-radius: 8px;">
                     <i class="fas fa-info-circle me-2"></i>
-          <strong>¿Reactivar Cotización archivada?</strong>
+                    <strong>¿Reactivar Cotización archivada?</strong>
                 </div>
                 
                 <p class="mb-3" id="mensajeReactivacion">
-                    Está a punto de reactivar esta cotización archivada. La cotización volverá al estado <strong>Borrador</strong> y podrá editarla nuevamente.
+                    Se creará una <strong>nueva cotización independiente</strong> con todos los datos de esta cotización archivada. 
+                    La cotización original <strong>permanecerá archivada</strong>.
                 </p>
+                
+                <div class="alert alert-warning mb-3" style="border-radius: 8px;">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Detalles del proceso:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Se generará un <strong>código nuevo</strong> (ej: COT-0001 → COT-0002)</li>
+                        <li>El número de versión se <strong>incrementará</strong> (ej: 3.0 → 4.0)</li>
+                        <li>Se copiará toda la información: interesado, productos, moneda, etc.</li>
+                        <li>La nueva cotización estará en estado <strong>Borrador</strong></li>
+                        <li>Podrá editarla normalmente</li>
+                    </ul>
+                </div>
                 
                 <div class="form-group">
                     <label for="motivoReactivacion" class="form-label">
@@ -477,6 +500,99 @@
 @section Scripts {
     <link rel="stylesheet" href="~/css/cotizaciones/archivadas.css" asp-append-version="true">
     <script src="~/js/cotizaciones/archivadas.js" asp-append-version="true"></script>
+    
+    <script>
+        // 🆕 CONTROL DE REACTIVACIÓN: Verificar si cotizaciones ya fueron reactivadas
+        $(document).ready(function() {
+            verificarEstadosReactivacion();
+        });
+        
+        /**
+         * Verificar qué cotizaciones ya fueron reactivadas y deshabilitar el botón correspondiente
+         */
+        function verificarEstadosReactivacion() {
+            console.log('🔍 Verificando estados de reactivación...');
+            
+            const $botonesReactivar = $('.btn-reactivar');
+            
+            if ($botonesReactivar.length === 0) {
+                console.log('ℹ️ No hay botones de reactivar en la página');
+                return;
+            }
+            
+            // Verificar cada botón de reactivar
+            $botonesReactivar.each(function() {
+                const $btn = $(this);
+                const cotizacionId = $btn.data('id');
+                
+                if (cotizacionId) {
+                    verificarSiYaFueReactivada(cotizacionId, $btn);
+                }
+            });
+        }
+        
+        /**
+         * Verificar si una cotización específica ya fue reactivada
+         */
+        function verificarSiYaFueReactivada(cotizacionId, $btn) {
+            // Hacer consulta AJAX para verificar estado
+            $.ajax({
+                url: '/Cotizaciones/VerificarEstadoReactivacion',
+                type: 'GET',
+                data: { cotizacionId: cotizacionId },
+                dataType: 'json'
+            })
+            .done(function(response) {
+                if (response && response.success) {
+                    if (response.yaFueReactivada) {
+                        // Ya fue reactivada - deshabilitar botón
+                        deshabilitarBotonReactivar($btn, response.fechaReactivacion, response.usuarioQueReactivo);
+                    }
+                    // Si no fue reactivada, el botón permanece habilitado
+                } else {
+                    console.warn(`⚠️ Error al verificar estado de reactivación para ${cotizacionId}: ${response?.message || 'Error desconocido'}`);
+                    // En caso de error, mantener el botón habilitado
+                }
+            })
+            .fail(function(xhr, status, error) {
+                console.error(`❌ Error en AJAX al verificar reactivación de ${cotizacionId}:`, error);
+                // En caso de error de conexión, mantener el botón habilitado
+            });
+        }
+        
+        /**
+         * Deshabilitar un botón de reactivar y mostrar información de que ya fue reactivada
+         */
+        function deshabilitarBotonReactivar($btn, fechaReactivacion, usuarioQueReactivo) {
+            // Cambiar apariencia del botón
+            $btn.removeClass('btn-reactivar')
+                .addClass('btn-action-disabled')
+                .prop('disabled', true)
+                .css({
+                    'opacity': '0.5',
+                    'cursor': 'not-allowed',
+                    'background-color': '#6c757d',
+                    'border-color': '#6c757d'
+                });
+            
+            // Cambiar icono
+            $btn.find('i').removeClass('fa-undo').addClass('fa-check-circle');
+            
+            // Actualizar tooltip
+            const tooltipTexto = fechaReactivacion && usuarioQueReactivo 
+                ? `Ya fue reactivada el ${fechaReactivacion} por ${usuarioQueReactivo}`
+                : 'Esta cotización ya fue reactivada anteriormente';
+            
+            $btn.attr('title', tooltipTexto)
+                .tooltip('dispose') // Remover tooltip anterior
+                .tooltip(); // Crear nuevo tooltip
+            
+            // Remover eventos de click
+            $btn.off('click');
+            
+            console.log(`✅ Botón de reactivar deshabilitado para cotización`);
+        }
+    </script>
     
     @if (TempData["Success"] != null)
     {

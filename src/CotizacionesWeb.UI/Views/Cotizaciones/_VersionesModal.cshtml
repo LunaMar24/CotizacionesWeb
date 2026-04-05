@@ -74,10 +74,10 @@
                                         <i class="fas fa-history"></i>
                                     </button>
                                     
-                                    @* Solo mostrar botones de Copiar y Duplicar si NO es cotización archivada *@
+                                    @* Diferenciar acciones para cotizaciones archivadas vs normales *@
                                     @if (ViewBag.EsCotizacionArchivada != true)
                                     {
-                                        <!-- Copiar - mismo estilo que gestión normal -->
+                                        <!-- Copiar - solo para cotizaciones normales -->
                                         <button type="button" 
                                                 class="btn-action btn-action-copy btn-copiar-version" 
                                                 data-cotizacion-id="@version.CotizacionId"
@@ -89,7 +89,7 @@
                                             <i class="fas fa-copy"></i>
                                         </button>
                                         
-                                        <!-- Duplicar - mismo estilo que gestión normal -->
+                                        <!-- Duplicar - para cotizaciones normales -->
                                         <button type="button" 
                                                 class="btn-action btn-action-delete btn-duplicar-version" 
                                                 data-cotizacion-id="@version.CotizacionId"
@@ -101,10 +101,15 @@
                                     }
                                     else
                                     {
-                                        @* Mensaje para cotizaciones archivadas - mismo estilo *@
-                                        <span class="text-muted small">
-                                            <i class="fas fa-lock"></i> Solo lectura
-                                        </span>
+                                        <!-- Solo Duplicar para cotizaciones archivadas -->
+                                        <button type="button" 
+                                                class="btn-action btn-action-delete btn-duplicar-version" 
+                                                data-cotizacion-id="@version.CotizacionId"
+                                                data-version-id="@version.VersionId"
+                                                title="Duplicar (Nueva Cotización)"
+                                                requiere-permiso="COT_DUPLICATE">
+                                            <i class="fas fa-clone"></i>
+                                        </button>
                                     }
                                 </div>
                             </td>

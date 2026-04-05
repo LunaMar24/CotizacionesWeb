@@ -123,9 +123,14 @@ VALUES
 ('DIAS_VIGENCIA_COTIZACION', 'Días de vigencia por defecto de cotización', '15', 'N', 'Workflow', 1, '15', NULL, 0),
 
 -- ============================================
--- PARÁMETROS DE FORMATO
+-- PARÁMETROS PLANTILLA COTIZACION
 -- ============================================
-('FORMATO_COTIZACION', 'Formato de exportación por defecto', 'PDF', 'S', 'Formato', 1, 'PDF', 'Valores: PDF, EXCEL, WORD', 0),
+('FORMATO_COTIZACION', 'Formato de exportación por defecto', 'PDF', 'S', 'Plantilla Cotización', 1, 'PDF', 'Valores: PDF, EXCEL, WORD', 0),
+('COT_VIGENCIA',  'Vigencia de la cotización (ej: 2 semanas)', '2 semanas', 'S', 'Plantilla Cotización', 1, '2 semanas', 'Texto mostrado en la sección de vigencia de la propuesta', 0),
+('COT_CONDICIONES_PAGO', 'Condiciones de pago específicas para la cotización', '', 'S', 'Plantilla Cotización', 1, '', 'Condiciones de pago que se muestran en la propuesta', 0),
+('COT_NOTAS_COMERCIALES', 'Notas o comentarios comerciales adicionales de la propuesta', '', 'S', 'Plantilla Cotización', 1, '', 'Texto opcional para incluir notas comerciales en la cotización', 0),
+('COT_TITULO_DETALLE', 'Título de la sección de detalle de la propuesta', 'Detalle de la propuesta', 'S', 'Plantilla Cotización', 1, 'Detalle de la propuesta', 'Permite cambiar el título del bloque de detalle en la cotización', 0),
+('COT_TITULO_RESUMEN', 'Título de la sección de resumen de la cotización', 'Resumen', 'S', 'Plantilla Cotización', 1, 'Resumen', 'Permite cambiar el título del bloque de totales', 0),
 
 -- ============================================
 -- PARÁMETROS DE NEGOCIO
@@ -183,10 +188,10 @@ PRINT '  • Seguridad (3 parámetros)';
 PRINT '  • Archivos (3 parámetros)';
 PRINT '  • Reportes (4 parámetros)';
 PRINT '  • Workflow (3 parámetros)';
-PRINT '  • Formato (1 parámetro)';
+PRINT '  • Plantilla Cotización (6 parámetros)';
 PRINT '  • Negocio (1 parámetro)';
 PRINT '';
-PRINT 'TOTAL: 36 parámetros activos';
+PRINT 'TOTAL: 41 parámetros activos';
 PRINT '==============================================';
 PRINT '';
 PRINT 'PARÁMETROS CRÍTICOS DE CONSECUTIVOS:';
