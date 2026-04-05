@@ -73,6 +73,9 @@ try
 
   // Application services - Cotizaciones
   builder.Services.AddScoped<ICotizacionService, CotizacionesWeb.Infrastructure.Services.CotizacionService>();
+  
+  // Application services - Documentos
+  builder.Services.AddScoped<CotizacionesWeb.Application.Documents.IDocumentoCotizacionService, CotizacionesWeb.Infrastructure.Services.DocumentoCotizacionService>();
 
   // Sistema de parámetros y consecutivos
   builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.ConsecutivoGenerator>();

@@ -5,6 +5,8 @@
   var fromArchived = ViewBag.FromArchived as bool? ?? false;
 }
 
+@Html.AntiForgeryToken()
+
 <!-- Header Principal -->
 <div class="content-header-custom">
   <div class="d-flex justify-content-between align-items-start">
@@ -36,8 +38,17 @@
       }
       @if (!esVersionEspecifica)
       {
+        <button type="button" class="btn btn-success" onclick="generarDocumentoWord('@Model.CotizacionId')">
+          <i class="fas fa-file-word"></i> Generar Word
+        </button>
         <button type="button" class="btn btn-primary" onclick="window.print()">
           <i class="fas fa-print"></i> Imprimir
+        </button>
+      }
+      else
+      {
+        <button type="button" class="btn btn-success" onclick="generarDocumentoWord('@Model.CotizacionId', @Model.VersionId)">
+          <i class="fas fa-file-word"></i> Generar Word (v@Model.NumeroVersion)
         </button>
       }
     </div>
@@ -473,5 +484,57 @@
                 .addClass('fa-plus');
         });
     });
+
+    // Función para generar documento Word
+    function generarDocumentoWord(cotizacionId, versionId = null) {
+        // Mostrar indicador de carga
+        const $btn = event.target.closest('button');
+        const originalHtml = $btn.innerHTML;
+        $btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generando...';
+        $btn.disabled = true;
+
+        // Crear formulario para enviar la solicitud
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '@Url.Action("GenerarDocumentoCotizacion", "Documentos")';
+        form.target = '_blank'; // Abrir en nueva ventana
+
+        // Agregar token antiforgery
+        const token = $('input[name="__RequestVerificationToken"]').val();
+        if (token) {
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = '__RequestVerificationToken';
+            tokenInput.value = token;
+            form.appendChild(tokenInput);
+        }
+
+        // Agregar cotizacionId
+        const cotizacionInput = document.createElement('input');
+        cotizacionInput.type = 'hidden';
+        cotizacionInput.name = 'cotizacionId';
+        cotizacionInput.value = cotizacionId;
+        form.appendChild(cotizacionInput);
+
+        // Agregar versionId si existe
+        if (versionId) {
+            const versionInput = document.createElement('input');
+            versionInput.type = 'hidden';
+            versionInput.name = 'versionId';
+            versionInput.value = versionId;
+            form.appendChild(versionInput);
+        }
+
+        // Enviar formulario
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        // Restaurar botón después de un tiempo
+        setTimeout(function() {
+            $btn.innerHTML = originalHtml;
+            $btn.disabled = false;
+        }, 3000);
+    }
   </script>
 }

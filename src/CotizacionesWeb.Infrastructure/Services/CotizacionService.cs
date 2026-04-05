@@ -355,7 +355,6 @@ public class CotizacionService : ICotizacionService
         d.DetalleVersionId,  // CORREGIDO: Usar DetalleVersionId
         d.VersionId,
         d.ProductoId,
-        d.ProductoId, // TODO: Obtener nombre del producto desde ERP
         d.Descripcion, // Descripcion almacenada en la base de datos
         d.Cantidad,
         d.PrecioUnitario,

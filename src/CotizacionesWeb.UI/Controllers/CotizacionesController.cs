@@ -494,7 +494,6 @@ public class CotizacionesController : Controller
         {
           DetalleVersionId = d.DetalleVersionId,
           ProductoId = d.ProductoId,
-          ProductoNombre = d.ProductoNombre,
           Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
@@ -656,7 +655,6 @@ public class CotizacionesController : Controller
         Detalles = viewModel.Detalles.Select(d => new CrearDetalleRequest
         {
           ProductoId = d.ProductoId,
-          ProductoNombre = d.ProductoNombre,
           Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
@@ -772,7 +770,6 @@ public class CotizacionesController : Controller
         {
           DetalleVersionId = d.DetalleVersionId,
           ProductoId = d.ProductoId,
-          ProductoNombre = d.ProductoNombre,
           Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
@@ -1028,7 +1025,6 @@ public class CotizacionesController : Controller
         {
           DetalleVersionId = d.DetalleVersionId,
           ProductoId = d.ProductoId,
-          ProductoNombre = d.ProductoNombre,
           Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,
@@ -1478,7 +1474,6 @@ public class CotizacionesController : Controller
         {
           DetalleVersionId = d.DetalleVersionId,
           ProductoId = d.ProductoId,
-          ProductoNombre = d.ProductoNombre,
           Descripcion = d.Descripcion,
           Cantidad = d.Cantidad,
           PrecioUnitario = d.PrecioUnitario,

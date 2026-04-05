@@ -341,7 +341,7 @@
                           class="linea-persistente"
                           data-valores-originales='@System.Text.Json.JsonSerializer.Serialize(new { 
                             productoId = Model.Detalles[i].ProductoId, 
-                            productoNombre = Model.Detalles[i].ProductoNombre,
+                            descripcion = Model.Detalles[i].Descripcion,
                             cantidad = Model.Detalles[i].Cantidad,
                             precio = Model.Detalles[i].PrecioUnitario,
                             descuento = Model.Detalles[i].Descuento
@@ -354,8 +354,7 @@
                           <input type="hidden" name="Detalles[@i].ProductoId" value="@Model.Detalles[i].ProductoId" />
                         </td>
                         <td>
-                          <span class="producto-nombre">@Model.Detalles[i].ProductoNombre</span>
-                          <input type="hidden" name="Detalles[@i].ProductoNombre" value="@Model.Detalles[i].ProductoNombre" />
+                          <span class="producto-descripcion">@Model.Detalles[i].Descripcion</span>
                           <input type="hidden" name="Detalles[@i].Descripcion" value="@Model.Detalles[i].Descripcion" />
                         </td>
                         <td class="text-right">
@@ -615,7 +614,6 @@
           <input type="hidden" id="detalleIndex" />
           <input type="hidden" id="detalleVersionId" />
           <input type="hidden" id="modalPorcentajeImpuesto" value="0" />
-          <input type="hidden" id="modalDescripcionProducto" value="" />
 
           <div class="row">
             <div class="col-md-6">
@@ -628,8 +626,8 @@
             </div>
             <div class="col-md-6">
               <div class="form-group">
-                <label for="modalProductoNombre">Descripción *</label>
-                <input type="text" class="form-control" id="modalProductoNombre"
+                <label for="modalDescripcionProducto">Descripción *</label>
+                <input type="text" class="form-control" id="modalDescripcionProducto"
                        placeholder="Descripción del producto" required>
               </div>
             </div>

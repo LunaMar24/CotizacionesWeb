@@ -159,7 +159,6 @@ public class DetalleCotizacionViewModel
 {
     public int DetalleVersionId { get; set; }
     public string ProductoId { get; set; } = string.Empty;
-    public string ProductoNombre { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
@@ -246,7 +245,6 @@ public class DetalleEditarViewModel
 {
     public int DetalleVersionId { get; set; }
     public string ProductoId { get; set; } = string.Empty;
-    public string ProductoNombre { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }

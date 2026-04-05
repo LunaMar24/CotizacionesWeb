@@ -96,6 +96,24 @@ $(window).on('beforeunload', function(e) {
     inicializarVista();
     configurarEventos();
     cargarDatosTemporales();
+    
+    // ✅ FUNCIÓN DE DEBUG GLOBAL para verificar campos del modal
+    window.debugModalDescripcion = function() {
+        console.log('=== DEBUG MODAL DESCRIPCIÓN ===');
+        console.log('Campo existe?:', $('#modalDescripcionProducto').length > 0);
+        console.log('Valor actual:', $('#modalDescripcionProducto').val());
+        console.log('Tipo de elemento:', $('#modalDescripcionProducto').prop('type'));
+        console.log('Es visible?:', $('#modalDescripcionProducto').is(':visible'));
+        console.log('Está deshabilitado?:', $('#modalDescripcionProducto').is(':disabled'));
+        console.log('Todos los inputs con mismo ID:', $('input[id="modalDescripcionProducto"]').length);
+        console.log('==============================');
+        
+        // Probar establecer un valor
+        $('#modalDescripcionProducto').val('PRUEBA DE DEBUG');
+        console.log('Después de establecer valor:', $('#modalDescripcionProducto').val());
+        
+        return $('#modalDescripcionProducto');
+    };
 });
 
 // ========================================
@@ -399,7 +417,15 @@ function inicializarSelect2Productos() {
                 // Extraer solo la descripción (después del guión)
                 const partes = data.text.split(' - ');
                 const descripcion = partes.length > 1 ? partes.slice(1).join(' - ') : data.text;
-                $('#modalProductoNombre').val(descripcion.trim());
+                
+                // ✅ ASEGURAR QUE SE ACTUALIZA EL CAMPO CORRECTO
+                const $descripcionField = $('#modalDescripcionProducto');
+                if ($descripcionField.length > 0) {
+                    $descripcionField.val(descripcion.trim());
+                    console.log('📝 Descripción actualizada:', descripcion.trim());
+                } else {
+                    console.error('❌ Campo #modalDescripcionProducto no encontrado');
+                }
             }
             
             // Auto-llenar precio
@@ -424,7 +450,7 @@ function inicializarSelect2Productos() {
     // Evento al limpiar selección
     $select.on('select2:clear', function() {
         console.log('🧹 Limpiando selección de producto');
-        $('#modalProductoNombre').val('');
+        $('#modalDescripcionProducto').val('');
         $('#modalPrecioUnitario').val('');
         calcularTotalLinea();
     });
@@ -522,7 +548,7 @@ function abrirModalDetalle(index) {
         
         // Cargar datos actuales
         const productoId = fila.find('input[name$=".ProductoId"]').val();
-        const productoNombre = fila.find('input[name$=".ProductoNombre"]').val();
+        const descripcion = fila.find('input[name$=".Descripcion"]').val();
         const cantidad = parseFloat(fila.find('input[name$=".Cantidad"]').val());
         const precio = parseFloat(fila.find('input[name$=".PrecioUnitario"]').val());
         const descuento = parseFloat(fila.find('input[name$=".Descuento"]').val());
@@ -551,7 +577,7 @@ function abrirModalDetalle(index) {
             if (!valoresOriginales) {
                 valoresOriginales = {
                     productoId: productoId,
-                    productoNombre: productoNombre,
+                    descripcion: descripcion,
                     cantidad: cantidad,
                     precio: precio,
                     descuento: descuento
@@ -559,13 +585,13 @@ function abrirModalDetalle(index) {
                 fila.data('valores-originales', valoresOriginales);
             }
         }
-        
+
         // Configurar Select2 con el producto actual
         const $selectProducto = $('#modalProductoId');
         if ($selectProducto.hasClass('select2-hidden-accessible')) {
             // Agregar opción si no existe y establecer valor
             if (productoId && $selectProducto.find(`option[value="${productoId}"]`).length === 0) {
-                const textoCompleto = `${productoId} - ${productoNombre}`;
+                const textoCompleto = `${productoId} - ${descripcion}`;
                 const newOption = new Option(textoCompleto, productoId, true, true);
                 $selectProducto.append(newOption).trigger('change');
             } else {
@@ -574,12 +600,12 @@ function abrirModalDetalle(index) {
         } else {
             // Fallback si Select2 no está inicializado
             if (productoId && $selectProducto.find(`option[value="${productoId}"]`).length === 0) {
-                $selectProducto.append(`<option value="${productoId}" selected>${productoId} - ${productoNombre}</option>`);
+                $selectProducto.append(`<option value="${productoId}" selected>${productoId} - ${descripcion}</option>`);
             }
             $selectProducto.val(productoId);
         }
         
-        $('#modalProductoNombre').val(productoNombre);
+        $('#modalDescripcionProducto').val(descripcion);
         $('#modalCantidad').val(cantidad);
         $('#modalPrecioUnitario').val(precio);
         $('#modalDescuento').val(descuento);
@@ -601,13 +627,13 @@ function abrirModalDetalle(index) {
 function guardarDetalle() {
     // Validar campos requeridos
     const productoId = $('#modalProductoId').val();
-    const productoNombre = $('#modalProductoNombre').val().trim();
+    const descripcion = $('#modalDescripcionProducto').val().trim();
     const cantidad = parseFloat($('#modalCantidad').val());
     const precio = parseFloat($('#modalPrecioUnitario').val());
     const descuento = parseFloat($('#modalDescuento').val()) || 0;
     const porcentajeImpuesto = parseFloat($('#modalPorcentajeImpuesto').val()) || 0;
     
-    if (!productoId || !productoNombre || !cantidad || cantidad <= 0 || !precio || precio < 0) {
+    if (!productoId || !descripcion || !cantidad || cantidad <= 0 || !precio || precio < 0) {
         showNotification('error', 'Por favor complete todos los campos obligatorios correctamente');
         return;
     }
@@ -618,8 +644,7 @@ function guardarDetalle() {
         // Actualizar línea existente
         actualizarFilaDetalle(detalleEditandoIndex, {
             productoId: productoId,
-            productoNombre: productoNombre,
-            descripcion: $('#modalDescripcionProducto').val() || '',
+            descripcion: descripcion,
             cantidad: cantidad,
             precioUnitario: precio,
             descuento: descuento,
@@ -631,8 +656,7 @@ function guardarDetalle() {
         agregarNuevaFilaDetalle({
             detalleVersionId: 0, // Nuevo registro
             productoId: productoId,
-            productoNombre: productoNombre,
-            descripcion: $('#modalDescripcionProducto').val() || '',
+            descripcion: descripcion,
             cantidad: cantidad,
             precioUnitario: precio,
             descuento: descuento,
@@ -659,7 +683,7 @@ function actualizarFilaDetalle(index, datos) {
     
     // Actualizar displays visuales
     fila.find('.text-primary').text(datos.productoId);
-    fila.find('.producto-nombre').text(datos.productoNombre);
+    fila.find('.producto-descripcion').text(datos.descripcion);
     fila.find('.cantidad-display').text(formatNumber(datos.cantidad, 2));
     fila.find('.precio-display').text(formatCurrency(datos.precioUnitario));
     
@@ -682,8 +706,7 @@ function actualizarFilaDetalle(index, datos) {
     
     // Actualizar inputs ocultos
     fila.find('input[name$=".ProductoId"]').val(datos.productoId);
-    fila.find('input[name$=".ProductoNombre"]').val(datos.productoNombre);
-    fila.find('input[name$=".Descripcion"]').val(datos.descripcion || '');
+    fila.find('input[name$=".Descripcion"]').val(datos.descripcion);
     fila.find('input[name$=".Cantidad"]').val(datos.cantidad.toString());
     fila.find('input[name$=".PrecioUnitario"]').val(datos.precioUnitario.toString());
     fila.find('input[name$=".Descuento"]').val(datos.descuento.toString());
@@ -694,47 +717,47 @@ function actualizarFilaDetalle(index, datos) {
     if (detalleVersionId > 0) {
         const valoresOriginales = fila.data('valores-originales');
         
-        // Si no hay valores originales almacenados, almacenarlos ahora
-        if (!valoresOriginales) {
-            fila.data('valores-originales', {
-                productoId: datos.productoId,
-                productoNombre: datos.productoNombre,
-                cantidad: datos.cantidad,
-                precio: datos.precioUnitario,
-                descuento: datos.descuento
-            });
-        } else {
-            // Comparar valores actuales con originales
-            const fueModificada = (
-                valoresOriginales.productoId !== datos.productoId ||
-                valoresOriginales.productoNombre !== datos.productoNombre ||
-                valoresOriginales.cantidad !== datos.cantidad ||
-                valoresOriginales.precio !== datos.precioUnitario ||
-                valoresOriginales.descuento !== datos.descuento
-            );
-            
-            if (fueModificada) {
-                // Marcar línea como modificada
-                fila.removeClass('linea-nueva linea-persistente').addClass('linea-modificada');
-                
-                // Actualizar o agregar indicador visual
-                let indicadorExistente = fila.find('.indicador-estado');
-                
-                if (indicadorExistente.length > 0) {
-                    indicadorExistente.replaceWith('<i class="fas fa-edit text-warning indicador-estado" title="Línea modificada"></i>');
-                } else {
-                    // Agregar indicador si no existe
-                    const contenedorCodigo = fila.find('td:first-child .d-flex');
-                    if (contenedorCodigo.length > 0) {
-                        contenedorCodigo.append('<span class="ml-2"><i class="fas fa-edit text-warning indicador-estado" title="Línea modificada"></i></span>');
-                    }
-                }
+            // Si no hay valores originales almacenados, almacenarlos ahora
+            if (!valoresOriginales) {
+                fila.data('valores-originales', {
+                    productoId: datos.productoId,
+                    descripcion: datos.descripcion,
+                    cantidad: datos.cantidad,
+                    precio: datos.precioUnitario,
+                    descuento: datos.descuento
+                });
             } else {
-                // No fue modificada, mantener como persistente sin indicador
-                fila.removeClass('linea-nueva linea-modificada').addClass('linea-persistente');
-                fila.find('.indicador-estado').closest('span').remove();
+                // Comparar valores actuales con originales
+                const fueModificada = (
+                    valoresOriginales.productoId !== datos.productoId ||
+                    valoresOriginales.descripcion !== datos.descripcion ||
+                    valoresOriginales.cantidad !== datos.cantidad ||
+                    valoresOriginales.precio !== datos.precioUnitario ||
+                    valoresOriginales.descuento !== datos.descuento
+                );
+                
+                if (fueModificada) {
+                    // Marcar línea como modificada
+                    fila.removeClass('linea-nueva linea-persistente').addClass('linea-modificada');
+                    
+                    // Actualizar o agregar indicador visual
+                    let indicadorExistente = fila.find('.indicador-estado');
+                    
+                    if (indicadorExistente.length > 0) {
+                        indicadorExistente.replaceWith('<i class="fas fa-edit text-warning indicador-estado" title="Línea modificada"></i>');
+                    } else {
+                        // Agregar indicador si no existe
+                        const contenedorCodigo = fila.find('td:first-child .d-flex');
+                        if (contenedorCodigo.length > 0) {
+                            contenedorCodigo.append('<span class="ml-2"><i class="fas fa-edit text-warning indicador-estado" title="Línea modificada"></i></span>');
+                        }
+                    }
+                } else {
+                    // No fue modificada, mantener como persistente sin indicador
+                    fila.removeClass('linea-nueva linea-modificada').addClass('linea-persistente');
+                    fila.find('.indicador-estado').closest('span').remove();
+                }
             }
-        }
     }
 }
 
@@ -764,9 +787,8 @@ function agregarNuevaFilaDetalle(datos) {
                 <input type="hidden" name="Detalles[${nuevoIndex}].ProductoId" value="${datos.productoId}" />
             </td>
             <td>
-                <span class="producto-nombre">${datos.productoNombre}</span>
-                <input type="hidden" name="Detalles[${nuevoIndex}].ProductoNombre" value="${datos.productoNombre}" />
-                <input type="hidden" name="Detalles[${nuevoIndex}].Descripcion" value="${datos.descripcion || ''}" />
+                <span class="producto-descripcion">${datos.descripcion}</span>
+                <input type="hidden" name="Detalles[${nuevoIndex}].Descripcion" value="${datos.descripcion}" />
             </td>
             <td class="text-right">
                 <span class="cantidad-display">${formatNumber(datos.cantidad, 2)}</span>
@@ -837,17 +859,17 @@ function eliminarDetalle(index) {
 }
 
 function ejecutarEliminacionDetalle(index) {
-    const fila = $(`tr[data-index="${index}"]`);
-    const detalleVersionId = parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0;
-    const productoNombre = fila.find('.producto-nombre').text();
+const fila = $(`tr[data-index="${index}"]`);
+const detalleVersionId = parseInt(fila.find('input[name$=".DetalleVersionId"]').val()) || 0;
+const productoDescripcion = fila.find('.producto-descripcion').text();
     
-    // ✅ IMPORTANTE: Marcar como cambios sin guardar ANTES de eliminar
-    window.cotizacionGuardada = false;
-    console.log('🗑️ ANTES de eliminar: marcando como cambios sin guardar');
+// ✅ IMPORTANTE: Marcar como cambios sin guardar ANTES de eliminar
+window.cotizacionGuardada = false;
+console.log('🗑️ ANTES de eliminar: marcando como cambios sin guardar');
     
-    if (detalleVersionId > 0) {
-        showNotification('info', `Línea persistente "${productoNombre}" marcada para eliminación. Se eliminará de BD al guardar.`);
-    }
+if (detalleVersionId > 0) {
+    showNotification('info', `Línea persistente "${productoDescripcion}" marcada para eliminación. Se eliminará de BD al guardar.`);
+}
     
     fila.remove();
     reindexarFilasDetalle();
@@ -970,18 +992,25 @@ function limpiarModalDetalle() {
         $selectProducto.val('');
     }
     
-    $('#modalProductoNombre').val('');
+    // ✅ ASEGURAR LIMPIEZA EXPLÍCITA DE TODOS LOS CAMPOS
+    $('#modalDescripcionProducto').val('');
     $('#modalCantidad').val('1');
     $('#modalPrecioUnitario').val('');
     $('#modalDescuento').val('0');
     $('#modalPorcentajeImpuesto').val('0');
     $('#modalPorcentajeImpuestoDisplay').val('0%');
-    $('#modalDescripcionProducto').val('');
     $('#modalTotalLinea').text(formatCurrency(0));
     $('#detalleIndex').val('');
     $('#detalleVersionId').val('');
+    
+    // Limpiar clases de validación
     $('#formEditarDetalle .is-invalid').removeClass('is-invalid');
     $('#formEditarDetalle .invalid-feedback').remove();
+    
+    console.log('🧹 Modal limpiado - verificando campos:');
+    console.log('- Descripción:', $('#modalDescripcionProducto').val());
+    console.log('- Producto ID:', $('#modalProductoId').val());
+    console.log('- Cantidad:', $('#modalCantidad').val());
 }
 
 function actualizarContadorLineas() {
@@ -1141,7 +1170,7 @@ function continuarGuardadoCreacion() {
             
             const detalle = {
                 ProductoId: inputProductoId.val() || fila.find(`input[name="Detalles[${index}].ProductoId"]`).val() || '',
-                ProductoNombre: inputProductoNombre.val() || fila.find(`input[name="Detalles[${index}].ProductoNombre"]`).val() || '',
+                Descripcion: fila.find(`input[name="Detalles[${index}].Descripcion"]`).val() || '',
                 Cantidad: parseFloat(inputCantidad.val() || fila.find(`input[name="Detalles[${index}].Cantidad"]`).val() || 0),
                 PrecioUnitario: parseFloat(inputPrecio.val() || fila.find(`input[name="Detalles[${index}].PrecioUnitario"]`).val() || 0),
                 Descuento: parseFloat(inputDescuento.val() || fila.find(`input[name="Detalles[${index}].Descuento"]`).val() || 0),
@@ -1329,7 +1358,7 @@ function continuarGuardadoSinValidacionLineas() {
             const detalle = {
                 DetalleVersionId: parseInt(inputDetalleId.val() || fila.find(`input[name="Detalles[${index}].DetalleVersionId"]`).val()) || 0,
                 ProductoId: inputProductoId.val() || fila.find(`input[name="Detalles[${index}].ProductoId"]`).val() || '',
-                ProductoNombre: inputProductoNombre.val() || fila.find(`input[name="Detalles[${index}].ProductoNombre"]`).val() || '',
+                Descripcion: fila.find(`input[name="Detalles[${index}].Descripcion"]`).val() || '',
                 Cantidad: parseFloat(inputCantidad.val() || fila.find(`input[name="Detalles[${index}].Cantidad"]`).val() || 0),
                 PrecioUnitario: parseFloat(inputPrecio.val() || fila.find(`input[name="Detalles[${index}].PrecioUnitario"]`).val() || 0),
                 Descuento: parseFloat(inputDescuento.val() || fila.find(`input[name="Detalles[${index}].Descuento"]`).val() || 0),

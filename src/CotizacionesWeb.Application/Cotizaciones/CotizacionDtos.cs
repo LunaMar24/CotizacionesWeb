@@ -52,7 +52,6 @@ public record DetalleCotizacionDto(
     int DetalleVersionId,
     int VersionId,
     string ProductoId,
-    string ProductoNombre,
     string Descripcion,
     decimal Cantidad,
     decimal PrecioUnitario,
@@ -139,7 +138,6 @@ public record ActualizarDetalleRequest
 {
     public int DetalleVersionId { get; set; } // 0 = nuevo detalle, >0 = actualizar existente
     public string ProductoId { get; set; } = string.Empty;
-    public string ProductoNombre { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
