@@ -56,7 +56,7 @@ public class ErpService : IErpService
       string monedaErp = monedaCotizacion switch
       {
         "CRC" => "CRC",
-        "DOL" => "DOL",
+        "USD" => "USD",
         _ => throw new InvalidOperationException("Moneda de cotización no soportada.")
       };
 
@@ -64,7 +64,7 @@ public class ErpService : IErpService
       string nivelPrecio = monedaCotizacion switch
       {
         "CRC" => nivelPrecioLocal ?? throw new InvalidOperationException("ERP_NIVELPRECIO_LOCAL no configurado."),
-        "DOL" => nivelPrecioDolar ?? throw new InvalidOperationException("ERP_NIVELPRECIO_DOLAR no configurado."),
+        "USD" => nivelPrecioDolar ?? throw new InvalidOperationException("ERP_NIVELPRECIO_DOLAR no configurado."),
         _ => throw new InvalidOperationException("Moneda no válida.")
       };
 

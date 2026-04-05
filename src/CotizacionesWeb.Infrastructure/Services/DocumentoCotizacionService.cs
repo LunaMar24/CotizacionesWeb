@@ -295,9 +295,9 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
             { "{{VERSION}}", $"v{datos.Version}" },
             { "{{FECHA_COTIZACION}}", datos.FechaCotizacion.ToString("dd/MM/yyyy") },
             { "{{ANO}}", datos.ano.ToString() },
-            { "{{CLIENTE}}", datos.Cliente },
-            { "{{EMPRESA}}", datos.Empresa },
-            { "{{EMAIL}}", datos.Email??"N/A" },
+            { "{{CLIENTE}}", (string.IsNullOrWhiteSpace (datos.Cliente)?"No Asignado":datos.Cliente) },
+            { "{{EMPRESA}}", (string.IsNullOrWhiteSpace (datos.Empresa)?"No Asignado":datos.Empresa) },
+            { "{{EMAIL}}", (string.IsNullOrWhiteSpace (datos.Email)?"No Asignado":datos.Email) },
             { "{{MONEDA}}", datos.Moneda },
             { "{{TIPO_CAMBIO}}", datos.TipoCambio },
             { "{{VIGENCIA}}", datos.Vigencia },
@@ -513,6 +513,9 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
         new Run(
             new RunProperties(new FontSize { Val = "20" }), // 10pt
             new Text(etiqueta)
+            {
+              Space = SpaceProcessingModeValues.Preserve
+            }
         ),
         new Run(
             new RunProperties(
@@ -520,6 +523,9 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
                 new Bold()
             ),
             new Text($" {valor}")
+            {
+              Space = SpaceProcessingModeValues.Preserve
+            }
         )
     );
   }
@@ -638,7 +644,7 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
         {
           // Reemplazar considerando saltos de línea
           var textoReemplazado = textElement.Text.Replace(placeholder, reemplazo);
-          
+
           if (ContienesSaltosDeLinea(reemplazo))
           {
             // El texto de reemplazo contiene saltos de línea - crear estructura compleja
@@ -705,7 +711,7 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
       for (int i = 0; i < lineas.Length; i++)
       {
         var linea = lineas[i];
-        
+
         if (i == 0)
         {
           // Primera línea: reutilizar el run existente
@@ -815,7 +821,7 @@ public class DocumentoCotizacionService : IDocumentoCotizacionService
     {
       var linea = lineas[i];
       var nuevoRun = new Run();
-      
+
       // Aplicar formato si está disponible
       if (runProperties != null)
       {

@@ -211,6 +211,17 @@ function configurarEventos() {
         configurarEventoVersion();
         
         $('#btnAgregarLinea').on('click', function() {
+            // ✅ VERIFICAR si hay cambio de moneda sin guardar
+            if (verificarCambioMonedaSinGuardar()) {
+                showNotification('warning', 'Debe guardar la cotización antes de agregar líneas cuando se ha cambiado la moneda.');
+                // ✅ EFECTO VISUAL de botón bloqueado
+                const $btn = $(this);
+                $btn.addClass('btn-blocked').removeClass('btn-success');
+                setTimeout(() => {
+                    $btn.removeClass('btn-blocked').addClass('btn-success');
+                }, 1500);
+                return;
+            }
             abrirModalDetalle(-1);
         });
         
@@ -557,6 +568,11 @@ function guardarDetalle() {
     recalcularTotales();
     window.cotizacionGuardada = false;
     
+    // ✅ FORZAR verificación inmediata después de agregar línea
+    setTimeout(() => {
+        manejarCambioEnLineas();
+    }, 1);
+    
     $('#modalEditarDetalle').modal('hide');
     
     showNotification('success', 'Detalle guardado correctamente');
@@ -716,9 +732,8 @@ function agregarNuevaFilaDetalle(datos) {
     tbody.append(nuevaFila);
     actualizarContadorLineas();
     
-    setTimeout(() => {
-        verificarYActualizarEstadoMoneda();
-    }, 100);
+    // ✅ FORZAR actualización inmediata del estado de moneda después de agregar línea
+    manejarCambioEnLineas();
 }
 
 function eliminarDetalle(index) {
@@ -1332,13 +1347,13 @@ function getCurrencySymbol(currency) {
     const symbols = {
         'CRC': '\u00A2',    // Colón costarricense (¢ - Unicode: U+00A2)
         'USD': '$',         // Dólar estadounidense 
-        'DOL': '$',         // Dólar (alias)
-        'EUR': '\u20AC',    // Euro (Unicode: U+20AC)
-        'MXN': '$',         // Peso mexicano
-        'CAD': '$',         // Dólar canadiense
-        'GBP': '\u00A3',    // Libra esterlina (Unicode: U+00A3)
-        'JPY': '\u00A5',    // Yen japonés (Unicode: U+00A5)
-        'CNY': '\u00A5'     // Yuan chino (Unicode: U+00A5)
+        //'DOL': '$',         // Dólar (alias)
+        //'EUR': '\u20AC',    // Euro (Unicode: U+20AC)
+        //'MXN': '$',         // Peso mexicano
+        //'CAD': '$',         // Dólar canadiense
+        //'GBP': '\u00A3',    // Libra esterlina (Unicode: U+00A3)
+        //'JPY': '\u00A5',    // Yen japonés (Unicode: U+00A5)
+        //'CNY': '\u00A5'     // Yuan chino (Unicode: U+00A5)
     };
     
     if (!currency) return '\u00A2'; // Default a colón costarricense (¢)
@@ -1629,6 +1644,25 @@ function confirmarSalidaConCambios(urlDestino) {
 // GESTIÓN DE CAMBIOS SIN GUARDAR
 // ========================================
 
+/**
+ * Verifica si hay cambio de moneda sin guardar específicamente
+ */
+function verificarCambioMonedaSinGuardar() {
+    const monedaComboActual = $('#MonedaSelect').val();
+    const monedaOriginalGuardada = window._monedaOriginal || monedaActual;
+    
+    const cambioMoneda = (monedaComboActual && monedaComboActual !== monedaOriginalGuardada);
+    
+    console.log('🔍 Verificar cambio moneda sin guardar:', {
+        actual: monedaComboActual,
+        original: monedaOriginalGuardada,
+        cambioMoneda: cambioMoneda,
+        cotizacionGuardada: window.cotizacionGuardada
+    });
+    
+    return cambioMoneda && window.cotizacionGuardada === false;
+}
+
 function verificarCambiosSinGuardar() {
     if (seGuardoRecientemente()) {
         return false;
@@ -1736,6 +1770,11 @@ function marcarComoGuardado() {
     }
     
     console.log('💱 Tipo de cambio original actualizado después de guardar:', window._tipoCambioOriginal);
+    
+    // ✅ ACTUALIZAR estado visual del botón después de guardar
+    setTimeout(() => {
+        actualizarEstadoBotonAgregarLinea();
+    }, 100);
 }
 
 function seGuardoRecientemente() {
@@ -1795,9 +1834,10 @@ function procesarCambioMoneda(nuevaMoneda) {
         `Moneda cambiada a ${obtenerNombreMoneda(nuevaMoneda)}. ` +
         `Debe Guardar la cotización para aplicar el cambio.`);
     
-    // ✅ Reconfigurar eventos después del cambio
+    // ✅ Reconfigurar eventos y estado del botón después del cambio
     setTimeout(() => {
         configurarEventoMoneda();
+        actualizarEstadoBotonAgregarLinea();
     }, 100);
 }
 
@@ -1841,44 +1881,78 @@ function actualizarDisplaysMoneda() {
     }
 }
 
+function actualizarEstadoBotonAgregarLinea() {
+    const $btnAgregar = $('#btnAgregarLinea');
+    const estadoActual = obtenerEstadoActual();
+    
+    if (estadoActual !== 'B') {
+        // Estado no editable
+        $btnAgregar.prop('disabled', true)
+                   .removeClass('btn-success btn-blocked')
+                   .addClass('btn-secondary')
+                   .attr('title', 'Solo se pueden agregar líneas en estado Borrador');
+        return;
+    }
+    
+    if (verificarCambioMonedaSinGuardar()) {
+        // Cambio de moneda sin guardar
+        $btnAgregar.prop('disabled', false)
+                   .removeClass('btn-success btn-secondary')
+                   .addClass('btn-warning')
+                   .attr('title', 'Debe guardar la cotización antes de agregar líneas (moneda cambiada)');
+        
+        // ✅ AGREGAR ICONO DE ADVERTENCIA
+        const textoBtn = $btnAgregar.html();
+        if (!textoBtn.includes('fa-exclamation-triangle')) {
+            $btnAgregar.html('<i class="fas fa-exclamation-triangle"></i> Agregar Línea');
+        }
+    } else {
+        // Estado normal
+        $btnAgregar.prop('disabled', false)
+                   .removeClass('btn-warning btn-secondary btn-blocked')
+                   .addClass('btn-success')
+                   .attr('title', 'Agregar nueva línea de producto')
+                   .html('<i class="fas fa-plus"></i> Agregar Línea');
+    }
+}
+
+// ✅ FUNCIÓN HELPER: Se ejecuta cada vez que cambian las líneas
+function manejarCambioEnLineas() {
+    verificarYActualizarEstadoMoneda();
+    actualizarEstadoBotonAgregarLinea();
+    recalcularTotales();
+}
+
 function verificarYActualizarEstadoMoneda() {
     const estadoActual = obtenerEstadoActual();
     
-    // ✅ NUEVA LÓGICA: Para creaciones nuevas, mostrar combo siempre (sin líneas persistentes)
-    // Para ediciones, aplicar la lógica existente
-    let puedeEditarMoneda = false;
-    
-    if (esNuevaCotizacion) {
-        // En creación: siempre puede cambiar moneda (no hay líneas persistentes)
-        puedeEditarMoneda = (estadoActual === 'B');
-    } else {
-        // En edición: solo si está en borrador Y no tiene líneas persistentes
-        let lineasPersistentes = 0;
-        $('#tablaDetalles tbody tr').each(function() {
-            const detalleVersionId = parseInt($(this).find('input[name$=".DetalleVersionId"]').val()) || 0;
-            if (detalleVersionId > 0) {
-                lineasPersistentes++;
-            }
-        });
-        puedeEditarMoneda = (estadoActual === 'B' && lineasPersistentes === 0);
+    // Solo proceder si está en estado editable
+    if (estadoActual !== 'B') {
+        return;
     }
+
+    // ✅ VERIFICAR INMEDIATAMENTE si hay líneas presentes
+    const hayLineas = $('#tablaDetalles tbody tr').length > 0;
+    const $monedaSection = $('.moneda-section');
     
-    if (puedeEditarMoneda) {
-        // ✅ SOLO mostrar combo si no existe o necesita actualizarse
-        mostrarComboMoneda();
+    console.log('🔍 Verificando estado moneda:', {
+        estadoActual,
+        hayLineas,
+        seccionExists: $monedaSection.length > 0
+    });
+
+    if (hayLineas) {
+        // ✅ HAY LÍNEAS: Ocultar completamente la sección de moneda
+        console.log('❌ Ocultando sección de moneda - Hay líneas presentes');
+        $monedaSection.hide().empty();
     } else {
-        // ✅ SOLO ocultar combo si actualmente es visible
-        const seccionMoneda = $('.moneda-section');
-        if (seccionMoneda.length > 0 && seccionMoneda.children().length > 0) {
-            mostrarDisplayMoneda('restricciones');
-        }
-    }
-    
-    // ✅ SOLO configurar tipo de cambio si está en borrador
-    if (estadoActual === 'B') {
-        // Verificar si el evento ya está configurado para evitar duplicación
-        if ($('#btnEditarTipoCambio').data('eventos-configurados') !== true) {
-            configurarEventoTipoCambio();
+        // ✅ NO HAY LÍNEAS: Mostrar la sección de moneda
+        console.log('✅ Mostrando sección de moneda - Sin líneas');
+        $monedaSection.show();
+        
+        // Si la sección está vacía, regenerar el combo
+        if ($monedaSection.children().length === 0) {
+            mostrarComboMoneda();
         }
     }
 }
@@ -1916,10 +1990,10 @@ function mostrarComboMoneda() {
         monedasDisponibles = [
             { codigo: 'CRC', simbolo: '₡', nombre: 'Colón Costarricense' },
             { codigo: 'USD', simbolo: '$', nombre: 'Dólar Estadounidense' },
-            { codigo: 'EUR', simbolo: '€', nombre: 'Euro' },
-            { codigo: 'MXN', simbolo: '$', nombre: 'Peso Mexicano' },
-            { codigo: 'CAD', simbolo: '$', nombre: 'Dólar Canadiense' },
-            { codigo: 'GBP', simbolo: '£', nombre: 'Libra Esterlina' }
+            //{ codigo: 'EUR', simbolo: '€', nombre: 'Euro' },
+            //{ codigo: 'MXN', simbolo: '$', nombre: 'Peso Mexicano' },
+            //{ codigo: 'CAD', simbolo: '$', nombre: 'Dólar Canadiense' },
+            //{ codigo: 'GBP', simbolo: '£', nombre: 'Libra Esterlina' }
         ];
     }
     
@@ -1929,6 +2003,10 @@ function mostrarComboMoneda() {
             ${moneda.simbolo} ${moneda.codigo} - ${moneda.nombre}
         </option>`;
     }).join('');
+    
+    const mensajeAdicional = esNuevaCotizacion ? 
+        '' : 
+        ' Deberá guardar la cotización para habilitar agregar líneas.';
     
     const comboHTML = `
         <div class="mb-3 p-3 border rounded" style="background-color: #f8f9fa;">
@@ -1948,7 +2026,7 @@ function mostrarComboMoneda() {
             </div>
             <small class="text-success">
                 <i class="fas fa-check-circle"></i>
-                Puede cambiar la moneda.
+                Puede cambiar la moneda.${mensajeAdicional}
             </small>
         </div>
     `;
@@ -2002,6 +2080,9 @@ function configurarEventoMoneda() {
         // ✅ DETENER el evento inmediatamente para evitar bucles
         $(this).off('change.moneda');
         $(this).data('eventos-configurados', false);
+        
+        // ✅ ACTUALIZAR INMEDIATAMENTE el estado del botón
+        actualizarEstadoBotonAgregarLinea();
         
         // ✅ Para nuevas cotizaciones: cambio directo
         if (esNuevaCotizacion) {

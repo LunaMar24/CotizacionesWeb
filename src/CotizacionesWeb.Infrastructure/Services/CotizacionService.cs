@@ -1176,18 +1176,18 @@ public class CotizacionService : ICotizacionService
           _logger.LogInformation("?? PROCESANDO CAMBIO DE MONEDA: {MonedaAnterior} -> {MonedaNueva}",
               cotizacion.Moneda, request.Moneda);
 
-          // Validar que se puede cambiar (estado Borrador y sin líneas en BD)
+          // Validar que se puede cambiar (estado Borrador)
           if (cotizacion.EstadoActual == 'B')
           {
-            var lineasEnBD = await _context.DetallesCotizacionVersion
-                .Where(d => d.VersionId == version.VersionId)
-                .CountAsync();
+            // ✅ NUEVA LÓGICA: Considerar las líneas DESPUÉS de procesar el request
+            // En lugar de verificar líneas actuales en BD, verificar líneas que van a quedar
+            var lineasQueVanAQuedar = request.Detalles?.Count ?? 0;
 
-            _logger.LogInformation("?? Validación cambio moneda: LineasEnBD={LineasEnBD}", lineasEnBD);
+            _logger.LogInformation("🔍 Validación cambio moneda: LineasEnRequest={LineasEnRequest}", lineasQueVanAQuedar);
 
-            if (lineasEnBD == 0)
+            if (lineasQueVanAQuedar == 0)
             {
-              _logger.LogInformation("? CAMBIO DE MONEDA AUTORIZADO");
+              _logger.LogInformation("✅ CAMBIO DE MONEDA AUTORIZADO - No hay líneas en el request final");
 
               // ?? ACTUALIZAR MONEDA INMEDIATAMENTE
               var monedaAnterior = cotizacion.Moneda;
@@ -1222,10 +1222,10 @@ public class CotizacionService : ICotizacionService
             }
             else
             {
-              _logger.LogWarning("? CAMBIO DE MONEDA RECHAZADO: Hay {LineasEnBD} líneas en BD", lineasEnBD);
+              _logger.LogWarning("❌ CAMBIO DE MONEDA RECHAZADO: Hay {LineasEnRequest} líneas en el request", lineasQueVanAQuedar);
               await transaction.RollbackAsync();
               return new ActualizarCotizacionResult(false,
-                  $"No se puede cambiar la moneda cuando hay {lineasEnBD} líneas en la base de datos. Elimine todas las líneas primero.");
+                  $"No se puede cambiar la moneda cuando hay líneas de productos. Elimine todas las líneas primero.");
             }
           }
           else

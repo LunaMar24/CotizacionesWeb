@@ -38,18 +38,26 @@
       }
       @if (!esVersionEspecifica)
       {
-        <button type="button" class="btn btn-success" onclick="generarDocumentoWord('@Model.CotizacionId')">
-          <i class="fas fa-file-word"></i> Generar Word
-        </button>
+        @* Solo mostrar botón Generar Word en estados Aprobada (A) y Enviada (E) *@
+        @if (Model.EstadoActual == 'A' || Model.EstadoActual == 'E')
+        {
+          <button type="button" class="btn btn-success" onclick="generarDocumentoWord('@Model.CotizacionId')">
+            <i class="fas fa-file-word"></i> Generar Word
+          </button>
+        }
         <button type="button" class="btn btn-primary" onclick="window.print()">
           <i class="fas fa-print"></i> Imprimir
         </button>
       }
       else
       {
-        <button type="button" class="btn btn-success" onclick="generarDocumentoWord('@Model.CotizacionId', @Model.VersionId)">
-          <i class="fas fa-file-word"></i> Generar Word (v@Model.NumeroVersion)
-        </button>
+        @* Para versiones específicas, también validar el estado *@
+        @if (Model.EstadoActual == 'A' || Model.EstadoActual == 'E')
+        {
+          <button type="button" class="btn btn-success" onclick="generarDocumentoWord('@Model.CotizacionId', @Model.VersionId)">
+            <i class="fas fa-file-word"></i> Generar Word (v@Model.NumeroVersion)
+          </button>
+        }
       }
     </div>
   </div>

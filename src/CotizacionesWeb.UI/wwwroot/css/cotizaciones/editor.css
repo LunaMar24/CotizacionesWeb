@@ -544,6 +544,36 @@ select.form-control[disabled] {
     opacity: 0.65;
 }
 
+/* Estado de bot\u00f3n bloqueado por cambio de moneda */
+.btn-blocked {
+    background-color: #fd7e14 !important;
+    border-color: #fd7e14 !important;
+    color: white !important;
+    animation: shake-horizontal 0.5s ease-in-out;
+}
+
+.btn-blocked:hover {
+    background-color: #e8590c !important;
+    border-color: #dc5309 !important;
+    color: white !important;
+}
+
+/* Bot\u00f3n en estado de advertencia (moneda cambiada) */
+.btn-warning {
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+@keyframes shake-horizontal {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+
 .spinner-border-sm {
     width: 1rem;
     height: 1rem;

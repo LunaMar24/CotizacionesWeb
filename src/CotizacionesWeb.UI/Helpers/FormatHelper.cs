@@ -19,13 +19,13 @@ public static class FormatHelper
     {
         { "CRC", "¢" },     // Colón costarricense (Alt+189)
         { "USD", "$" },     // Dólar estadounidense 
-        { "DOL", "$" },     // Dólar (alias)
-        { "EUR", "€" },     // Euro (Unicode: U+20AC)
-        { "MXN", "$" },     // Peso mexicano
-        { "CAD", "$" },     // Dólar canadiense
-        { "GBP", "£" },     // Libra esterlina (Unicode: U+00A3)
-        { "JPY", "¥" },     // Yen japonés (Unicode: U+00A5)
-        { "CNY", "¥" },     // Yuan chino (Unicode: U+00A5)
+        //{ "DOL", "$" },     // Dólar (alias)
+        //{ "EUR", "€" },     // Euro (Unicode: U+20AC)
+        //{ "MXN", "$" },     // Peso mexicano
+        //{ "CAD", "$" },     // Dólar canadiense
+        //{ "GBP", "£" },     // Libra esterlina (Unicode: U+00A3)
+        //{ "JPY", "¥" },     // Yen japonés (Unicode: U+00A5)
+        //{ "CNY", "¥" },     // Yuan chino (Unicode: U+00A5)
     };
 
     /// <summary>
@@ -35,12 +35,12 @@ public static class FormatHelper
     {
         new("CRC", "Colón Costarricense"),
         new("USD", "Dólar Estadounidense"),
-        new("EUR", "Euro"),
-        new("GBP", "Libra Esterlina"),
-        new("JPY", "Yen Japonés"),
-        new("MXN", "Peso Mexicano"),
-        new("CAD", "Dólar Canadiense"),
-        new("CNY", "Yuan Chino")
+        //new("EUR", "Euro"),
+        //new("GBP", "Libra Esterlina"),
+        //new("JPY", "Yen Japonés"),
+        //new("MXN", "Peso Mexicano"),
+        //new("CAD", "Dólar Canadiense"),
+        //new("CNY", "Yuan Chino")
     };
 
     /// <summary>
@@ -105,8 +105,7 @@ public static class FormatHelper
         return tipoInteresado switch
         {
             'P' => "Persona",
-            'E' => "Empresa", 
-            'O' => "Otro",
+            'E' => "Empresa",
             _ => "No especificado"
         };
     }
