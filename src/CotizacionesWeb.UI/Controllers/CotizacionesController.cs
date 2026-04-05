@@ -1082,16 +1082,11 @@ public class CotizacionesController : Controller
   {
     try
     {
-      var result = await _cotizacionService.CambiarEstadoCotizacionAsync(
-        cotizacionId, 
-        (char)EstadoCotizacion.Borrador, 
-        (char)EstadoCotizacion.PendienteAprobacion, 
-        "Enviada a aprobación", 
-        GetCurrentUserId());
+      var result = await _cotizacionService.EnviarAprobacionConEvaluacionAutomaticaAsync(cotizacionId, GetCurrentUserId());
       
       if (result.Success)
       {
-        return Json(new { success = true, message = "Cotización enviada a aprobación exitosamente" });
+        return Json(new { success = true, message = "Cotización procesada exitosamente" });
       }
       
       return Json(new { success = false, message = result.ErrorMessage });
@@ -1099,7 +1094,7 @@ public class CotizacionesController : Controller
     catch (Exception ex)
     {
       _logger.LogError(ex, "Error al enviar cotización {CotizacionId} a aprobación", cotizacionId);
-      return Json(new { success = false, message = "Error interno al cambiar el estado" });
+      return Json(new { success = false, message = "Error interno al procesar la solicitud" });
     }
   }
 

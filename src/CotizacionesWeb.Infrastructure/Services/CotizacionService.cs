@@ -1474,7 +1474,7 @@ public class CotizacionService : ICotizacionService
     }
   }
 
-  public async Task<CambiarEstadoResult> CambiarEstadoCotizacionAsync(string cotizacionId, char estadoEsperado, char nuevoEstado, string comentario, int? userId = null)
+  public async Task<CambiarEstadoResult> CambiarEstadoCotizacionAsync(string cotizacionId, char estadoEsperado, char nuevoEstado, string comentario, int? userId = null, bool esAprobacionAutomatica = false)
   {
     try
     {
@@ -1492,12 +1492,25 @@ public class CotizacionService : ICotizacionService
         }
 
         // Validar estado actual usando StateTransitionValidator
-        if (!StateTransitionValidator.IsTransitionAllowed(cotizacion.EstadoActual, nuevoEstado))
+        // EXCEPCIÓN: Permitir B → A si es aprobación automática
+        bool transicionPermitida = StateTransitionValidator.IsTransitionAllowed(cotizacion.EstadoActual, nuevoEstado);
+        
+        if (!transicionPermitida)
+        {
+          // Verificar si es el caso especial de aprobación automática B → A
+          if (esAprobacionAutomatica && cotizacion.EstadoActual == 'B' && nuevoEstado == 'A')
+          {
+            transicionPermitida = true;
+            _logger.LogInformation("Permitiendo transición B → A por aprobación automática para cotización {CotizacionId}", cotizacionId);
+          }
+        }
+        
+        if (!transicionPermitida)
         {
           var estadoActualTexto = StateTransitionValidator.GetStateName(cotizacion.EstadoActual);
           var nuevoEstadoTexto = StateTransitionValidator.GetStateName(nuevoEstado);
           return new CambiarEstadoResult(false,
-              $"Transición de estado no permitida: {estadoActualTexto} ? {nuevoEstadoTexto}");
+              $"Transición de estado no permitida: {estadoActualTexto} → {nuevoEstadoTexto}");
         }
 
         // Validar estado esperado
@@ -1538,8 +1551,8 @@ public class CotizacionService : ICotizacionService
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
 
-        _logger.LogInformation("Estado de cotización {CotizacionId} cambiado de {EstadoAnterior} a {EstadoNuevo}",
-            cotizacionId, estadoAnterior, nuevoEstado);
+        _logger.LogInformation("Estado de cotización {CotizacionId} cambiado de {EstadoAnterior} a {EstadoNuevo}{MarcaAutomatica}",
+            cotizacionId, estadoAnterior, nuevoEstado, esAprobacionAutomatica ? " (aprobación automática)" : "");
 
         return new CambiarEstadoResult(true, null);
       }
@@ -1975,6 +1988,123 @@ public class CotizacionService : ICotizacionService
     {
       _logger.LogError(ex, "Error al obtener cotizaciones archivadas con filtros específicos");
       throw;
+    }
+  }
+
+  public async Task<CambiarEstadoResult> EnviarAprobacionConEvaluacionAutomaticaAsync(string cotizacionId, int? userId = null)
+  {
+    try
+    {
+      // Obtener información de la cotización
+      var cotizacion = await _context.Cotizaciones
+          .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
+
+      if (cotizacion == null)
+      {
+        return new CambiarEstadoResult(false, "Cotización no encontrada");
+      }
+
+      // Validar que está en estado Borrador
+      if (cotizacion.EstadoActual != 'B')
+      {
+        return new CambiarEstadoResult(false, "Solo se pueden enviar a aprobación cotizaciones en estado Borrador");
+      }
+
+      // Evaluar aprobación automática
+      var (aprobarAutomaticamente, motivoAprobacion) = await EvaluarAprobacionAutomaticaAsync(cotizacion);
+
+      if (aprobarAutomaticamente)
+      {
+        _logger.LogInformation("Aprobación automática aplicada para cotización {CotizacionId}. {Motivo}", 
+          cotizacionId, motivoAprobacion);
+          
+        // Ir directamente a estado Aprobada
+        return await CambiarEstadoCotizacionAsync(
+          cotizacionId, 
+          'B', 
+          'A', 
+          $"Aprobación automática: {motivoAprobacion}", 
+          userId,
+          esAprobacionAutomatica: true);
+      }
+      else
+      {
+        _logger.LogInformation("Enviando cotización {CotizacionId} a aprobación manual", cotizacionId);
+        
+        // Flujo normal: Pendiente Aprobación
+        return await CambiarEstadoCotizacionAsync(
+          cotizacionId, 
+          'B', 
+          'P', 
+          "Enviada a aprobación", 
+          userId);
+      }
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al enviar cotización {CotizacionId} a aprobación con evaluación automática", cotizacionId);
+      return new CambiarEstadoResult(false, "Error interno al procesar la solicitud");
+    }
+  }
+
+  private async Task<(bool aprobarAutomaticamente, string motivo)> EvaluarAprobacionAutomaticaAsync(Cotizacion cotizacion)
+  {
+    try
+    {
+      decimal? montoLimite = null;
+      string parametroNombre = "";
+
+      // Determinar el parámetro según la moneda
+      if (cotizacion.Moneda == "CRC")
+      {
+        parametroNombre = "APROBACION_AUTOMATICA_CRC_MONTO";
+        montoLimite = await _parametroService.ObtenerValorParametroAsync<decimal?>(parametroNombre);
+      }
+      else if (cotizacion.Moneda == "USD")
+      {
+        parametroNombre = "APROBACION_AUTOMATICA_DOL_MONTO";
+        montoLimite = await _parametroService.ObtenerValorParametroAsync<decimal?>(parametroNombre);
+      }
+      else
+      {
+        _logger.LogInformation("Moneda {Moneda} no soporta aprobación automática", cotizacion.Moneda);
+        return (false, "Moneda no soportada para aprobación automática");
+      }
+
+      // Si el parámetro no existe o es 0, siempre requiere aprobación manual
+      if (!montoLimite.HasValue || montoLimite.Value <= 0)
+      {
+        _logger.LogInformation("Parámetro {Parametro} es 0 o no está configurado. Requiere aprobación manual.", parametroNombre);
+        return (false, $"Parámetro {parametroNombre} requiere aprobación manual");
+      }
+
+      // Evaluar si el monto califica para aprobación automática
+      if (cotizacion.MontoCotizacion <= montoLimite.Value)
+      {
+        var simboloMoneda = cotizacion.Moneda == "CRC" ? "¢" : "$";
+        var motivo = $"Monto {simboloMoneda}{cotizacion.MontoCotizacion:N2} ≤ límite {simboloMoneda}{montoLimite.Value:N2}";
+        
+        _logger.LogInformation("Cotización {CotizacionId} califica para aprobación automática: {Motivo}", 
+          cotizacion.CotizacionId, motivo);
+          
+        return (true, motivo);
+      }
+      else
+      {
+        var simboloMoneda = cotizacion.Moneda == "CRC" ? "¢" : "$";
+        var motivo = $"Monto {simboloMoneda}{cotizacion.MontoCotizacion:N2} > límite {simboloMoneda}{montoLimite.Value:N2}";
+        
+        _logger.LogInformation("Cotización {CotizacionId} requiere aprobación manual: {Motivo}", 
+          cotizacion.CotizacionId, motivo);
+          
+        return (false, motivo);
+      }
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al evaluar aprobación automática para cotización {CotizacionId}", cotizacion.CotizacionId);
+      // En caso de error, siempre requerir aprobación manual por seguridad
+      return (false, "Error en evaluación, requiere aprobación manual");
     }
   }
 

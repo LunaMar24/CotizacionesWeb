@@ -49,7 +49,7 @@ public interface ICotizacionService
     Task<Dictionary<char, int>> GetCotizacionesCountByEstadoAsync();
     
     // Cambios de estado con validación y registro de historial
-    Task<CambiarEstadoResult> CambiarEstadoCotizacionAsync(string cotizacionId, char estadoEsperado, char nuevoEstado, string comentario, int? userId = null);
+    Task<CambiarEstadoResult> CambiarEstadoCotizacionAsync(string cotizacionId, char estadoEsperado, char nuevoEstado, string comentario, int? userId = null, bool esAprobacionAutomatica = false);
     Task<CambiarEstadoResult> CambiarEstadoCotizacionBasicoAsync(string cotizacionId, char nuevoEstado, string comentario, string? comentarioAdicional = null, int? userId = null);
     Task<CambiarEstadoResult> MarcarEnvioERPAsync(string cotizacionId, int? userId = null);
     
@@ -58,4 +58,7 @@ public interface ICotizacionService
     
     // Reactivar cotización archivada
     Task<ReactivarCotizacionResult> ReactivarCotizacionAsync(ReactivarCotizacionRequest request, int userId);
+    
+    // Enviar a aprobación con evaluación de aprobación automática
+    Task<CambiarEstadoResult> EnviarAprobacionConEvaluacionAutomaticaAsync(string cotizacionId, int? userId = null);
 }

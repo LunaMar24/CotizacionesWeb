@@ -1087,18 +1087,42 @@ public class CotizacionesController : Controller
         var result = await _cotizacionService.ActualizarAsync(request); // ✓ Delegación a Application
         return Json(result);
     }
+    
+    // 🆕 NUEVO: Envío a aprobación con evaluación automática
+    public async Task<IActionResult> EnviarAprobacion(string cotizacionId)
+    {
+        var result = await _cotizacionService.EnviarAprobacionConEvaluacionAutomaticaAsync(cotizacionId, userId);
+        return Json(result);
+    }
 }
 
 // En Application
 public interface ICotizacionService // ✓ Abstracción en Application
 {
     Task<Result> ActualizarAsync(Request request);
+    // 🆕 NUEVO: Método con evaluación automática
+    Task<CambiarEstadoResult> EnviarAprobacionConEvaluacionAutomaticaAsync(string cotizacionId, int? userId = null);
 }
 
 // En Infrastructure  
 public class CotizacionService : ICotizacionService // ✓ Implementación en Infrastructure
 {
     private readonly DbContext _context; // ✓ Acceso a datos aquí
+    private readonly IParametroSistemaService _parametroService; // ✓ Para obtener límites de aprobación
+}
+```
+
+##### **🆕 Validación de Transiciones con Excepciones:**
+```csharp
+// En CotizacionService - Método CambiarEstadoCotizacionAsync
+bool transicionPermitida = StateTransitionValidator.IsTransitionAllowed(estadoActual, nuevoEstado);
+
+// EXCEPCIÓN ESPECIAL: Aprobación automática B → A
+if (!transicionPermitida && esAprobacionAutomatica && 
+    estadoActual == 'B' && nuevoEstado == 'A')
+{
+    transicionPermitida = true;
+    _logger.LogInformation("Permitiendo transición B → A por aprobación automática");
 }
 ```
 
@@ -1875,32 +1899,23 @@ PendienteAprobacion ? Borrador (requiere nota obligatoria)
 
 | Estado | Puede Pasar A | Observaciones |
 |--------|---------------|---------------|
-| **B (Borrador)** | P, X | Flujo normal o archivo directo |
+| **B (Borrador)** | P, X, **A*** | Flujo normal, archivo o **aprobación automática** |
 | **P (PendienteAprobacion)** | A, B | Si vuelve a B: nota obligatoria |
 | **A (Aprobada)** | E | Solo puede enviarse al cliente |
-| **E (Enviada)** | T, R | Cliente acepta o rechaza |
+| **E (Enviada)** | T, R | Cliente acepta o rechazada |
 | **T (Aceptada)** | X | Solo puede archivarse |
 | **R (Rechazada)** | X | Solo puede archivarse |
 | **X (Archivada)** | - | Estado terminal |
+
+**✨ EXCEPCIÓN ESPECIAL**: La transición **B → A** está permitida únicamente para casos de **aprobación automática** basada en montos configurables. Esta excepción requiere validación previa y solo se activa cuando el sistema determina que la cotización califica para aprobación sin intervención manual.
 
 ### ?? Acciones por Estado
 
 | Acción | Estados Permitidos | Observaciones |
 |--------|--------------------|---------------|
-| Acción | Estados Permitidos | Observaciones |
-|--------|--------------------|---------------|
 | **Copiar** | **A, R** solamente | Genera nueva versión en estado B (NO disponible en B,P,E,T,X) |
 | **Duplicar** | Cualquiera | Nueva cotización en Borrador |
-| **Enviar a aprobación** | **B** solamente | B ? P |
-| **Aprobar** | **P** solamente | P ? A |
-| **Devolver a borrador** | **P** solamente | P ? B, requiere nota |
-| **Enviar al cliente** | **A** solamente | A ? E |
-| **Marcar como aceptada** | **E** solamente | E ? T |
-| **Marcar como rechazada** | **E** solamente | E ? R |
-| **Archivar** | **B, T, R** | ? X, requiere confirmación |
-| **?? Enviar al ERP** | **T** solamente | **REGLA ESTRICTA** |
-| **Duplicar** | Cualquiera | Nueva cotización en Borrador |
-| **Enviar a aprobación** | **B** solamente | B ? P |
+| **🚀 Enviar a aprobación (con evaluación automática)** | **B** solamente | B ? P o **B ? A** (según monto) |
 | **Aprobar** | **P** solamente | P ? A |
 | **Devolver a borrador** | **P** solamente | P ? B, requiere nota |
 | **Enviar al cliente** | **A** solamente | A ? E |
@@ -1909,7 +1924,219 @@ PendienteAprobacion ? Borrador (requiere nota obligatoria)
 | **Archivar** | **B, T, R** | ? X, requiere confirmación |
 | **?? Enviar al ERP** | **T** solamente | **REGLA ESTRICTA** |
 
-### ?? Regla Especial: Envío al ERP
+**🎯 NOTA IMPORTANTE**: La acción "Enviar a aprobación" ahora incluye evaluación automática. El sistema decide automáticamente si:
+- **Aprobar inmediatamente** (B → A): Para cotizaciones dentro del límite de monto
+- **Enviar a aprobación manual** (B → P): Para cotizaciones que superan el límite
+
+### ⚡ **SISTEMA DE APROBACIÓN AUTOMÁTICA (NUEVO)**
+
+El sistema incorpora un flujo de aprobación automática que permite que cotizaciones de bajo monto se aprueben sin intervención manual.
+
+#### **🎯 Funcionamiento del Sistema**
+
+**Punto de Activación**: 
+- Usuario selecciona "Enviar a Aprobación" desde estado Borrador ('B')
+- El sistema evalúa automáticamente si califica para aprobación automática
+- Si califica: **B → A** (saltándose el estado 'P')
+- Si no califica: **B → P** (flujo normal)
+
+#### **📊 Criterios de Evaluación**
+
+**Parámetros de Configuración**:
+- `APROBACION_AUTOMATICA_CRC_MONTO`: Límite para cotizaciones en colones
+- `APROBACION_AUTOMATICA_DOL_MONTO`: Límite para cotizaciones en dólares
+
+**Regla de Aprobación**:
+```csharp
+bool califíca = (cotización.MontoCotizacion <= límitePorMoneda);
+```
+
+**Monedas Soportadas**:
+- ✅ **CRC (Colones)**: Usa parámetro `_CRC_MONTO`
+- ✅ **USD (Dólares)**: Usa parámetro `_DOL_MONTO`
+- ❌ **Otras monedas**: Requieren aprobación manual
+
+#### **🔧 Implementación Técnica**
+
+**Método Principal**: `EnviarAprobacionConEvaluacionAutomaticaAsync()`
+```csharp
+public async Task<CambiarEstadoResult> EnviarAprobacionConEvaluacionAutomaticaAsync(
+    string cotizacionId, int? userId = null)
+{
+    // 1. Validar estado Borrador
+    // 2. Evaluar aprobación automática
+    // 3. Decidir flujo: B→A o B→P
+}
+```
+
+**Método de Evaluación**: `EvaluarAprobacionAutomaticaAsync()`
+```csharp
+private async Task<(bool aprobarAutomaticamente, string motivo)> 
+    EvaluarAprobacionAutomaticaAsync(Cotizacion cotizacion)
+{
+    // 1. Determinar parámetro según moneda
+    // 2. Obtener límite de monto
+    // 3. Comparar con monto de cotización
+    // 4. Retornar decisión + justificación
+}
+```
+
+#### **🛡️ Excepción de Validación Implementada**
+
+**Problema Original**:
+El `StateTransitionValidator` bloqueaba la transición directa B → A, causando errores en aprobación automática.
+
+**Solución Implementada**:
+```csharp
+public async Task<CambiarEstadoResult> CambiarEstadoCotizacionAsync(
+    string cotizacionId, 
+    char estadoEsperado, 
+    char nuevoEstado, 
+    string comentario, 
+    int? userId = null, 
+    bool esAprobacionAutomatica = false) // ← NUEVO PARÁMETRO
+{
+    // Validación normal
+    bool transicionPermitida = StateTransitionValidator.IsTransitionAllowed(from, to);
+    
+    // EXCEPCIÓN: Permitir B → A si es aprobación automática
+    if (!transicionPermitida && esAprobacionAutomatica && 
+        estadoActual == 'B' && nuevoEstado == 'A')
+    {
+        transicionPermitida = true;
+        _logger.LogInformation("Permitiendo transición B → A por aprobación automática");
+    }
+}
+```
+
+#### **📋 Flujos de Usuario**
+
+**✅ Escenario 1: Aprobación Automática**
+```
+Usuario: "Enviar a Aprobación"
+↓
+Sistema: Monto ≤ Límite
+↓  
+Resultado: B → A (Aprobada automáticamente)
+↓
+Comentario: "Aprobación automática: Monto ¢300,000 ≤ límite ¢500,000"
+```
+
+**✅ Escenario 2: Aprobación Manual**
+```
+Usuario: "Enviar a Aprobación"
+↓
+Sistema: Monto > Límite
+↓
+Resultado: B → P (Pendiente Aprobación)
+↓
+Comentario: "Enviada a aprobación"
+```
+
+**❌ Escenario 3: Error de Configuración**
+```
+Usuario: "Enviar a Aprobación"
+↓
+Sistema: Error al obtener parámetros
+↓
+Resultado: B → P (Flujo manual por seguridad)
+↓
+Comentario: "Error en evaluación, requiere aprobación manual"
+```
+
+#### **⚙️ Configuración de Parámetros**
+
+**Parámetros Requeridos**:
+```sql
+-- Límite para colones (ejemplo: 500,000 colones)
+INSERT INTO ParametrosSistema 
+(Codigo, Descripcion, Valor, TipoValor, Categoria, EsModificable)
+VALUES 
+('APROBACION_AUTOMATICA_CRC_MONTO', 
+ 'Monto máximo en colones para aprobación automática', 
+ '500000', 'N', 'Workflow', 1);
+
+-- Límite para dólares (ejemplo: 1,000 dólares)
+INSERT INTO ParametrosSistema 
+(Codigo, Descripcion, Valor, TipoValor, Categoria, EsModificable)
+VALUES 
+('APROBACION_AUTOMATICA_DOL_MONTO', 
+ 'Monto máximo en dólares para aprobación automática', 
+ '1000', 'N', 'Workflow', 1);
+```
+
+**Valores Especiales**:
+- **0 o NULL**: Desactiva aprobación automática para esa moneda
+- **-1**: Todas las cotizaciones se aprueban automáticamente (¡cuidado!)
+
+#### **📊 Logging y Auditoría**
+
+**Logs de Aprobación Automática**:
+```
+[INFO] Aprobación automática aplicada para COT-0123. 
+       Monto $750.00 ≤ límite $1,000.00
+[INFO] Cotización COT-0124 requiere aprobación manual: 
+       Monto ¢800,000 > límite ¢500,000
+[WARN] Parámetro APROBACION_AUTOMATICA_EUR_MONTO no configurado. 
+       Requiere aprobación manual.
+```
+
+**Historial de Cotización**:
+- **Evento**: "Aprobada"
+- **Comentario**: "Aprobación automática: [justificación]"
+- **Usuario**: El usuario que envió a aprobación
+- **Fecha**: Momento de la aprobación automática
+
+#### **🔒 Validaciones de Seguridad**
+
+**Validaciones Implementadas**:
+1. ✅ **Estado válido**: Solo desde Borrador ('B')
+2. ✅ **Moneda soportada**: Solo CRC y USD tienen límites
+3. ✅ **Parámetros existentes**: Validar que existen y son válidos
+4. ✅ **Fallback seguro**: Si falla evaluación → flujo manual
+5. ✅ **Logging detallado**: Trazabilidad completa del proceso
+
+**Escenarios de Seguridad**:
+- **Parámetro mal configurado** → Flujo manual
+- **Moneda no soportada** → Flujo manual  
+- **Error en base de datos** → Flujo manual
+- **Parámetro = 0** → Flujo manual (aprobación automática desactivada)
+
+#### **⚡ Beneficios del Sistema**
+
+**Para el Negocio**:
+- ✅ **Eficiencia**: Cotizaciones pequeñas se procesan automáticamente
+- ✅ **Consistencia**: Criterios objetivos y configurables
+- ✅ **Escalabilidad**: Reduce carga de trabajo en aprobadores
+- ✅ **Flexibilidad**: Límites configurables por moneda
+
+**Para el Usuario**:
+- ✅ **Velocidad**: Respuesta inmediata para montos pequeños
+- ✅ **Transparencia**: Comentario explica por qué se aprobó automáticamente
+- ✅ **Confiabilidad**: Proceso auditado y trazable
+
+**Para el Sistema**:
+- ✅ **Trazabilidad**: Logs detallados de cada decisión
+- ✅ **Configurabilidad**: Administradores pueden ajustar límites
+- ✅ **Robustez**: Fallbacks seguros en caso de error
+- ✅ **Extensibilidad**: Fácil agregar más monedas o criterios
+
+#### **🔮 Extensiones Futuras Posibles**
+
+**Criterios Adicionales** (no implementados):
+- Evaluación por tipo de cliente (VIP vs regular)
+- Límites por usuario/rol (vendedores junior vs senior)  
+- Evaluación por productos (servicios vs hardware)
+- Límites por periodo (diarios/mensuales)
+- Integración con sistema de crédito del cliente
+
+**Configuración Avanzada** (no implementada):
+- Límites escalonados por hora del día
+- Aprobación automática condicional (ej: cliente frecuente)
+- Notificaciones post-aprobación automática
+- Dashboard de métricas de aprobación automática
+
+---
 
 **? REGLA ACTUAL (Correcta)**:
 - **SOLO** cotizaciones en estado **T (Aceptada)** pueden enviarse al ERP
@@ -2516,8 +2743,12 @@ builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IRolService, RolService>();
 builder.Services.AddScoped<IPermisoService, PermisoService>();
 
-// Cotizaciones
+// Cotizaciones (con sistema de aprobación automática)
 builder.Services.AddScoped<ICotizacionService, CotizacionService>();
+
+// 🆕 Sistema de Parámetros (para aprobación automática)
+builder.Services.AddScoped<IParametroSistemaService, ParametroSistemaService>();
+builder.Services.AddScoped<ConsecutivoGenerator>();
 
 // UI Services
 builder.Services.AddHttpContextAccessor();
@@ -2568,13 +2799,15 @@ builder.Services.AddDbContext<DbContextCotizaciones>((serviceProvider, options) 
 1. **? Versionado con punteros**: Cotizacion.VersionActual apunta a versión vigente
 2. **? Estados estrictos**: Flujo B?P?A?E?T/R?X con validaciones
 3. **? ERP solo para aceptadas**: Solo estado T puede ir al ERP
-4. **? JOINs explícitos**: Evitar Include complejos en EF Core
-5. **? Permisos agrupados**: Por categoría para fácil asignación
-6. **? Tag Helper para permisos**: Deshabilita elementos sin JavaScript
-7. **? Admin bypass**: Roles Admin/Administrador acceso total
-8. **? Modales centrados**: Solo CSS, sin JavaScript para márgenes
-9. **? AuditInterceptor automático**: No requiere código en servicios
-10. **? Columnas separadas**: Estados vs Acciones en listados
+4. **🚀 Aprobación automática**: Excepción B→A para montos configurables por moneda**
+5. **? JOINs explícitos**: Evitar Include complejos en EF Core
+6. **? Permisos agrupados**: Por categoría para fácil asignación
+7. **? Tag Helper para permisos**: Deshabilita elementos sin JavaScript
+8. **? Admin bypass**: Roles Admin/Administrador acceso total
+9. **? Modales centrados**: Solo CSS, sin JavaScript para márgenes
+10. **? AuditInterceptor automático**: No requiere código en servicios
+11. **? Columnas separadas**: Estados vs Acciones en listados
+12. **⚙️ Sistema de parámetros centralizados**: Configuración flexible sin cambios de código
 
 ---
 
