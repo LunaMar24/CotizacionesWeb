@@ -77,6 +77,10 @@ try
   // Application services - Documentos
   builder.Services.AddScoped<CotizacionesWeb.Application.Documents.IDocumentoCotizacionService, CotizacionesWeb.Infrastructure.Services.DocumentoCotizacionService>();
 
+  // Application services - Notificaciones
+  builder.Services.AddScoped<CotizacionesWeb.Application.Notificaciones.INotificacionCotizacionService, CotizacionesWeb.Infrastructure.Services.NotificacionCotizacionService>();
+  builder.Services.AddScoped<CotizacionesWeb.Application.Common.Email.IEmailService, CotizacionesWeb.Infrastructure.Services.EmailService>();
+
   // Sistema de parámetros y consecutivos
   builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.ConsecutivoGenerator>();
   builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.IParametroSistemaService, CotizacionesWeb.Infrastructure.Services.ParametroSistemaService>();
@@ -86,6 +90,9 @@ try
   builder.Services.AddScoped<IErpService, ErpService>();
   builder.Services.AddHttpClient<IHubSpotService, HubSpotClient>();
   builder.Services.AddScoped<IAssignInteresadoHubSpotService, AssignInteresadoHubSpotService>();
+
+  // Background Services - Notificaciones
+  builder.Services.AddHostedService<CotizacionesWeb.Infrastructure.Services.NotificacionCotizacionBackgroundService>();
 
   // Authentication
   builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

@@ -25,6 +25,7 @@ public class DbContextCotizaciones : DbContext
     public DbSet<DetalleCotizacionVersion> DetallesCotizacionVersion => Set<DetalleCotizacionVersion>();
     public DbSet<HistorialCotizacion> HistorialesCotizacion => Set<HistorialCotizacion>();
     public DbSet<ArchivoCotizacion> ArchivosCotizacion => Set<ArchivoCotizacion>();
+    public DbSet<NotificacionCotizacion> NotificacionesCotizacion => Set<NotificacionCotizacion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

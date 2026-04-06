@@ -1653,6 +1653,12 @@ public async Task<IActionResult> Detalle(string cotizacionId, int? versionId = n
 - **Solución**: Configuración para Costa Rica (UTC-6)
 - **Impacto**: Auditoría, creación y modificación de registros
 
+#### **📧 Sistema de Notificaciones por Email (NUEVO):**
+- **Propósito**: Notificaciones automáticas para eventos de cotizaciones
+- **Implementación**: BackgroundService + Base de datos + Templates HTML
+- **Estados soportados**: Pendiente Aprobación, Seguimiento de Enviadas
+- **Características**: Reintentos automáticos, logging detallado, configuración por parámetros
+
 ### 📱 **Archivos CSS Específicos**
 
 #### **`detalle.css` (Nuevo):**
@@ -1667,6 +1673,12 @@ Incluye:
 - Badges personalizados por estado
 - Optimización para impresión
 ```
+
+#### **Archivos por Módulo:**
+- **📧 Notificaciones**: Estilos integrados en `components.css`
+- **📊 Cotizaciones**: `detalle.css` para vista específica
+- **👥 Usuarios**: Estilos en archivos principales
+- **⚙️ Configuración**: Componentes reutilizables
 
 #### **Helper Global:**
 ```csharp
@@ -2731,6 +2743,322 @@ dotnet ef database update \
 
 ---
 
+## 📧 **SISTEMA DE NOTIFICACIONES DE COTIZACIONES (NUEVO)**
+
+El sistema implementa un motor completo de notificaciones por email que funciona de forma autónoma mediante un BackgroundService.
+
+### 🏗️ **Arquitectura del Sistema**
+
+#### **Componentes Principales:**
+```
+┌─────────────────────────────────────────────┐
+│        BackgroundService (Orquestador)     │ ← Proceso en background cada X minutos
+└─────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────┐
+│     NotificacionCotizacionService         │ ← Lógica de procesamiento
+│       (Infrastructure Layer)               │
+└─────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────┐
+│        EmailService + Templates           │ ← Envío de emails con HTML
+│         (Infrastructure Layer)             │
+└─────────────────────────────────────────────┘
+                        │
+                        ▼
+┌─────────────────────────────────────────────┐
+│    Tabla NotificacionCotizacion (BD)      │ ← Persistencia y estados
+└─────────────────────────────────────────────┘
+```
+
+#### **Flujo Completo:**
+```
+1. BackgroundService lee parámetros ENABLED/FRECUENCIA
+2. Si habilitado → busca notificaciones pendientes
+3. Procesa cada notificación → genera template HTML  
+4. Intenta envío por email → actualiza estado
+5. Registra logs → espera próximo ciclo
+```
+
+### 📊 **Tabla NotificacionCotizacion**
+
+#### **Estructura de Datos:**
+```sql
+CREATE TABLE NotificacionCotizacion (
+    NotificacionId      INT IDENTITY(1,1) PRIMARY KEY,
+    CotizacionId        NVARCHAR(30) NOT NULL,         -- FK a Cotizacion
+    VersionId           INT NOT NULL,                  -- FK a CotizacionVersion  
+    TipoNotificacion    NVARCHAR(50) NOT NULL,         -- Tipo: PendienteAprobacion, SeguimientoEnviada
+    EmailDestino        NVARCHAR(200) NOT NULL,        -- Email del destinatario
+    Asunto              NVARCHAR(300),                 -- Asunto generado automáticamente
+    Cuerpo              NVARCHAR(MAX),                 -- HTML generado automáticamente
+    FechaProgramada     DATETIME NOT NULL,             -- Cuándo enviar
+    FechaEnviada        DATETIME,                      -- Cuándo se envió (si exitoso)
+    Estado              NVARCHAR(20) NOT NULL,         -- Pendiente, Enviada, Error
+    Intentos            INT DEFAULT 0,                 -- Contador de reintentos
+    MensajeError        NVARCHAR(1000),                -- Error del último intento
+    
+    -- Auditoría estándar
+    CreatedAt           DATETIME NOT NULL,
+    CreatedBy           INT NOT NULL,
+    ModifiedAt          DATETIME,
+    ModifiedBy          INT
+);
+```
+
+#### **Índices Optimizados:**
+- `IX_NotificacionCotizacion_Estado_FechaProgramada`: Para procesamiento eficiente
+- `IX_NotificacionCotizacion_CotizacionId_VersionId_TipoNotificacion`: Para búsquedas
+
+### 🎯 **Tipos de Notificación Implementados**
+
+#### **1. PendienteAprobacion**
+- **Cuándo**: Cuando cotización pasa a estado P (Pendiente Aprobación)
+- **Destinatario**: Supervisores/aprobadores
+- **Template**: HTML profesional con datos completos de cotización
+- **Propósito**: Avisar que hay cotizaciones esperando aprobación
+
+#### **2. SeguimientoEnviada**  
+- **Cuándo**: 24 horas después de enviar al cliente (estado E)
+- **Destinatario**: Vendedor/manager de cuenta
+- **Template**: HTML con recordatorio de seguimiento
+- **Propósito**: Recordar hacer seguimiento con el cliente
+
+#### **Extensibilidad Preparada:**
+```csharp
+// Fácil agregar nuevos tipos:
+const string TIPO_COTIZACION_APROBADA = "CotizacionAprobada";
+const string TIPO_COTIZACION_RECHAZADA = "CotizacionRechazada";
+const string TIPO_RECORDATORIO_EXPIRACION = "RecordatorioExpiracion";
+```
+
+### ⚙️ **Configuración del Sistema**
+
+#### **Parámetros de Control:**
+| Parámetro | Descripción | Valores | Defecto |
+|-----------|-------------|---------|---------|
+| `NOTIFICACIONES_COTIZACIONES_ENABLED` | Habilita/deshabilita el sistema | S/N, true/false, 1/0 | **N** (deshabilitado) |
+| `NOTIFICACIONES_FRECUENCIA_MINUTOS` | Frecuencia del ciclo de procesamiento | 1-1440 (24 horas) | **5** minutos |
+
+#### **Scripts de Configuración:**
+```sql
+-- Habilitar notificaciones  
+UPDATE Parametros SET Valor = 'S' 
+WHERE Codigo = 'NOTIFICACIONES_COTIZACIONES_ENABLED';
+
+-- Cambiar frecuencia a 10 minutos
+UPDATE Parametros SET Valor = '10' 
+WHERE Codigo = 'NOTIFICACIONES_FRECUENCIA_MINUTOS';
+```
+
+### 🔄 **Estados y Flujo de Procesamiento**
+
+#### **Estados de Notificación:**
+- **Pendiente**: Lista para enviar cuando llegue FechaProgramada
+- **Enviada**: Enviada exitosamente (estado final)
+- **Error**: Falló después de 3 intentos (estado final)
+
+#### **Política de Reintentos:**
+- **Máximo 3 intentos** por notificación
+- **Incremento automático** del contador de intentos
+- **Estado "Error"** al superar el límite
+- **Pausa de 1 segundo** entre envíos para no saturar
+
+#### **Flujo de Procesamiento:**
+```
+Buscar notificaciones WHERE:
+  ├─ Estado = 'Pendiente' 
+  ├─ FechaProgramada <= AHORA
+  └─ Intentos < 3
+
+Para cada notificación:
+  ├─ Generar template HTML según tipo
+  ├─ Intentar envío por EmailService
+  ├─ Si exitoso: Estado = 'Enviada', FechaEnviada = AHORA
+  └─ Si falla: Intentos++, Estado = 'Error' si Intentos >= 3
+```
+
+### 📧 **Templates de Email Implementados**
+
+#### **Template: PendienteAprobacion**
+```html
+<html>
+<body style='font-family: Arial, sans-serif; line-height: 1.6;'>
+    <h2 style='color: #333; border-bottom: 2px solid #007bff;'>
+        Cotización Pendiente de Aprobación
+    </h2>
+    
+    <div style='background-color: #f8f9fa; padding: 20px; border-radius: 5px;'>
+        <h3 style='color: #007bff;'>Información de la Cotización</h3>
+        <p><strong>ID:</strong> {CotizacionId}</p>
+        <p><strong>Versión:</strong> {NumeroVersion}</p>
+        <p><strong>Cliente:</strong> {NombreInteresado}</p>
+        <p><strong>Empresa:</strong> {EmpresaInteresado}</p>
+        <p><strong>Monto:</strong> {MontoFormateado}</p>
+        <p><strong>Estado:</strong> <span style='color: #ffc107;'>Pendiente de Aprobación</span></p>
+    </div>
+    
+    <p>Esta cotización ha sido enviada para aprobación y requiere su revisión.</p>
+</body>
+</html>
+```
+
+#### **Template: SeguimientoEnviada**
+```html
+<html>
+<body style='font-family: Arial, sans-serif; line-height: 1.6;'>
+    <h2 style='color: #333; border-bottom: 2px solid #28a745;'>
+        Seguimiento de Cotización Enviada
+    </h2>
+    
+    <div style='background-color: #f8f9fa; padding: 20px; border-radius: 5px;'>
+        <h3 style='color: #28a745;'>Información de la Cotización</h3>
+        <p><strong>ID:</strong> {CotizacionId}</p>
+        <p><strong>Cliente:</strong> {NombreInteresado}</p>
+        <p><strong>Email Cliente:</strong> {EmailInteresado}</p>
+        <p><strong>Monto:</strong> {MontoFormateado}</p>
+        <p><strong>Estado:</strong> <span style='color: #17a2b8;'>Enviada al Cliente</span></p>
+    </div>
+    
+    <p>Esta cotización ha sido enviada al cliente y está pendiente de su respuesta.</p>
+    <p>Se recomienda hacer seguimiento directo con el cliente.</p>
+</body>
+</html>
+```
+
+### 🔧 **Servicios Implementados**
+
+#### **INotificacionCotizacionService:**
+```csharp
+// Procesamiento principal
+Task<int> ProcesarNotificacionesPendientesAsync(CancellationToken cancellationToken = default);
+
+// Creación de notificaciones
+Task<bool> CrearNotificacionPendienteAprobacionAsync(string cotizacionId, int versionId, string emailDestino, DateTime? fechaProgramada = null);
+Task<bool> CrearNotificacionSeguimientoEnviadaAsync(string cotizacionId, int versionId, string emailDestino, DateTime? fechaProgramada = null);
+```
+
+#### **IEmailService (Implementación Simulada):**
+```csharp
+Task<bool> EnviarEmailAsync(string destinatario, string asunto, string cuerpo, bool esHtml = true);
+Task<bool> EstaDisponibleAsync();
+```
+
+**Nota**: La implementación actual simula el envío para desarrollo. Para producción debe conectarse con:
+- SMTP Server (System.Net.Mail)
+- SendGrid API  
+- Azure Communication Services
+- AWS SES
+
+### 📊 **BackgroundService: NotificacionCotizacionBackgroundService**
+
+#### **Características del Servicio:**
+- **Hospedado**: Registrado como `IHostedService` en Program.cs
+- **Autónomo**: Corre independiente de requests web
+- **Configurable**: Lee parámetros dinámicamente en cada ciclo
+- **Resiliente**: Maneja errores y continúa funcionando
+- **Cancelable**: Respeta tokens de cancelación
+
+#### **Funcionalidades:**
+```csharp
+protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+{
+    while (!stoppingToken.IsCancellationRequested)
+    {
+        // 1. Leer configuración (ENABLED + FRECUENCIA)
+        // 2. Si habilitado → procesar notificaciones
+        // 3. Si deshabilitado → solo log y esperar
+        // 4. Esperar tiempo configurado
+        // 5. Repetir ciclo
+    }
+}
+```
+
+#### **Logging Detallado:**
+```
+[INFO] NotificacionCotizacionBackgroundService iniciado
+[INFO] Encontradas 3 notificaciones pendientes para procesar  
+[INFO] Notificación 123 enviada exitosamente a usuario@empresa.com
+[WARN] Error al enviar notificación 124. Intento 2/3
+[INFO] Procesamiento completado. Enviadas: 2, Errores: 1, Total: 3
+[DEBUG] Próxima verificación programada para: 2026-04-06 10:15:00
+```
+
+### 🛡️ **Validaciones y Seguridad**
+
+#### **Validaciones Implementadas:**
+- ✅ **Estado correcto**: Solo procesa estado "Pendiente"
+- ✅ **Fecha válida**: Solo FechaProgramada <= fecha actual  
+- ✅ **Límite de intentos**: Máximo 3 intentos por notificación
+- ✅ **Servicio disponible**: Verifica EmailService antes de procesar
+- ✅ **Datos completos**: Valida que existen cotización y versión
+
+#### **Manejo de Errores:**
+- **Error de configuración** → Log warning + usar valores por defecto
+- **Error de email** → Incrementar intentos + log error
+- **Error de BD** → Log error + continuar con siguiente
+- **Cancelación** → Parada limpia del servicio
+
+#### **Configuración Segura:**
+- **Deshabilitado por defecto**: Evita spam accidental
+- **Frecuencia limitada**: Mínimo 1 minuto, máximo 24 horas
+- **Fallback automático**: Si falla configuración → flujo manual
+
+### 🚀 **Integración con Flujo de Cotizaciones**
+
+#### **Puntos de Integración (Futuros):**
+```csharp
+// Al cambiar estado a Pendiente Aprobación
+await _notificacionService.CrearNotificacionPendienteAprobacionAsync(
+    cotizacionId, versionId, "supervisor@empresa.com");
+
+// Al enviar al cliente  
+await _notificacionService.CrearNotificacionSeguimientoEnviadaAsync(
+    cotizacionId, versionId, "vendedor@empresa.com", 
+    DateTime.Now.AddHours(24)); // 24 horas después
+```
+
+#### **Eventos que Pueden Generar Notificaciones:**
+- **B → P**: Notificación a aprobadores
+- **A → E**: Notificación de seguimiento al vendedor
+- **E → T**: Notificación de éxito al manager
+- **E → R**: Notificación de rechazo al vendedor
+- **T → ERP**: Confirmación de envío al ERP
+
+### ⚡ **Performance y Optimización**
+
+#### **Optimizaciones Implementadas:**
+- **Consulta eficiente**: JOIN directo con índices apropiados
+- **Lote pequeño**: Procesa disponibles sin sobrecargar
+- **Pausa entre envíos**: 1 segundo entre emails
+- **Cancelación respetada**: Para parada limpia
+
+#### **Métricas de Rendimiento:**
+```csharp
+// Log del resumen
+_logger.LogInformation("Procesamiento completado. Enviadas: {Exitosas}, Errores: {Errores}, Total: {Total}",
+    resumen.NotificacionesExitosas, resumen.NotificacionesConError, resumen.NotificacionesEncontradas);
+```
+
+### 🔮 **Extensiones Futuras**
+
+#### **Funcionalidades Preparadas:**
+- **Más tipos**: Fácil agregar nuevos tipos de notificación
+- **Templates dinámicos**: Sistema de plantillas configurable
+- **Reglas avanzadas**: Notificaciones basadas en múltiples criterios
+- **Dashboard**: Métricas de notificaciones enviadas/fallidas
+- **Configuración por usuario**: Preferencias individuales de notificación
+
+#### **Integraciones Posibles:**
+- **SMTP Real**: Conectar con servidor de email corporativo
+- **Webhook notifications**: Slack, Teams, etc.
+- **SMS**: Para notificaciones urgentes
+- **Push notifications**: Para aplicación móvil
+
+---
+
 ## ?? SERVICIOS REGISTRADOS (Program.cs)
 
 ```csharp
@@ -2750,6 +3078,11 @@ builder.Services.AddScoped<ICotizacionService, CotizacionService>();
 builder.Services.AddScoped<IParametroSistemaService, ParametroSistemaService>();
 builder.Services.AddScoped<ConsecutivoGenerator>();
 
+// 📧 Sistema de Notificaciones (NUEVO)
+builder.Services.AddScoped<INotificacionCotizacionService, NotificacionCotizacionService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHostedService<NotificacionCotizacionBackgroundService>();
+
 // UI Services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IPermisoChecker, PermisoChecker>();
@@ -2764,9 +3097,13 @@ builder.Services.AddDbContext<DbContextCotizaciones>((serviceProvider, options) 
         var user = httpContextAccessor.HttpContext?.User;
         if (user?.Identity?.IsAuthenticated == true)
         {
-            return user.FindFirst(ClaimTypes.Email)?.Value ?? "system";
+            var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (int.TryParse(userIdClaim, out int userId))
+            {
+                return userId;
+            }
         }
-        return "system";
+        return null; // null para usuarios no autenticados - se convertirá en 0 en el interceptor
     });
     
     options.UseSqlServer(builder.Configuration.GetConnectionString("CotizacionesDb"))

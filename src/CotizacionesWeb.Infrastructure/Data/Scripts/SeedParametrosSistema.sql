@@ -92,7 +92,8 @@ VALUES
 -- ============================================
 ('NOTIFICACIONES_COTIZACIONES_ENABLED', 'Activa o desactiva las notificaciones automáticas de cotizaciones', 'N', 'B', 'Notificaciones', 1, 'N', 'Valores esperados: S/N', 0),
 ('EMAIL_NOTIFICACIONES_PEND_APROBAR', 'Email para notificaciones por cotizaciones pendientes de aprobación', 'admin@cotizaciones.com', 'S', 'Notificaciones', 1, 'admin@cotizaciones.com', 'Correo destino para avisos de cotizaciones en estado Pendiente de Aprobación', 0),
-('DIAS_NOTIFICACION_ENVIADAS', 'Cantidad de días para notificar cotizaciones enviadas sin respuesta', '3', 'N', 'Notificaciones', 1, '5', 'Cantidad de días a partir de la fecha de envío para generar notificación de seguimiento', 0);
+('DIAS_NOTIFICACION_ENVIADAS', 'Cantidad de días para notificar cotizaciones enviadas sin respuesta', '3', 'N', 'Notificaciones', 1, '5', 'Cantidad de días a partir de la fecha de envío para generar notificación de seguimiento', 0),
+('NOTIFICACIONES_FRECUENCIA_MINUTOS', 'Frecuencia en minutos para ejecución del proceso de notificaciones', '10', 'N', 'Notificaciones', 1, '10', 'Si cambia este valor, el proceso de notificaciones debe usar la nueva frecuencia en la siguiente iteración', 0),
 
 -- ============================================
 -- PARÁMETROS DE SEGURIDAD
