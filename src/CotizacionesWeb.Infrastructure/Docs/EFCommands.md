@@ -61,6 +61,13 @@ dotnet ef migrations add ActualizarRelacionUsuarioRol \
   --startup-project src/CotizacionesWeb.UI \
   --context DbContextCotizaciones \
   --output-dir Data/Migrations
+
+# Actualizar configuraciones (ejemplo real del proyecto)
+dotnet ef migrations add CorregirCheckConstraintsObsoletos \
+  --project src/CotizacionesWeb.Infrastructure \
+  --startup-project src/CotizacionesWeb.UI \
+  --context DbContextCotizaciones \
+  --output-dir Data/Migrations
 ```
 
 **¿Cuándo crear una migración?**
@@ -136,7 +143,10 @@ dotnet ef migrations list --verbose \
 ```
 20240115120000_InitialCreate (Applied)
 20240120140000_AgregarCampoTelefono (Applied)
-20240125150000_AgregarEntidadProducto (Pending)
+20240125150000_AgregarEntidadProducto (Applied)
+20260322213707_MoverSoloMonedaACotizacion (Applied)
+20260405235622_AgregarNotificacionCotizacion (Applied)
+20260406120000_CorregirCheckConstraintsObsoletos (Pending)
 ```
 
 ---
@@ -381,7 +391,35 @@ dotnet ef database update \
   --context DbContextCotizaciones
 ```
 
-### Flujo 4: Resetear base de datos completamente
+### Flujo 5: Corregir warnings de Entity Framework Core
+
+```sh
+# Ejemplo real: Corregir HasCheckConstraint obsoleto
+# 1. Identificar warnings en build
+# ?? Warning: HasCheckConstraint is obsolete, use ToTable(t => t.HasCheckConstraint()) instead
+
+# 2. Corregir archivos de configuración (ej: ParametrosConfiguration.cs)
+# Cambiar: builder.HasCheckConstraint("nombre", "expresion");
+# Por:     builder.ToTable("tabla", t => t.HasCheckConstraint("nombre", "expresion"));
+
+# 3. Verificar que compila
+dotnet build src/CotizacionesWeb.Infrastructure
+
+# 4. Crear migración para aplicar cambios (si es necesario)
+dotnet ef migrations add CorregirCheckConstraintsObsoletos \
+  --project src/CotizacionesWeb.Infrastructure \
+  --startup-project src/CotizacionesWeb.UI \
+  --context DbContextCotizaciones \
+  --output-dir Data/Migrations
+
+# 5. Aplicar si hay cambios en schema
+dotnet ef database update \
+  --project src/CotizacionesWeb.Infrastructure \
+  --startup-project src/CotizacionesWeb.UI \
+  --context DbContextCotizaciones
+```
+
+### Flujo 6: Resetear base de datos completamente
 
 ```sh
 # Opción A: Eliminar BD y recrear
@@ -421,6 +459,8 @@ dotnet ef database update \
 dotnet build src/CotizacionesWeb.Infrastructure
 dotnet build src/CotizacionesWeb.UI
 
+# Si hay errores de warnings como HasCheckConstraint obsoleto
+# Corregir las configuraciones de Entity Framework primero
 # Luego ejecutar el comando EF Core
 ```
 
@@ -441,7 +481,28 @@ dotnet build src/CotizacionesWeb.UI
 - Verifica que `appsettings.json` tenga la ConnectionString
 - Asegúrate de especificar `--startup-project src/CotizacionesWeb.UI`
 
-### Error: "Cannot remove the last migration because it has been applied"
+### Error: "HasCheckConstraint is obsolete" Warning
+
+**Problema:** Entity Framework Core 8 marca `HasCheckConstraint` como obsoleto.
+
+**Solución:**
+```sh
+# 1. Identificar archivos de configuración con el warning
+# Buscar en: src/CotizacionesWeb.Infrastructure/Data/Configurations/*.cs
+
+# 2. Cambiar el patrón obsoleto:
+# ANTES: 
+# builder.HasCheckConstraint("CK_Nombre", "[Campo] IN ('A', 'B')");
+
+# DESPUÉS:
+# builder.ToTable("NombreTabla", t => 
+#     t.HasCheckConstraint("CK_Nombre", "[Campo] IN ('A', 'B')"));
+
+# 3. Compilar para verificar
+dotnet build src/CotizacionesWeb.Infrastructure
+
+# 4. Los check constraints seguirán funcionando igual
+```
 
 **Problema:** Intentas eliminar una migración ya aplicada.
 
@@ -561,13 +622,22 @@ Antes de crear y aplicar una migración, verifica:
 - **Directorio Migraciones:** `Data/Migrations`
 
 ### Entidades actuales:
-- `Usuario`
-- `Rol`
-- `UsuarioRol`
-- `Cotizacion`
+- `Usuario` - Usuarios del sistema con autenticación
+- `Rol` - Roles para autorización
+- `UsuarioRol` - Relación many-to-many entre usuarios y roles
+- `Permiso` - Permisos específicos del sistema
+- `PermisoRol` - Relación entre roles y permisos
+- `Interesado` - Clientes/prospectos desde HubSpot
+- `Cotizacion` - Cotizaciones principales
+- `CotizacionVersion` - Versiones de cotizaciones
+- `DetalleCotizacionVersion` - Líneas de productos por versión
+- `HistorialCotizacion` - Auditoría de cambios de estado
+- `ArchivoCotizacion` - Archivos adjuntos a cotizaciones
+- `NotificacionCotizacion` - Sistema de notificaciones por email
+- `Parametros` - Parámetros de configuración del sistema
 
 ---
 
-**Última actualización:** Enero 2026  
+**Última actualización:** Abril 2026  
 **Versión .NET:** 8.0  
 **Versión EF Core:** 8.0.14

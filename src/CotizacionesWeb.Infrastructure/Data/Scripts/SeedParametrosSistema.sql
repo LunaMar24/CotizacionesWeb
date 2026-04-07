@@ -86,6 +86,10 @@ VALUES
 ('ERP_NIVELPRECIO_DOLAR', 'Nivel Precio para moneda dólar', 'ND-DOLAR', 'S', 'Integracion_ERP', 1, 'ND-DOLAR', NULL, 0),
 ('ERP_CIA', 'Compañía a utilizar en el ERP', '', 'S', 'Integracion_ERP', 1, '', NULL, 0),
 ('ERP_USAR_IMPUESTOS', 'Calcular impuestos basado en el ERP', 'N', 'B', 'Integracion_ERP', 1, 'N', NULL, 0),
+('ERP_CONDICION_PAGO', 'Condición de pago para pedidos ERP', 'CONT', 'S', 'Integracion_ERP', 1, '', NULL, 0),
+('ERP_BODEGA', 'Bodega por defecto para pedidos ERP', '01', 'S', 'Integracion_ERP', 1, '', NULL, 0),
+('ERP_USUARIO', 'Usuario ERP para creación de pedidos', 'SA', 'S', 'Integracion_ERP', 1, 'SA', NULL, 0),
+('ERP_ACTIVIDAD_COMERCIAL', 'Actividad comercial para pedidos ERP', '751401', 'S', 'Integracion_ERP', 1, '', NULL, 0),
 
 -- ============================================
 -- PARÁMETROS DE NOTIFICACIONES
@@ -182,19 +186,19 @@ PRINT '';
 PRINT '==============================================';
 PRINT 'CATEGORÍAS ACTIVAS:';
 PRINT '==============================================';
-PRINT '  • Consecutivos (2 parámetros)';
 PRINT '  • Financiero (3 parámetros)';
-PRINT '  • Integracion_HubSpot (12 parámetros)';
-PRINT '  • Integracion_ERP (5 parámetros)';
-PRINT '  • Notificaciones (1 parámetro)';
+PRINT '  • Consecutivos (2 parámetros)';
+PRINT '  • Integracion_HubSpot (13 parámetros)';
+PRINT '  • Integracion_ERP (9 parámetros)';
+PRINT '  • Notificaciones (4 parámetros)';
 PRINT '  • Seguridad (3 parámetros)';
 PRINT '  • Archivos (3 parámetros)';
 PRINT '  • Reportes (4 parámetros)';
-PRINT '  • Workflow (3 parámetros)';
+PRINT '  • Workflow (4 parámetros)';
 PRINT '  • Plantilla Cotización (6 parámetros)';
 PRINT '  • Negocio (1 parámetro)';
 PRINT '';
-PRINT 'TOTAL: 41 parámetros activos';
+PRINT 'TOTAL: 52 parámetros activos';
 PRINT '==============================================';
 PRINT '';
 PRINT 'PARÁMETROS CRÍTICOS DE CONSECUTIVOS:';

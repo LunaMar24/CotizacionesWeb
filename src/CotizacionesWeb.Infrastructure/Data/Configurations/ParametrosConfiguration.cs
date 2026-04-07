@@ -9,7 +9,9 @@ public class ParametrosConfiguration : IEntityTypeConfiguration<Parametros>
 {
     public void Configure(EntityTypeBuilder<Parametros> builder)
     {
-        builder.ToTable("Parametros");
+        builder.ToTable("Parametros", t => 
+            t.HasCheckConstraint("CK_Parametros_TipoValor", 
+                $"[TipoValor] IN ('{(char)TipoParametro.Texto}', '{(char)TipoParametro.Decimal}', '{(char)TipoParametro.Booleano}', '{(char)TipoParametro.Fecha}', '{(char)TipoParametro.Entero}')"));
         
         // Clave primaria
         builder.HasKey(p => p.ParametroId);
@@ -85,9 +87,5 @@ public class ParametrosConfiguration : IEntityTypeConfiguration<Parametros>
         // Índices para performance
         builder.HasIndex(p => new { p.Categoria, p.Codigo })
             .HasDatabaseName("IX_Parametros_Categoria_Codigo");
-        
-        // Restricciones usando valores del enum
-        builder.HasCheckConstraint("CK_Parametros_TipoValor", 
-            $"[TipoValor] IN ('{(char)TipoParametro.Texto}', '{(char)TipoParametro.Decimal}', '{(char)TipoParametro.Booleano}', '{(char)TipoParametro.Fecha}', '{(char)TipoParametro.Entero}')");
     }
 }

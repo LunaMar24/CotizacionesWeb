@@ -8,7 +8,8 @@ public class CotizacionConfiguration : IEntityTypeConfiguration<Cotizacion>
 {
     public void Configure(EntityTypeBuilder<Cotizacion> builder)
     {
-        builder.ToTable("Cotizacion");
+        builder.ToTable("Cotizacion", t => 
+            t.HasCheckConstraint("CK_Cotizacion_EnviadoERP", "[EnviadoERP] IN ('S', 'N')"));
         
         // CotizacionId VARCHAR como llave primaria
         builder.HasKey(c => c.CotizacionId);
@@ -82,9 +83,6 @@ public class CotizacionConfiguration : IEntityTypeConfiguration<Cotizacion>
                .HasPrincipalKey(u => u.UsuarioId)
                .OnDelete(DeleteBehavior.Restrict)
                .HasConstraintName("FK_Cotizacion_Usuarios_ModifiedBy");
-        
-        // Check constraint para EnviadoERP
-        builder.HasCheckConstraint("CK_Cotizacion_EnviadoERP", "[EnviadoERP] IN ('S', 'N')");
         
         builder.HasOne(c => c.Interesado)
             .WithMany(i => i.Cotizaciones)
