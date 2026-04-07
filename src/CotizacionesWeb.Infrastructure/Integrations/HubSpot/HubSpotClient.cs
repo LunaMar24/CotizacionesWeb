@@ -1,9 +1,8 @@
+using CotizacionesWeb.Application.Configuracion;
 using CotizacionesWeb.Application.Cotizaciones;
-using CotizacionesWeb.Application.Integrations;
+using CotizacionesWeb.Application.Integrations.HubSpot;
 using CotizacionesWeb.Domain.Enums;
-using CotizacionesWeb.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
-using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;

@@ -1,14 +1,13 @@
-using CotizacionesWeb.Application.Integrations;
+using CotizacionesWeb.Application.Configuracion;
+using CotizacionesWeb.Application.Integrations.Erp.Services;
 using CotizacionesWeb.Domain.Entities.ERP;
 using CotizacionesWeb.Infrastructure.Data;
-using CotizacionesWeb.Infrastructure.Services;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Data;
 using System.Text.RegularExpressions;
 
-namespace CotizacionesWeb.Infrastructure.Integrations.Erp;
+namespace CotizacionesWeb.Infrastructure.Integrations.Erp.Services;
 
 public class ErpService : IErpService
 {

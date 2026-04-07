@@ -1,12 +1,11 @@
-﻿using CotizacionesWeb.Application.Cotizaciones;
+﻿using CotizacionesWeb.Application.Configuracion;
+using CotizacionesWeb.Application.Cotizaciones;
 using CotizacionesWeb.Application.Documents;
-using CotizacionesWeb.Infrastructure.Data;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
-using System.Text;
 
 namespace CotizacionesWeb.Infrastructure.Services;
 

@@ -1,12 +1,15 @@
 using CotizacionesWeb.Application.Authentication;
 using CotizacionesWeb.Application.Cotizaciones;
-using CotizacionesWeb.Application.Integrations;
+using CotizacionesWeb.Application.Integrations.Erp;
+using CotizacionesWeb.Application.Integrations.Erp.Services;
+using CotizacionesWeb.Application.Integrations.HubSpot;
 using CotizacionesWeb.Application.Roles;
 using CotizacionesWeb.Application.Users;
 using CotizacionesWeb.Infrastructure.Data;
 using CotizacionesWeb.Infrastructure.Data.Interceptors;
-using CotizacionesWeb.Infrastructure.Integrations.Erp;
+using CotizacionesWeb.Infrastructure.Integrations.Erp.Services;
 using CotizacionesWeb.Infrastructure.Integrations.HubSpot;
+using CotizacionesWeb.Infrastructure.Integrations.HubSpot.Services;
 using CotizacionesWeb.Infrastructure.Security;
 using CotizacionesWeb.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -83,8 +86,11 @@ try
 
   // Sistema de parámetros y consecutivos
   builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.ConsecutivoGenerator>();
-  builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.IParametroSistemaService, CotizacionesWeb.Infrastructure.Services.ParametroSistemaService>();
   builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.IConfiguracionService, CotizacionesWeb.Infrastructure.Services.ConfiguracionService>();
+
+  // Integrations ERP
+  builder.Services.AddScoped<IErpConfigurationService, ErpConfigurationService>();
+  builder.Services.AddScoped<IErpPedidoService, ErpPedidoService>();
 
   // Integrations
   builder.Services.AddScoped<IErpService, ErpService>();

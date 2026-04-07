@@ -1,6 +1,6 @@
 using CotizacionesWeb.Domain.Entities.ERP;
 
-namespace CotizacionesWeb.Application.Integrations;
+namespace CotizacionesWeb.Application.Integrations.Erp.Services;
 
 public interface IErpService
 {

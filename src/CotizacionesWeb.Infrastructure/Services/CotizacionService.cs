@@ -6,6 +6,7 @@ using CotizacionesWeb.Domain.Enums;
 using CotizacionesWeb.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using CotizacionesWeb.Application.Configuracion;
 
 namespace CotizacionesWeb.Infrastructure.Services;
 

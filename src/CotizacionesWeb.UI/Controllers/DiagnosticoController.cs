@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using CotizacionesWeb.Infrastructure.Services;
+using CotizacionesWeb.Application.Configuracion;
 
 namespace CotizacionesWeb.UI.Controllers;
 

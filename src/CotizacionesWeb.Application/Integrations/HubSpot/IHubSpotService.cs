@@ -1,6 +1,6 @@
 using CotizacionesWeb.Application.Cotizaciones;
 
-namespace CotizacionesWeb.Application.Integrations;
+namespace CotizacionesWeb.Application.Integrations.HubSpot;
 
 public interface IHubSpotService
 {

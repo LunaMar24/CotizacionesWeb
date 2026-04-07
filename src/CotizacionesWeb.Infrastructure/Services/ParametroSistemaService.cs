@@ -1,3 +1,4 @@
+using CotizacionesWeb.Application.Configuracion;
 using CotizacionesWeb.Domain.Entities;
 using CotizacionesWeb.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -9,14 +10,6 @@ namespace CotizacionesWeb.Infrastructure.Services;
 /// Servicio para manejar parámetros del sistema y consecutivos
 /// ACTUALIZADO: Para usar la entidad Parametros existente
 /// </summary>
-public interface IParametroSistemaService
-{
-    Task<string?> ObtenerValorParametroAsync(string codigo);
-    Task<T?> ObtenerValorParametroAsync<T>(string codigo);
-    Task<bool> ActualizarParametroAsync(string codigo, string nuevoValor);
-    Task<string> ObtenerSiguienteConsecutivoCotizacionAsync();
-    Task<bool> ValidarConfiguracionConsecutivosAsync();
-}
 
 public class ParametroSistemaService : IParametroSistemaService
 {
