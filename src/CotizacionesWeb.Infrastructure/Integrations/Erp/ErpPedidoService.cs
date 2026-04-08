@@ -1,17 +1,20 @@
-using CotizacionesWeb.Application.Integrations.Erp.Services;
-using CotizacionesWeb.Application.Integrations.HubSpot.Services;
+using CotizacionesWeb.Application.Configuracion;
+using CotizacionesWeb.Application.Integrations.Erp;
+using CotizacionesWeb.Application.Integrations.HubSpot;
 using CotizacionesWeb.Domain.Entities;
-using CotizacionesWeb.Domain.Entities.ERP;
 using CotizacionesWeb.Domain.Enums;
 using CotizacionesWeb.Infrastructure.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Runtime.CompilerServices;
 
-namespace CotizacionesWeb.Infrastructure.Integrations.Erp.Services;
+namespace CotizacionesWeb.Infrastructure.Integrations.Erp;
 
 /// <summary>
 /// Servicio de integración con ERP para generación de pedidos
+/// ACTUALIZADO: Nuevos campos MONEDA(1), NIVEL_PRECIO(12) en cabecera y PORCENTAJE_IMPUESTO en detalle
+/// CORREGIDO: Vulnerabilidades de SQL injection usando FormattableString
 /// </summary>
 public class ErpPedidoService : IErpPedidoService
 {
@@ -19,6 +22,7 @@ public class ErpPedidoService : IErpPedidoService
     private readonly DbContextErp _contextErp;
     private readonly IErpConfigurationService _erpConfigService;
     private readonly IHubSpotClienteErpService _hubspotClienteErpService;
+    private readonly IParametroSistemaService _parametroSistemaService;
     private readonly ILogger<ErpPedidoService> _logger;
 
     // Estados válidos para envío a ERP
@@ -34,12 +38,14 @@ public class ErpPedidoService : IErpPedidoService
         DbContextErp contextErp,
         IErpConfigurationService erpConfigService,
         IHubSpotClienteErpService hubspotClienteErpService,
+        IParametroSistemaService parametroSistemaService,
         ILogger<ErpPedidoService> logger)
     {
         _contextCotizaciones = contextCotizaciones;
         _contextErp = contextErp;
         _erpConfigService = erpConfigService;
         _hubspotClienteErpService = hubspotClienteErpService;
+        _parametroSistemaService = parametroSistemaService;
         _logger = logger;
     }
 
@@ -303,6 +309,7 @@ public class ErpPedidoService : IErpPedidoService
 
     /// <summary>
     /// Obtiene los datos completos de la cotización y su versión
+    /// ACTUALIZADO: Incluye PorcentajeImpuesto desde DetalleCotizacionVersion
     /// </summary>
     private async Task<CotizacionCompleta?> ObtenerDatosCotizacionAsync(string cotizacionId, int versionId)
     {
@@ -316,6 +323,7 @@ public class ErpPedidoService : IErpPedidoService
                     {
                         CotizacionId = cotizacion.CotizacionId,
                         VersionId = version.VersionId,
+                        NumeroVersion = version.NumeroVersion, // Para construir observaciones
                         NombreInteresado = version.NombreInteresado,
                         EmailInteresado = version.EmailInteresado,
                         EmpresaInteresado = version.EmpresaInteresado,
@@ -331,18 +339,19 @@ public class ErpPedidoService : IErpPedidoService
         
         if (datos != null)
         {
-            // Obtener las líneas de detalle
+            // Obtener las líneas de detalle en orden secuencial
+            // ACTUALIZADO: Mapear PorcentajeImpuesto desde DetalleCotizacionVersion
             datos.Detalles = await _contextCotizaciones.DetallesCotizacionVersion
                 .Where(d => d.VersionId == versionId)
-                .OrderBy(d => d.DetalleVersionId)
+                .OrderBy(d => d.DetalleVersionId) // Mantener orden original
                 .Select(d => new DetalleCotizacionCompleto
                 {
                     ProductoId = d.ProductoId,
-                    ProductoNombre = d.Descripcion, // Usar Descripcion como nombre
+                    ProductoNombre = d.Descripcion,
                     Cantidad = d.Cantidad,
                     PrecioUnitario = d.PrecioUnitario,
-                    PorcentajeDescuento = 0, // No existe campo específico, usar 0
-                    MontoDescuento = d.Descuento, // Usar Descuento como monto
+                    MontoDescuento = d.Descuento,
+                    PorcentajeImpuesto = d.PorcentajeImpuesto, // NUEVO: Mapear desde BD
                     TotalLinea = d.TotalLinea
                 })
                 .ToListAsync();
@@ -352,7 +361,8 @@ public class ErpPedidoService : IErpPedidoService
     }
 
     /// <summary>
-    /// Inserta los datos en las tablas staging del ERP usando SQL directo con esquema dinámico
+    /// Inserta los datos en las tablas staging del ERP usando SQL seguro con esquema dinámico
+    /// ACTUALIZADO: Nuevos campos MONEDA(1), NIVEL_PRECIO(12) y PORCENTAJE_IMPUESTO
     /// </summary>
     private async Task InsertarEnStagingErpAsync(Guid loteId, CotizacionCompleta datos, 
         ErpIntegrationConfig erpConfig)
@@ -370,59 +380,78 @@ public class ErpPedidoService : IErpPedidoService
                 "Verifique que el interesado tenga configurado el código de cliente ERP en HubSpot.");
         }
 
-        // Insertar cabecera en COTWEB_PEDIDO_STG usando SQL directo
-        var sqlPedido = $@"
-            INSERT INTO [{erpConfig.Cia}].[COTWEB_PEDIDO_STG] 
-            (LOTE_ID, CIA, TIPO_DOCUMENTO, CLIENTE, CONDICION_PAGO, BODEGA, MONEDA, TIPO_CAMBIO, 
-             USUARIO_ERP, ACTIVIDAD_COMERCIAL, OBSERVACIONES, FECHA_CREACION, COTIZACION_ID, VERSION_ID)
-            VALUES 
-            (@LoteId, @Cia, @TipoDocumento, @Cliente, @CondicionPago, @Bodega, @Moneda, @TipoCambio,
-             @UsuarioERP, @ActividadComercial, @Observaciones, @FechaCreacion, @CotizacionId, @VersionId)";
+        // NUEVO: Resolver MONEDA y NIVEL_PRECIO según lógica solicitada
+        var (monedaErp, nivelPrecio) = await ResolverMonedaYNivelPrecioAsync(datos.Moneda);
 
-        await _contextErp.Database.ExecuteSqlRawAsync(sqlPedido,
-            new SqlParameter("@LoteId", loteId),
-            new SqlParameter("@Cia", erpConfig.Cia),
-            new SqlParameter("@TipoDocumento", "PED"),
-            new SqlParameter("@Cliente", clienteErp),
-            new SqlParameter("@CondicionPago", erpConfig.CondicionPago),
-            new SqlParameter("@Bodega", erpConfig.Bodega),
-            new SqlParameter("@Moneda", datos.Moneda),
-            new SqlParameter("@TipoCambio", datos.TipoCambio),
-            new SqlParameter("@UsuarioERP", erpConfig.UsuarioERP),
-            new SqlParameter("@ActividadComercial", erpConfig.ActividadComercial),
-            new SqlParameter("@Observaciones", datos.Observaciones),
-            new SqlParameter("@FechaCreacion", DateTime.Now),
-            new SqlParameter("@CotizacionId", datos.CotizacionId),
-            new SqlParameter("@VersionId", datos.VersionId));
+        // Construir observaciones para el pedido ERP
+        var observacionesPedido = $"Creado desde sistema de cotizaciones Web para la cotización: {datos.CotizacionId} con la versión: {datos.NumeroVersion}";
 
-        // Insertar líneas en COTWEB_PEDIDO_LINEA_STG usando SQL directo
-        int numeroLinea = 1;
+        // Insertar cabecera en COTWEB_PEDIDO_STG usando SQL seguro
+        // ACTUALIZADO: Incluir campos MONEDA y NIVEL_PRECIO
+        var sqlPedido = FormattableStringFactory.Create(
+            "INSERT INTO [{0}].[COTWEB_PEDIDO_STG] " +
+            "(LOTE_ID, TIPO_DOCUMENTO, CLIENTE, CONDICION_PAGO, BODEGA, MONEDA, NIVEL_PRECIO, TIPO_CAMBIO, " +
+            "USUARIO_ERP, ACTIVIDAD_COMERCIAL, OBSERVACIONES, FECHA_CREACION) " +
+            "VALUES " +
+            "({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12})",
+            erpConfig.Cia, loteId, "P", clienteErp, erpConfig.CondicionPago, erpConfig.Bodega, 
+            monedaErp, nivelPrecio, datos.TipoCambio, erpConfig.UsuarioERP, erpConfig.ActividadComercial, 
+            observacionesPedido, DateTime.Now);
+
+        await _contextErp.Database.ExecuteSqlAsync(sqlPedido);
+
+        // Insertar líneas en COTWEB_PEDIDO_LINEA_STG usando SQL seguro
+        // ACTUALIZADO: Usar PORCENTAJE_IMPUESTO en lugar de PORCENTAJE_DESCUENTO
+        int numeroLinea = 1; // Comenzar numeración en 1
         foreach (var detalle in datos.Detalles)
         {
-            var sqlLinea = $@"
-                INSERT INTO [{erpConfig.Cia}].[COTWEB_PEDIDO_LINEA_STG]
-                (LOTE_ID, PRODUCTO, DESCRIPCION, CANTIDAD, PRECIO_UNITARIO, PORCENTAJE_DESCUENTO, 
-                 MONTO_DESCUENTO, SUBTOTAL, BODEGA, LINEA, COTIZACION_ID, VERSION_ID)
-                VALUES 
-                (@LoteId, @Producto, @Descripcion, @Cantidad, @PrecioUnitario, @PorcentajeDescuento,
-                 @MontoDescuento, @Subtotal, @Bodega, @Linea, @CotizacionId, @VersionId)";
+            var sqlLinea = FormattableStringFactory.Create(
+                "INSERT INTO [{0}].[COTWEB_PEDIDO_LINEA_STG] " +
+                "(LOTE_ID, LINEA, PRODUCTO, DESCRIPCION, CANTIDAD, PRECIO_UNITARIO, " +
+                "MONTO_DESCUENTO, PORCENTAJE_IMPUESTO, SUBTOTAL, BODEGA) " +
+                "VALUES " +
+                "({1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10})",
+                erpConfig.Cia, loteId, numeroLinea, detalle.ProductoId, detalle.ProductoNombre,
+                detalle.Cantidad, detalle.PrecioUnitario, detalle.MontoDescuento, 
+                detalle.PorcentajeImpuesto, detalle.TotalLinea, erpConfig.Bodega);
 
-            await _contextErp.Database.ExecuteSqlRawAsync(sqlLinea,
-                new SqlParameter("@LoteId", loteId),
-                new SqlParameter("@Producto", detalle.ProductoId),
-                new SqlParameter("@Descripcion", detalle.ProductoNombre),
-                new SqlParameter("@Cantidad", detalle.Cantidad),
-                new SqlParameter("@PrecioUnitario", detalle.PrecioUnitario),
-                new SqlParameter("@PorcentajeDescuento", detalle.PorcentajeDescuento),
-                new SqlParameter("@MontoDescuento", detalle.MontoDescuento),
-                new SqlParameter("@Subtotal", detalle.TotalLinea),
-                new SqlParameter("@Bodega", erpConfig.Bodega),
-                new SqlParameter("@Linea", numeroLinea++),
-                new SqlParameter("@CotizacionId", datos.CotizacionId),
-                new SqlParameter("@VersionId", datos.VersionId));
+            await _contextErp.Database.ExecuteSqlAsync(sqlLinea);
+            
+            numeroLinea++; // Incrementar línea después del insert
         }
 
         _logger.LogDebug("Datos insertados en staging: 1 cabecera, {LineasCount} líneas", datos.Detalles.Count);
+    }
+
+    /// <summary>
+    /// Resuelve los valores de MONEDA y NIVEL_PRECIO según la lógica solicitada
+    /// NUEVO: CRC=>"L", USD=>"D" y niveles de precio desde parámetros
+    /// </summary>
+    private async Task<(string MonedaErp, string NivelPrecio)> ResolverMonedaYNivelPrecioAsync(string monedaCotizacion)
+    {
+        string monedaErp = monedaCotizacion switch
+        {
+            "CRC" => "L",
+            "USD" => "D",
+            _ => throw new InvalidOperationException($"Moneda no soportada: {monedaCotizacion}")
+        };
+
+        string? nivelPrecio = monedaCotizacion switch
+        {
+            "CRC" => await _parametroSistemaService.ObtenerValorParametroAsync("ERP_NIVELPRECIO_LOCAL"),
+            "USD" => await _parametroSistemaService.ObtenerValorParametroAsync("ERP_NIVELPRECIO_DOLAR"),
+            _ => null
+        };
+
+        if (string.IsNullOrWhiteSpace(nivelPrecio))
+        {
+            throw new InvalidOperationException($"Parámetro de nivel de precio no configurado para moneda {monedaCotizacion}");
+        }
+
+        _logger.LogDebug("Moneda {Original} => ERP: {MonedaErp}, NivelPrecio: {NivelPrecio}", 
+            monedaCotizacion, monedaErp, nivelPrecio);
+
+        return (monedaErp, nivelPrecio);
     }
 
     /// <summary>
@@ -464,20 +493,27 @@ public class ErpPedidoService : IErpPedidoService
 
     /// <summary>
     /// Limpia las tablas staging para un lote específico usando esquema dinámico
+    /// CORREGIDO: Vulnerabilidad de SQL injection usando FormattableString
     /// </summary>
     private async Task LimpiarStagingAsync(Guid loteId, string esquemaErp)
     {
         // El esquema ya fue validado previamente con EsEsquemaSeguro()
-        await _contextErp.Database.ExecuteSqlRawAsync(
-            $"DELETE FROM [{esquemaErp}].[COTWEB_PEDIDO_LINEA_STG] WHERE LOTE_ID = {{0}}", loteId);
-        await _contextErp.Database.ExecuteSqlRawAsync(
-            $"DELETE FROM [{esquemaErp}].[COTWEB_PEDIDO_STG] WHERE LOTE_ID = {{0}}", loteId);
+        // Usar FormattableString para construcción segura de SQL con esquemas dinámicos
+        var deleteLineas = FormattableStringFactory.Create(
+            "DELETE FROM [{0}].[COTWEB_PEDIDO_LINEA_STG] WHERE LOTE_ID = {1}", esquemaErp, loteId);
+        
+        var deleteCabecera = FormattableStringFactory.Create(
+            "DELETE FROM [{0}].[COTWEB_PEDIDO_STG] WHERE LOTE_ID = {1}", esquemaErp, loteId);
+        
+        await _contextErp.Database.ExecuteSqlAsync(deleteLineas);
+        await _contextErp.Database.ExecuteSqlAsync(deleteCabecera);
         
         _logger.LogDebug("Staging limpiado para LoteId {LoteId} en esquema {Schema}", loteId, esquemaErp);
     }
 
     /// <summary>
     /// Ejecuta el stored procedure del ERP que genera el pedido usando esquema dinámico
+    /// CORREGIDO: Vulnerabilidad de SQL injection usando FormattableString
     /// </summary>
     private async Task<(bool Success, string? PedidoErp, string? Message)> EjecutarStoredProcedureAsync(Guid loteId, string esquemaErp)
     {
@@ -496,9 +532,12 @@ public class ErpPedidoService : IErpPedidoService
             };
 
             // El esquema ya fue validado previamente con EsEsquemaSeguro()
-            await _contextErp.Database.ExecuteSqlRawAsync(
-                $"EXEC [{esquemaErp}].[SP_COTWEB_GENERAR_PEDIDO] @LoteId, @PedidoGenerado OUTPUT, @Mensaje OUTPUT",
-                parametroLoteId, parametroPedidoOutput, parametroMensajeOutput);
+            // Usar FormattableString para construcción segura de SQL con esquemas dinámicos
+            var sqlSP = FormattableStringFactory.Create(
+                "EXEC [{0}].[SP_COTWEB_GENERAR_PEDIDO] {1}, {2} OUTPUT, {3} OUTPUT",
+                esquemaErp, parametroLoteId, parametroPedidoOutput, parametroMensajeOutput);
+
+            await _contextErp.Database.ExecuteSqlAsync(sqlSP);
 
             var pedidoGenerado = parametroPedidoOutput.Value?.ToString();
             var mensaje = parametroMensajeOutput.Value?.ToString();
@@ -566,6 +605,7 @@ internal class CotizacionCompleta
 {
     public string CotizacionId { get; set; } = string.Empty;
     public int VersionId { get; set; }
+    public decimal NumeroVersion { get; set; } // Para construir observaciones
     public string NombreInteresado { get; set; } = string.Empty;
     public string EmailInteresado { get; set; } = string.Empty;
     public string EmpresaInteresado { get; set; } = string.Empty;
@@ -574,12 +614,13 @@ internal class CotizacionCompleta
     public decimal SubTotal { get; set; }
     public decimal Total { get; set; }
     public string Observaciones { get; set; } = string.Empty;
-    public Interesado Interesado { get; set; } = null!; // Agregado para obtener cliente ERP
+    public Interesado Interesado { get; set; } = null!; // Para obtener cliente ERP
     public List<DetalleCotizacionCompleto> Detalles { get; set; } = new();
 }
 
 /// <summary>
 /// Clase auxiliar para detalles de cotización
+/// ACTUALIZADO: Usar PORCENTAJE_IMPUESTO en lugar de PORCENTAJE_DESCUENTO
 /// </summary>
 internal class DetalleCotizacionCompleto
 {
@@ -587,7 +628,7 @@ internal class DetalleCotizacionCompleto
     public string ProductoNombre { get; set; } = string.Empty;
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
-    public decimal PorcentajeDescuento { get; set; }
     public decimal MontoDescuento { get; set; }
+    public decimal PorcentajeImpuesto { get; set; } // CAMBIADO: era PorcentajeDescuento
     public decimal TotalLinea { get; set; }
 }

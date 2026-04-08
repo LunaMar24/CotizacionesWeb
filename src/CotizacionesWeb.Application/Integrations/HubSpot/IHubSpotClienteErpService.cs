@@ -2,7 +2,7 @@ using CotizacionesWeb.Domain.Entities;
 using CotizacionesWeb.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
-namespace CotizacionesWeb.Application.Integrations.HubSpot.Services;
+namespace CotizacionesWeb.Application.Integrations.HubSpot;
 
 /// <summary>
 /// Servicio para obtener códigos de cliente ERP desde HubSpot

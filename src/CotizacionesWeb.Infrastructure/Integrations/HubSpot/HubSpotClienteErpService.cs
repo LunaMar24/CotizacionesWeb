@@ -1,11 +1,11 @@
 using CotizacionesWeb.Application.Configuracion;
-using CotizacionesWeb.Application.Integrations.HubSpot.Services;
+using CotizacionesWeb.Application.Integrations.HubSpot;
 using CotizacionesWeb.Domain.Entities;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-namespace CotizacionesWeb.Infrastructure.Integrations.HubSpot.Services;
+namespace CotizacionesWeb.Infrastructure.Integrations.HubSpot;
 
 /// <summary>
 /// Servicio para obtener códigos de cliente ERP desde HubSpot

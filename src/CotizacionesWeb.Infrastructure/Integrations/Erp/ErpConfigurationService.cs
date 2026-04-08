@@ -1,7 +1,7 @@
 using CotizacionesWeb.Application.Configuracion;
 using Microsoft.Extensions.Logging;
 
-namespace CotizacionesWeb.Infrastructure.Integrations.Erp.Services;
+namespace CotizacionesWeb.Infrastructure.Integrations.Erp;
 
 /// <summary>
 /// Servicio para obtener configuración ERP desde parámetros del sistema

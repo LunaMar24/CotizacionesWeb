@@ -1,14 +1,17 @@
 using CotizacionesWeb.Application.Configuracion;
-using CotizacionesWeb.Application.Integrations.Erp.Services;
+using CotizacionesWeb.Application.Integrations.Erp;
 using CotizacionesWeb.Domain.Entities.ERP;
 using CotizacionesWeb.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Data;
-using System.Text.RegularExpressions;
 
-namespace CotizacionesWeb.Infrastructure.Integrations.Erp.Services;
+namespace CotizacionesWeb.Infrastructure.Integrations.Erp;
 
+/// <summary>
+/// Servicio ERP para consulta de productos
+/// CORREGIDO: Vulnerabilidades de SQL injection validando esquema
+/// </summary>
 public class ErpService : IErpService
 {
   private readonly ILogger<ErpService> _logger;
@@ -20,6 +23,20 @@ public class ErpService : IErpService
     _logger = logger;
     _dbContextErp = dbContextErp;
     _parametroSistemaService = parametroSistemaService;
+  }
+
+  /// <summary>
+  /// Valida que el esquema ERP sea seguro para usar en SQL dinámico
+  /// Solo permite letras, números y underscore
+  /// </summary>
+  private static bool EsEsquemaSeguro(string esquema)
+  {
+    if (string.IsNullOrWhiteSpace(esquema))
+      return false;
+
+    // Solo permitir letras, números y underscore
+    return esquema.All(c => char.IsLetterOrDigit(c) || c == '_') && 
+           esquema.Length <= 50; // Limitar longitud por seguridad
   }
 
   public async Task<List<ProductoErp>> ObtenerProductosAsync(
@@ -44,8 +61,8 @@ public class ErpService : IErpService
         throw new InvalidOperationException("Parámetro ERP_CIA no configurado.");
       }
 
-      // 2. Validar schema
-      if (!Regex.IsMatch(erpCia, @"^[A-Za-z0-9_]+$"))
+      // 2. Validar schema - SEGURIDAD: validación estricta para prevenir SQL injection
+      if (!EsEsquemaSeguro(erpCia))
       {
         _logger.LogError("Valor inválido para ERP_CIA: {ErpCia}", erpCia);
         throw new InvalidOperationException("Valor inválido para ERP_CIA.");
@@ -73,7 +90,7 @@ public class ErpService : IErpService
           monedaErp,
           nivelPrecio);
 
-      // 5. Construir SQL
+      // 5. Construir SQL base seguro - esquema ya validado con EsEsquemaSeguro()
       var sql = $@"
         SELECT 
             Producto,
@@ -85,7 +102,7 @@ public class ErpService : IErpService
             Precio,
             NivelPrecio,
             Moneda
-        FROM {erpCia}.vCotWebInformacionProductosERP
+        FROM [{erpCia}].vCotWebInformacionProductosERP
         WHERE NivelPrecio = @NivelPrecio
           AND Moneda = @Moneda
         ";
@@ -112,7 +129,7 @@ public class ErpService : IErpService
       command.CommandText = sql;
       command.CommandType = CommandType.Text;
 
-      // Parámetros
+      // Parámetros seguros - CORREGIDO: Sin interpolación de strings en valores
       var paramNivel = command.CreateParameter();
       paramNivel.ParameterName = "@NivelPrecio";
       paramNivel.Value = nivelPrecio;

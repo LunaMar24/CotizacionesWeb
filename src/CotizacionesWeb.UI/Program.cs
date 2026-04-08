@@ -1,15 +1,13 @@
 using CotizacionesWeb.Application.Authentication;
 using CotizacionesWeb.Application.Cotizaciones;
 using CotizacionesWeb.Application.Integrations.Erp;
-using CotizacionesWeb.Application.Integrations.Erp.Services;
 using CotizacionesWeb.Application.Integrations.HubSpot;
 using CotizacionesWeb.Application.Roles;
 using CotizacionesWeb.Application.Users;
 using CotizacionesWeb.Infrastructure.Data;
 using CotizacionesWeb.Infrastructure.Data.Interceptors;
-using CotizacionesWeb.Infrastructure.Integrations.Erp.Services;
+using CotizacionesWeb.Infrastructure.Integrations.Erp;
 using CotizacionesWeb.Infrastructure.Integrations.HubSpot;
-using CotizacionesWeb.Infrastructure.Integrations.HubSpot.Services;
 using CotizacionesWeb.Infrastructure.Security;
 using CotizacionesWeb.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;

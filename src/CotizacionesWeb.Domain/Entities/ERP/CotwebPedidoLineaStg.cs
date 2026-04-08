@@ -6,15 +6,13 @@ namespace CotizacionesWeb.Domain.Entities.ERP;
 public class CotwebPedidoLineaStg
 {
     public Guid LoteId { get; set; }
+    public int Linea { get; set; }
     public string Producto { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public decimal Cantidad { get; set; }
     public decimal PrecioUnitario { get; set; }
-    public decimal PorcentajeDescuento { get; set; }
     public decimal MontoDescuento { get; set; }
+    public decimal PorcentajeImpuesto { get; set; } // CAMBIADO: era PorcentajeDescuento
     public decimal Subtotal { get; set; }
     public string Bodega { get; set; } = string.Empty;
-    public int Linea { get; set; }
-    public string CotizacionId { get; set; } = string.Empty;
-    public int VersionId { get; set; }
 }
