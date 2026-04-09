@@ -2,6 +2,7 @@ using CotizacionesWeb.Application.Authentication;
 using CotizacionesWeb.Application.Cotizaciones;
 using CotizacionesWeb.Application.Integrations.Erp;
 using CotizacionesWeb.Application.Integrations.HubSpot;
+using CotizacionesWeb.Application.Configuracion;
 using CotizacionesWeb.Application.Roles;
 using CotizacionesWeb.Application.Users;
 using CotizacionesWeb.Infrastructure.Data;
@@ -14,6 +15,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using System.Security.Claims;
+using CotizacionesWeb.Application.Permisos;
 
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(new ConfigurationBuilder()
@@ -64,9 +66,9 @@ try
   builder.Services.AddScoped<IAuthService, AuthService>();
 
   // Application services - Users & Roles
-  builder.Services.AddScoped<IUsuarioService, CotizacionesWeb.Infrastructure.Services.UsuarioService>();
-  builder.Services.AddScoped<IRolService, CotizacionesWeb.Infrastructure.Services.RolService>();
-  builder.Services.AddScoped<CotizacionesWeb.Application.Permisos.IPermisoService, CotizacionesWeb.Infrastructure.Services.PermisoService>();
+  builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+  builder.Services.AddScoped<IRolService, RolService>();
+  builder.Services.AddScoped<IPermisoService, PermisoService>();
 
   // UI Services
   builder.Services.AddScoped<CotizacionesWeb.UI.Services.IPermisoChecker, CotizacionesWeb.UI.Services.PermisoChecker>();
@@ -83,20 +85,22 @@ try
   builder.Services.AddScoped<CotizacionesWeb.Application.Common.Email.IEmailService, CotizacionesWeb.Infrastructure.Services.EmailService>();
 
   // Sistema de parámetros y consecutivos
-  builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.ConsecutivoGenerator>();
-  builder.Services.AddScoped<CotizacionesWeb.Infrastructure.Services.IConfiguracionService, CotizacionesWeb.Infrastructure.Services.ConfiguracionService>();
+  builder.Services.AddScoped<IParametroSistemaService, ParametroSistemaService>();
+  builder.Services.AddScoped<ConsecutivoGenerator>();
+  builder.Services.AddScoped<IConfiguracionService, ConfiguracionService>();
 
   // Integrations ERP
+  builder.Services.AddScoped<IErpService, ErpService>();
   builder.Services.AddScoped<IErpConfigurationService, ErpConfigurationService>();
   builder.Services.AddScoped<IErpPedidoService, ErpPedidoService>();
 
-  // Integrations
-  builder.Services.AddScoped<IErpService, ErpService>();
+  // Integrations HubSpot
   builder.Services.AddHttpClient<IHubSpotService, HubSpotClient>();
+  builder.Services.AddHttpClient<IHubSpotClienteErpService, HubSpotClienteErpService>();
   builder.Services.AddScoped<IAssignInteresadoHubSpotService, AssignInteresadoHubSpotService>();
 
   // Background Services - Notificaciones
-  builder.Services.AddHostedService<CotizacionesWeb.Infrastructure.Services.NotificacionCotizacionBackgroundService>();
+  builder.Services.AddHostedService<NotificacionCotizacionBackgroundService>();
 
   // Authentication
   builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
