@@ -30,21 +30,6 @@ PRINT '==============================================';
 PRINT '';
 
 -- ============================================
--- PERMISOS DE CLIENTES
--- ============================================
-PRINT 'Insertando permisos de Clientes...';
-
-INSERT INTO Permisos (Codigo, Categoria, Descripcion) VALUES
-('CLI_VIEW', 'Clientes', 'Ver clientes/interesados'),
-('CLI_CREATE', 'Clientes', 'Crear nuevos clientes/interesados'),
-('CLI_EDIT', 'Clientes', 'Editar clientes/interesados'),
-('CLI_DELETE', 'Clientes', 'Eliminar clientes/interesados'),
-('CLI_SYNC', 'Clientes', 'Sincronizar con HubSpot');
-
-PRINT '? 5 permisos de Clientes insertados';
-PRINT '';
-
--- ============================================
 -- PERMISOS DE CONFIGURACIÓN
 -- ============================================
 PRINT 'Insertando permisos de Configuración...';
@@ -170,14 +155,13 @@ PRINT '';
 PRINT '==============================================';
 PRINT 'DETALLE DE CATEGORÍAS';
 PRINT '==============================================';
-PRINT '  • Clientes............: 5 permisos';
 PRINT '  • Configuracion.......: 5 permisos';
 PRINT '  • Cotizaciones........: 19 permisos';
 PRINT '  • Reportes............: 4 permisos';
 PRINT '  • Roles...............: 5 permisos';
 PRINT '  • Usuarios............: 6 permisos';
 PRINT '';
-PRINT '  TOTAL.................: 44 permisos';
+PRINT '  TOTAL.................: 39 permisos';
 PRINT '==============================================';
 PRINT '';
 PRINT 'SIGUIENTE PASO:';
