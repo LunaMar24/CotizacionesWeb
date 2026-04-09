@@ -2118,6 +2118,38 @@ Cada entrada muestra:
 
 ---
 
+##### Aprobación Automática de Cotizaciones
+
+El sistema **CotizacionesWeb** incluye una funcionalidad de aprobación automática que evalúa las cotizaciones al momento de enviarlas para aprobación. Esta característica permite que cotizaciones de montos menores se aprueben sin necesidad de intervención manual de un supervisor, agilizando significativamente el proceso comercial.
+
+**¿Cómo funciona?**
+
+Cuando un usuario hace clic en **"Enviar a Aprobación"** desde una cotización en estado Borrador, el sistema evalúa automáticamente el monto total y lo compara con los límites configurados para cada moneda. Si el monto de la cotización es igual o menor al límite establecido, el sistema la aprueba automáticamente cambiando su estado directamente a **Aprobada (A)**. En caso contrario, la cotización se envía a **Pendiente Aprobación (P)** y requiere la revisión manual de un supervisor.
+
+**Configuración del sistema**
+
+Los límites de aprobación automática se configuran en la sección **Configuración > Parámetros del Sistema > Workflow** mediante dos parámetros principales. El parámetro **`APROBACION_AUTOMATICA_CRC_MONTO`** define el monto máximo en colones costarricenses que puede aprobarse automáticamente; por ejemplo, si establece un valor de `500000`, todas las cotizaciones hasta ₡500,000 se aprobarán sin intervención manual. De forma similar, el parámetro **`APROBACION_AUTOMATICA_DOL_MONTO`** define el monto máximo en dólares estadounidenses, de manera que un valor de `1000` permitirá que cotizaciones hasta $1,000 se aprueben automáticamente.
+
+💡 **Sugerencia**: Si desea desactivar completamente esta funcionalidad, simplemente establezca ambos parámetros en `0` (cero), lo que hará que todas las cotizaciones requieran aprobación manual independientemente de su monto.
+
+**Criterios de evaluación**
+
+Para que el sistema apruebe automáticamente una cotización, esta debe cumplir simultáneamente con tres requisitos esenciales. En primer lugar, la cotización debe encontrarse en estado **Borrador**, ya que solo en este estado es posible enviarla a evaluación. En segundo lugar, debe estar configurada en moneda **CRC** (colones costarricenses) o **USD** (dólares estadounidenses), dado que otras monedas no están contempladas en el sistema de aprobación automática y siempre requerirán revisión manual. Finalmente, el monto total de la cotización debe ser igual o menor al límite configurado para su respectiva moneda. Si alguno de estos criterios no se cumple, la cotización se enviará automáticamente al flujo de aprobación manual.
+
+⚠️ **Importante**: Tenga en cuenta que únicamente las monedas CRC y USD cuentan con soporte para aprobación automática. Cotizaciones en euros, libras u otras divisas siempre requerirán aprobación manual.
+
+**Experiencia del usuario**
+
+Cuando una cotización cumple los criterios y se aprueba automáticamente, el usuario recibe la notificación ✅ **"Cotización aprobada automáticamente"** y el estado cambia inmediatamente a **Aprobada**, permitiéndole enviarla al cliente de inmediato. Por el contrario, si el monto excede el límite, el usuario verá la notificación 📤 **"Cotización enviada para aprobación"** y deberá esperar a que un supervisor la revise y apruebe manualmente.
+
+**Auditoría y seguridad**
+
+Cada aprobación automática queda completamente registrada en el historial de la cotización, incluyendo el monto evaluado y el límite aplicado al momento de la aprobación. Como medida de seguridad, ante cualquier error en la configuración o evaluación, el sistema automáticamente envía la cotización a aprobación manual para garantizar que no se aprueben cotizaciones incorrectamente.
+
+---
+
+---
+
 ##### Cambiar Estado de Cotización
 
 Las cotizaciones siguen un flujo de estados definido. Cada transición requiere permisos específicos.
@@ -2203,6 +2235,64 @@ Las cotizaciones siguen un flujo de estados definido. Cada transición requiere 
 2. Verifique la cotización antes de enviar al cliente
 3. Confirme con el cliente antes de marcar como aceptada/rechazada
 4. Use versiones si necesita modificar cotizaciones ya enviadas
+
+---
+
+##### Sistema de Notificaciones por Email
+
+El sistema **CotizacionesWeb** incluye un servicio automatizado de notificaciones por correo electrónico que monitorea constantemente las cotizaciones y envía alertas cuando es necesario. Este sistema trabaja en segundo plano mediante un proceso programado que se ejecuta periódicamente según la configuración establecida, permitiendo mantener informados a los usuarios relevantes sobre eventos importantes relacionados con las cotizaciones.
+
+**¿Cómo funciona el sistema de notificaciones?**
+
+El sistema cuenta con un servicio que se ejecuta automáticamente en intervalos regulares configurables, verificando si existen notificaciones pendientes de envío. Cuando encuentra notificaciones que deben ser procesadas, genera y envía automáticamente los correos electrónicos correspondientes a los destinatarios configurados. El servicio opera de forma autónoma sin requerir intervención manual una vez configurado, asegurando que ninguna alerta importante pase desapercibida.
+
+**Tipos de notificaciones automáticas**
+
+El sistema genera dos tipos principales de notificaciones que se envían automáticamente cuando se cumplen ciertas condiciones específicas. En primer lugar, cuando una cotización cambia al estado **Pendiente de Aprobación**, el sistema programa automáticamente una notificación para alertar a los supervisores responsables que tienen una nueva cotización esperando su revisión y aprobación. Esta notificación incluye información completa de la cotización como el identificador, versión, datos del cliente, monto total y estado actual, facilitando que los aprobadores puedan tomar acción rápidamente sin necesidad de ingresar al sistema para verificar manualmente.
+
+En segundo lugar, el sistema también realiza seguimiento a las cotizaciones que han sido enviadas al cliente y programaitivamente genera recordatorios cuando transcurre un período configurable sin que se haya recibido respuesta. Estas notificaciones de seguimiento alertan al equipo comercial que una cotización requiere atención, permitiéndoles hacer seguimiento proactivo con los clientes y evitar que oportunidades comerciales se pierdan por falta de contacto oportuno.
+
+**Configuración del sistema de notificaciones**
+
+La configuración del sistema de notificaciones se gestiona mediante parámetros ubicados en **Configuración > Parámetros del Sistema > Notificaciones**. El parámetro principal es **`NOTIFICACIONES_COTIZACIONES_ENABLED`**, que permite activar o desactivar completamente el sistema de notificaciones; cuando se establece en `S` (Sí), el servicio procesa y envía las notificaciones programadas, mientras que si se configura en `N` (No), el servicio permanece inactivo aunque continúa ejecutándose en segundo plano.
+
+La frecuencia con la que el sistema verifica y procesa notificaciones pendientes se controla mediante el parámetro **`NOTIFICACIONES_FRECUENCIA_MINUTOS`**, cuyo valor por defecto es 5 minutos. Esto significa que cada 5 minutos el servicio revisa si existen notificaciones que deban enviarse. Este intervalo puede ajustarse según las necesidades de la organización, desde un mínimo de 1 minuto para verificaciones muy frecuentes hasta un máximo de 1440 minutos (24 horas) para revisiones menos frecuentes. Es importante tener en cuenta que valores muy bajos pueden generar carga innecesaria en el servidor de email, mientras que valores muy altos pueden ocasionar retrasos en la entrega de notificaciones urgentes.
+
+Para las notificaciones de cotizaciones pendientes de aprobación, el parámetro **`EMAIL_NOTIFICACIONES_PEND_APROBAR`** define la dirección de correo electrónico del supervisor o grupo de supervisores que recibirán las alertas cuando haya cotizaciones esperando aprobación. Este email puede ser una dirección individual o una lista de distribución que alcance a todo el equipo de aprobadores.
+
+Por otro lado, el seguimiento automático de cotizaciones enviadas se configura mediante el parámetro **`DIAS_NOTIFICACION_ENVIADAS`**, que especifica cuántos días deben transcurrir después de enviar una cotización al cliente antes de generar una notificación de seguimiento. Por ejemplo, si se configura con el valor `3`, el sistema programará automáticamente una notificación de seguimiento para ser enviada tres días después de que la cotización cambie al estado "Enviada". Esta notificación alertará al equipo comercial que la cotización requiere seguimiento con el cliente.
+
+💡 **Sugerencia**: Ajuste la frecuencia de verificación según el volumen de cotizaciones de su organización. Para empresas con alta actividad comercial, una frecuencia de 2-5 minutos es adecuada, mientras que organizaciones con menos movimiento pueden usar intervalos de 15-30 minutos.
+
+**Proceso de envío y reintentos**
+
+Cuando el sistema procesa una notificación pendiente, primero verifica que el servicio de correo electrónico esté disponible y funcionando correctamente. Si el servicio está operativo, genera el contenido del email con un formato HTML profesional que incluye toda la información relevante de la cotización de manera clara y estructurada. El sistema luego intenta enviar el correo electrónico al destinatario configurado.
+
+Si el envío es exitoso, el sistema registra la notificación como "Enviada" junto con la fecha y hora exacta del envío, permitiendo llevar un historial completo de todas las comunicaciones realizadas. En caso de que el envío falle por problemas de red, servidor de email u otras causas, el sistema no descarta inmediatamente la notificación sino que la mantiene en estado "Pendiente" y la reintentará en el siguiente ciclo de procesamiento. El servicio realizará hasta **tres intentos automáticos** de envío antes de marcar definitivamente la notificación como fallida. Entre cada intento, el sistema espera al menos un minuto para evitar saturar el servidor de email con solicitudes consecutivas.
+
+⚠️ **Importante**: Si después de tres intentos la notificación sigue sin poder enviarse, quedará marcada como "Error" y dejará de procesarse automáticamente. Los administradores deben revisar periódicamente las notificaciones con error para identificar y resolver problemas de configuración del email o conectividad.
+
+**Contenido de las notificaciones**
+
+Cada tipo de notificación incluye información específica presentada de forma profesional y clara. Las notificaciones de **Pendiente de Aprobación** llevan como asunto "Cotización [ID] v[Versión] - Pendiente de Aprobación" y en el cuerpo del mensaje incluyen el identificador completo de la cotización, número de versión, nombre del cliente y empresa, monto total con el símbolo de moneda correspondiente, y el estado actual resaltado visualmente. Esto permite que el aprobador tenga toda la información necesaria de un vistazo sin necesidad de buscar detalles adicionales.
+
+Por su parte, las notificaciones de **Seguimiento de Enviadas** tienen como asunto "Seguimiento: Cotización [ID] v[Versión] - Enviada al Cliente" y su contenido alerta al equipo comercial que han transcurrido los días configurados sin respuesta del cliente, sugiriendo que es momento de realizar un seguimiento proactivo. Esta notificación también incluye todos los detalles de la cotización para facilitar la comunicación con el cliente sin tener que consultar el sistema.
+
+**Auditoría y registro**
+
+Todas las notificaciones generadas, tanto las enviadas exitosamente como las que presentaron errores, quedan completamente registradas en la base de datos del sistema. Para cada notificación se almacena información detallada que incluye el tipo de notificación, fecha de creación, fecha programada para envío, fecha real de envío (si fue exitosa), estado actual (Pendiente, Enviada o Error), número de intentos realizados, email del destinatario, y cualquier mensaje de error que haya ocurrido durante el proceso. Este registro completo permite realizar auditorías, identificar problemas recurrentes y confirmar que las notificaciones críticas fueron entregadas correctamente.
+
+💡 **Sugerencia**: Revise periódicamente el registro de notificaciones en estado "Error" para identificar problemas de configuración del servicio de email o direcciones de correo inválidas que necesiten corrección.
+
+**Desactivación temporal del servicio**
+
+Si por alguna razón necesita detener temporalmente el envío de notificaciones, simplemente configure el parámetro **`NOTIFICACIONES_COTIZACIONES_ENABLED`** en `N` (No). El servicio continuará ejecutándose en segundo plano pero no procesará ni enviará ninguna notificación hasta que vuelva a activarlo. Las notificaciones que se generen durante este período permanecerán en estado "Pendiente" y serán enviadas una vez que reactive el servicio, siempre y cuando no hayan superado los tres intentos permitidos.
+
+⚠️ **Advertencia**: Desactivar las notificaciones durante períodos prolongados puede ocasionar que se acumulen muchas notificaciones pendientes. Al reactivar el servicio, todas estas notificaciones se procesarán en los siguientes ciclos, lo que podría generar un envío masivo de emails. Considere este impacto antes de desactivar el servicio por tiempo extendido.
+
+**Integración con cambios de estado**
+
+Las notificaciones se generan automáticamente como parte de las transiciones de estado de las cotizaciones. Cuando un usuario hace clic en "Enviar a Aprobación" y la cotización cambia a estado **Pendiente de Aprobación**, el sistema crea automáticamente una notificación programada para envío inmediato al email configurado en `EMAIL_NOTIFICACIONES_PEND_APROBAR`. De manera similar, cuando se marca una cotización como "Enviada" al cliente, el sistema calcula automáticamente la fecha futura según `DIAS_NOTIFICACION_ENVIADAS` y programa una notificación de seguimiento para esa fecha específica. Todo este proceso ocurre de forma transparente sin requerir intervención del usuario.
 
 ---
 
@@ -2621,10 +2711,17 @@ Configuran la conexión con HubSpot CRM:
 | `HUBSPOT_PAGE_SIZE` | Registros por página | No |
 | `HUBSPOT_TIMEOUT_SECONDS` | Timeout en segundos | No |
 | `HUBSPOT_ACCOUNT_NAME` | Nombre de la cuenta | No |
+| `HUBSPOT_CONTACT_SEARCH_FIELDS` | Campos de búsqueda de contactos (separados por coma, máx 4) | No |
+| `HUBSPOT_COMPANY_SEARCH_FIELDS` | Campos de búsqueda de compañías (separados por coma, máx 4) | No |
+
+**Valores por Defecto:**
+- `HUBSPOT_CONTACT_SEARCH_FIELDS`: `email,firstname,lastname`
+- `HUBSPOT_COMPANY_SEARCH_FIELDS`: `name,domain`
 
 ⚠️ **Importante**: 
 - Configure `HUBSPOT_ACCESS_TOKEN` antes de activar la integración
 - Una vez asignado el token, no se puede modificar (solo lectura)
+- Los campos de búsqueda determinan qué propiedades se usan para buscar contactos y compañías en HubSpot
 - Active `HUBSPOT_ENABLED = S` solo después de verificar la conexión
 
 ---
