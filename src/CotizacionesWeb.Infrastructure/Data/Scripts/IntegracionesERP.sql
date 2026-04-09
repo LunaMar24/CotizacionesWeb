@@ -181,6 +181,7 @@ BEGIN
                 @SUB_TOTAL               DECIMAL(28,8),
                 @TOTAL_UNID              DECIMAL(28,8),
                 @TOTAL_IMPUESTO          DECIMAL(28,8),
+                @TOTAL_DESCUENTO         DECIMAL(28,8),
                 @TOTAL_A_FACTURAR        DECIMAL(28,8),
 
                 @CANT_CABECERA           INT,
@@ -192,32 +193,33 @@ BEGIN
            VALORES FIJOS / DEFAULTS
            VALIDAR Y AJUSTAR SEGUN SE REQUIERA
            ========================================================= */
-        DECLARE @PEDIDO_ESTADO              VARCHAR(1)  = 'N',
-                @PEDIDO_IMPRESO             VARCHAR(1)  = 'N',
-                @PEDIDO_TIPO_PEDIDO         VARCHAR(1)  = 'N',
-                @PEDIDO_AUTORIZADO          VARCHAR(1)  = 'N',
-                @PEDIDO_DOC_A_GENERAR       VARCHAR(1)  = 'F',
-                @PEDIDO_CLASE_PEDIDO        VARCHAR(1)  = 'N',
-                @PEDIDO_COBRADOR            VARCHAR(4)  = 'ND',
-                @PEDIDO_BACKORDER           VARCHAR(1)  = 'N',
-                @PEDIDO_DESCUENTO_CASCADA   VARCHAR(1)  = 'N',
-                @PEDIDO_FIJAR_TIPO_CAMBIO   VARCHAR(1)  = 'N',
-                @PEDIDO_ORIGEN_PEDIDO       VARCHAR(1)  = 'F',
+        DECLARE @PEDIDO_ESTADO              VARCHAR(1)    = 'N',
+                @PEDIDO_IMPRESO             VARCHAR(1)    = 'N',
+                @PEDIDO_TIPO_PEDIDO         VARCHAR(1)    = 'N',
+                @PEDIDO_AUTORIZADO          VARCHAR(1)    = 'N',
+                @PEDIDO_DOC_A_GENERAR       VARCHAR(1)    = 'F',
+                @PEDIDO_CLASE_PEDIDO        VARCHAR(1)    = 'N',
+                @PEDIDO_COBRADOR            VARCHAR(4)    = 'ND',
+                @PEDIDO_BACKORDER           VARCHAR(1)    = 'N',
+                @PEDIDO_DESCUENTO_CASCADA   VARCHAR(1)    = 'N',
+                @PEDIDO_FIJAR_TIPO_CAMBIO   VARCHAR(1)    = 'N',
+                @PEDIDO_ORIGEN_PEDIDO       VARCHAR(1)    = 'F',
                 @PEDIDO_PORC_INTCTE         DECIMAL(28,8) = 0,
-                @PEDIDO_CONTRATO_REVENTA    VARCHAR(1)  = 'N',
+                @PEDIDO_CONTRATO_REVENTA    VARCHAR(1)    = 'N',
                 @PEDIDO_MONTO_OTRO_CARGO    DECIMAL(28,8) = 0,
-                @PEDIDO_ES_FACT_REEMPLAZO   VARCHAR(1)  = 'N',
-                @PEDIDO_SUBTIPO_DOC_CXC     INT         = 0,
-                @PEDIDO_TIPO_DOC_CXC        VARCHAR(3)  = 'FAC',
+                @PEDIDO_ES_FACT_REEMPLAZO   VARCHAR(1)    = 'N',
+                @PEDIDO_SUBTIPO_DOC_CXC     INT           = 0,
+                @PEDIDO_TIPO_DOC_CXC        VARCHAR(3)    = 'FAC',
+                
+                @TIPO_DESCUENTO             VARCHAR(1)    = 'M',
 
-                @LINEA_ESTADO               VARCHAR(1)  = 'N',
-                @LINEA_TIPO_DESCUENTO       VARCHAR(1)  = 'M',
-                @LINEA_TIPO_DESC            VARCHAR(10) = '0',
-                @LINEA_ES_OTRO_CARGO        VARCHAR(1)  = 'N',
-                @LINEA_ES_CANASTA_BASICA    VARCHAR(1)  = 'N';
+                @LINEA_ESTADO               VARCHAR(1)    = 'N',
+                @LINEA_TIPO_DESC            VARCHAR(10)   = '0',
+                @LINEA_ES_OTRO_CARGO        VARCHAR(1)    = 'N',
+                @LINEA_ES_CANASTA_BASICA    VARCHAR(1)    = 'N';
 
-        /* Ajustar el consecutivo según corresponda*/
-        SET @CONSEC_PEDIDO = 'PED';
+        /* Ajustar el consecutivo según corresponda */
+        SET @CONSEC_PEDIDO = 'PEDIDO';
 
         /* =========================================================
            VALIDACIONES DE STAGE
@@ -337,9 +339,27 @@ BEGIN
         END
 
         /* =========================================================
+           VALIDAR PRODUCTOS EN ARTICULO / ARTICULO_CUENTA
+           ========================================================= */
+        IF EXISTS
+        (
+            SELECT 1
+            FROM {{ESQUEMA_ERP}}.COTWEB_PEDIDO_LINEA_STG L
+            LEFT JOIN {{ESQUEMA_ERP}}.ARTICULO A
+                ON A.ARTICULO = L.PRODUCTO
+            LEFT JOIN {{ESQUEMA_ERP}}.ARTICULO_CUENTA AC
+                ON AC.ARTICULO_CUENTA = A.ARTICULO_CUENTA
+            WHERE L.LOTE_ID = @LOTE_ID
+              AND (A.ARTICULO IS NULL OR AC.ARTICULO_CUENTA IS NULL)
+        )
+        BEGIN
+            RAISERROR('Uno o más productos del lote no existen en ARTICULO o no tienen configuración en ARTICULO_CUENTA.', 16, 1);
+            RETURN;
+        END
+
+        /* =========================================================
            CONSECUTIVO PEDIDO
            ========================================================= */
-
         SELECT
             @TAM_CONSEC     = LONGITUD,
             @VAL_CONSEC_PED = VALOR_CONSECUTIVO
@@ -442,80 +462,81 @@ BEGIN
         )
         VALUES
         (
-            @VAL_CONSEC_PED,
-            @PEDIDO_ESTADO,
-            @FECHA,
-            @FECHA,
-            @FECHA,
-            @NOMBRE_CLIENTE,
-            'ND',
-            @DIRECCION_FACTURA,
-            @NOTA,
-            NULL,
-            0,
-            0,
-            0,
-            0,
-            0,
-            'P',
-            'P',
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            0,
-            @PEDIDO_IMPRESO,
-            GETDATE(),
-            0,
-            @PEDIDO_TIPO_PEDIDO,
-            @MONEDA,
-            @VERSION_NP,
-            @PEDIDO_AUTORIZADO,
-            @PEDIDO_DOC_A_GENERAR,
-            @PEDIDO_CLASE_PEDIDO,
-            @MONEDA,
-            @NIVEL_PRECIO,
-            @PEDIDO_COBRADOR,
-            @RUTA,
-            @USUARIO,
-            @CONDICION_PAGO,
-            @BODEGA,
-            @ZONA,
-            @VENDEDOR,
-            @CLIENTE,
-            @CLIENTE,
-            @CLIENTE,
-            @CLIENTE,
-            @PAIS,
-            @PEDIDO_BACKORDER,
-            @PEDIDO_DESCUENTO_CASCADA,
-            @TIPO_CAMBIO,
-            @PEDIDO_FIJAR_TIPO_CAMBIO,
-            @PEDIDO_ORIGEN_PEDIDO,
-            @DIVISION_GEOGRAFICA1,
-            @DIVISION_GEOGRAFICA2,
-            0,
-            @NOMBRE_CLIENTE,
-            @TIPO_DOCUMENTO,
-            @ACTIVIDAD_COMERCIAL,
-            @PEDIDO_PORC_INTCTE,
-            @DESC_DIREC_EMBARQUE,
-            @PEDIDO_CONTRATO_REVENTA,
-            @PEDIDO_MONTO_OTRO_CARGO,
-            @PEDIDO_ES_FACT_REEMPLAZO,
-            @PEDIDO_SUBTIPO_DOC_CXC,
-            @PEDIDO_TIPO_DOC_CXC
+            @VAL_CONSEC_PED,                -- PEDIDO
+            @PEDIDO_ESTADO,                 -- ESTADO
+            @FECHA,                         -- FECHA_PEDIDO
+            @FECHA,                         -- FECHA_PROMETIDA
+            @FECHA,                         -- FECHA_PROX_EMBARQU
+            @NOMBRE_CLIENTE,                -- EMBARCAR_A
+            'ND',                           -- DIREC_EMBARQUE
+            @DIRECCION_FACTURA,             -- DIRECCION_FACTURA
+            @NOTA,                          -- OBSERVACIONES
+            NULL,                           -- COMENTARIO_CXC
+            0,                              -- TOTAL_MERCADERIA
+            0,                              -- MONTO_ANTICIPO
+            0,                              -- MONTO_FLETE
+            0,                              -- MONTO_SEGURO
+            0,                              -- MONTO_DOCUMENTACIO
+            @TIPO_DESCUENTO,                -- TIPO_DESCUENTO1
+            'P',                            -- TIPO_DESCUENTO2
+            0,                              -- MONTO_DESCUENTO1
+            0,                              -- MONTO_DESCUENTO2
+            0,                              -- PORC_DESCUENTO1
+            0,                              -- PORC_DESCUENTO2
+            0,                              -- TOTAL_IMPUESTO1
+            0,                              -- TOTAL_IMPUESTO2
+            0,                              -- TOTAL_A_FACTURAR
+            0,                              -- PORC_COMI_VENDEDOR
+            0,                              -- PORC_COMI_COBRADOR
+            0,                              -- TOTAL_CANCELADO
+            0,                              -- TOTAL_UNIDADES
+            @PEDIDO_IMPRESO,                -- IMPRESO
+            GETDATE(),                      -- FECHA_HORA
+            0,                              -- DESCUENTO_VOLUMEN
+            @PEDIDO_TIPO_PEDIDO,            -- TIPO_PEDIDO
+            @MONEDA,                        -- MONEDA_PEDIDO
+            @VERSION_NP,                    -- VERSION_NP
+            @PEDIDO_AUTORIZADO,             -- AUTORIZADO
+            @PEDIDO_DOC_A_GENERAR,          -- DOC_A_GENERAR
+            @PEDIDO_CLASE_PEDIDO,           -- CLASE_PEDIDO
+            @MONEDA,                        -- MONEDA
+            @NIVEL_PRECIO,                  -- NIVEL_PRECIO
+            @PEDIDO_COBRADOR,               -- COBRADOR
+            @RUTA,                          -- RUTA
+            @USUARIO,                       -- USUARIO
+            @CONDICION_PAGO,                -- CONDICION_PAGO
+            @BODEGA,                        -- BODEGA
+            @ZONA,                          -- ZONA
+            @VENDEDOR,                      -- VENDEDOR
+            @CLIENTE,                       -- CLIENTE
+            @CLIENTE,                       -- CLIENTE_DIRECCION
+            @CLIENTE,                       -- CLIENTE_CORPORAC
+            @CLIENTE,                       -- CLIENTE_ORIGEN
+            @PAIS,                          -- PAIS
+            @PEDIDO_BACKORDER,              -- BACKORDER
+            @PEDIDO_DESCUENTO_CASCADA,      -- DESCUENTO_CASCADA
+            @TIPO_CAMBIO,                   -- TIPO_CAMBIO
+            @PEDIDO_FIJAR_TIPO_CAMBIO,      -- FIJAR_TIPO_CAMBIO
+            @PEDIDO_ORIGEN_PEDIDO,          -- ORIGEN_PEDIDO
+            @DIVISION_GEOGRAFICA1,          -- DIVISION_GEOGRAFICA1
+            @DIVISION_GEOGRAFICA2,          -- DIVISION_GEOGRAFICA2
+            0,                              -- BASE_IMPUESTO1
+            @NOMBRE_CLIENTE,                -- NOMBRE_CLIENTE
+            @TIPO_DOCUMENTO,                -- TIPO_DOCUMENTO
+            @ACTIVIDAD_COMERCIAL,           -- ACTIVIDAD_COMERCIAL
+            @PEDIDO_PORC_INTCTE,            -- PORC_INTCTE
+            @DESC_DIREC_EMBARQUE,           -- DESC_DIREC_EMBARQUE
+            @PEDIDO_CONTRATO_REVENTA,       -- CONTRATO_REVENTA
+            @PEDIDO_MONTO_OTRO_CARGO,       -- MONTO_OTRO_CARGO
+            @PEDIDO_ES_FACT_REEMPLAZO,      -- ES_FACTURA_REEMPLAZO
+            @PEDIDO_SUBTIPO_DOC_CXC,        -- SUBTIPO_DOC_CXC
+            @PEDIDO_TIPO_DOC_CXC            -- TIPO_DOC_CXC
         );
 
         /* =========================================================
            INSERT PEDIDO_LINEA
            RESPETAR MONTOS DESDE STAGE
+           VALIDAR Y AJUSTAR CAMPOS DEFAULT SEGUN SE REQUIERA
            ========================================================= */
         INSERT INTO {{ESQUEMA_ERP}}.PEDIDO_LINEA
         (
@@ -548,36 +569,40 @@ BEGIN
             ES_CANASTA_BASICA
         )
         SELECT
-            @VAL_CONSEC_PED,      -- PEDIDO - varchar(50)
-            CONVERT(SMALLINT, L.LINEA - 1),
-            L.BODEGA,
-            L.PRODUCTO,
-            @LINEA_ESTADO,
-            @FECHA,
-            CONVERT(SMALLINT, L.LINEA),
-            L.PRECIO_UNITARIO,
-            L.CANTIDAD,
-            L.CANTIDAD,
-            0,
-            0,
-            0,
-            0,
-            @LINEA_TIPO_DESCUENTO,
-            L.MONTO_DESCUENTO,
-            0,
-            L.DESCRIPCION,
-            @FECHA,
-            V.CentroCosto,
-            V.CuentaContable,
-            @LINEA_TIPO_DESC,
-            V.Tipo,
-            V.Tarifa,
-            L.PORCENTAJE_IMPUESTO,
-            @LINEA_ES_OTRO_CARGO,
-            @LINEA_ES_CANASTA_BASICA
+            @VAL_CONSEC_PED,                    -- PEDIDO
+            CONVERT(SMALLINT, L.LINEA - 1),     -- PEDIDO_LINEA
+            L.BODEGA,                           -- BODEGA
+            L.PRODUCTO,                         -- ARTICULO
+            @LINEA_ESTADO,                      -- ESTADO
+            @FECHA,                             -- FECHA_ENTREGA
+            CONVERT(SMALLINT, L.LINEA),         -- LINEA_USUARIO
+            L.PRECIO_UNITARIO,                  -- PRECIO_UNITARIO
+            L.CANTIDAD,                         -- CANTIDAD_PEDIDA
+            L.CANTIDAD,                         -- CANTIDAD_A_FACTURA
+            0,                                  -- CANTIDAD_FACTURADA
+            0,                                  -- CANTIDAD_RESERVADA
+            0,                                  -- CANTIDAD_BONIFICAD
+            0,                                  -- CANTIDAD_CANCELADA
+            @TIPO_DESCUENTO,                    -- TIPO_DESCUENTO
+            L.MONTO_DESCUENTO,                  -- MONTO_DESCUENTO
+            0,                                  -- PORC_DESCUENTO
+            L.DESCRIPCION,                      -- DESCRIPCION
+            @FECHA,                             -- FECHA_PROMETIDA
+            AC.CTR_VENTAS_LOC,                  -- CENTRO_COSTO
+            AC.CTA_VENTAS_LOC,                  -- CUENTA_CONTABLE
+            @LINEA_TIPO_DESC,                   -- TIPO_DESC
+            V.Tipo,                             -- TIPO_IMPUESTO1
+            V.Tarifa,                           -- TIPO_TARIFA1
+            L.PORCENTAJE_IMPUESTO,              -- PORC_IMPUESTO1
+            @LINEA_ES_OTRO_CARGO,               -- ES_OTRO_CARGO
+            @LINEA_ES_CANASTA_BASICA            -- ES_CANASTA_BASICA
         FROM {{ESQUEMA_ERP}}.COTWEB_PEDIDO_LINEA_STG L
         INNER JOIN {{ESQUEMA_ERP}}.vCotWebInformacionProductosERP V
             ON V.Producto = L.PRODUCTO
+        INNER JOIN {{ESQUEMA_ERP}}.ARTICULO A
+            ON A.ARTICULO = L.PRODUCTO
+        INNER JOIN {{ESQUEMA_ERP}}.ARTICULO_CUENTA AC
+            ON AC.ARTICULO_CUENTA = A.ARTICULO_CUENTA
         WHERE L.LOTE_ID = @LOTE_ID
         ORDER BY L.LINEA;
 
@@ -587,6 +612,7 @@ BEGIN
         SELECT
             @SUB_TOTAL = ISNULL(SUM(L.SUBTOTAL), 0),
             @TOTAL_UNID = ISNULL(SUM(L.CANTIDAD), 0),
+            @TOTAL_DESCUENTO = ISNULL(SUM(L.MONTO_DESCUENTO), 0),
             @TOTAL_IMPUESTO = ISNULL(SUM(L.SUBTOTAL * (L.PORCENTAJE_IMPUESTO / 100.0)), 0)
         FROM {{ESQUEMA_ERP}}.COTWEB_PEDIDO_LINEA_STG L
         WHERE L.LOTE_ID = @LOTE_ID;
@@ -597,6 +623,7 @@ BEGIN
         SET TOTAL_MERCADERIA = @SUB_TOTAL,
             TOTAL_UNIDADES = @TOTAL_UNID,
             TOTAL_IMPUESTO1 = @TOTAL_IMPUESTO,
+            MONTO_DESCUENTO1 = @TOTAL_DESCUENTO,
             TOTAL_A_FACTURAR = @TOTAL_A_FACTURAR,
             BASE_IMPUESTO1 = @SUB_TOTAL
         WHERE PEDIDO = @VAL_CONSEC_PED;

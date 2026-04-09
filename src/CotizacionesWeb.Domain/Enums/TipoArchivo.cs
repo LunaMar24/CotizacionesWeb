@@ -2,7 +2,7 @@ namespace CotizacionesWeb.Domain.Enums;
 
 public enum TipoArchivo
 {
-    Manual = 'A',
-    AutomaticoPorNuevaVersion = 'S',
-    PorCancelacion = 'C'
+    Manual = 'M',    
+    Rechazada = 'R',
+    Concretada = 'T'
 }

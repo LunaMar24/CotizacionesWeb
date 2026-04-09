@@ -1,6 +1,7 @@
 ﻿using CotizacionesWeb.Application.Common.Helpers;
 using CotizacionesWeb.Application.Common.Validators;
 using CotizacionesWeb.Application.Cotizaciones;
+using CotizacionesWeb.Application.Integrations.Erp;
 using CotizacionesWeb.Domain.Entities;
 using CotizacionesWeb.Domain.Enums;
 using CotizacionesWeb.Infrastructure.Data;
@@ -15,15 +16,18 @@ public class CotizacionService : ICotizacionService
   private readonly DbContextCotizaciones _context;
   private readonly ILogger<CotizacionService> _logger;
   private readonly IParametroSistemaService _parametroService;
+  private readonly IErpPedidoService _erpPedidoService;
 
   public CotizacionService(
       DbContextCotizaciones context,
       ILogger<CotizacionService> logger,
-      IParametroSistemaService parametroService)
+      IParametroSistemaService parametroService,
+      IErpPedidoService erpPedidoService)
   {
     _context = context;
     _logger = logger;
     _parametroService = parametroService;
+    _erpPedidoService = erpPedidoService;
   }
 
   public async Task<List<CotizacionListDto>> GetCotizacionesListAsync(GetCotizacionesListRequest request)
@@ -35,8 +39,8 @@ public class CotizacionService : ICotizacionService
                     equals new { ver.CotizacionId, VersionId = ver.VersionActual }
                 select new { Cotizacion = cot, Version = ver };
 
-    // ✨ EXCLUSIÓN AUTOMÁTICA: Las cotizaciones archivadas (X) salen del ámbito de gestión
-    query = query.Where(x => x.Cotizacion.EstadoActual != 'X');
+    // ✨ EXCLUSIÓN AUTOMÁTICA: Las cotizaciones archivadas (X) y enviadas al ERP salen del ámbito de gestión
+    query = query.Where(x => x.Cotizacion.EstadoActual != 'X' && x.Cotizacion.EnviadoERP != 'S');
 
     // Filtrar por estados si se proporcionan
     if (request.Estados != null && request.Estados.Any())
@@ -550,6 +554,19 @@ public class CotizacionService : ICotizacionService
       var cotizacion = cotizacionConVersion.Cotizacion;
       var versionVigente = cotizacionConVersion.Version;
 
+      // Validar reglas de negocio para cotizaciones archivadas
+      if (cotizacion.EstadoActual == 'X') // Si está archivada
+      {
+        // Verificar el tipo de archivo
+        var archivo = await _context.ArchivosCotizacion
+            .FirstOrDefaultAsync(a => a.CotizacionId == cotizacionId);
+
+        if (archivo != null && archivo.TipoArchivo == (char)TipoArchivo.Concretada)
+        {
+          return new CopiarVersionResult(false, "No se puede copiar una cotización que fue concretada en el ERP", null, null);
+        }
+      }
+
       // Obtener los detalles de la versión vigente
       var detalles = await _context.DetallesCotizacionVersion
           .Where(d => d.VersionId == versionVigente.VersionId)  // CORREGIDO: Usar VersionId
@@ -637,6 +654,19 @@ public class CotizacionService : ICotizacionService
       if (cotizacion == null)
       {
         return new CopiarVersionResult(false, "Cotización no encontrada", null, null);
+      }
+
+      // Validar reglas de negocio para cotizaciones archivadas
+      if (cotizacion.EstadoActual == 'X') // Si está archivada
+      {
+        // Verificar el tipo de archivo
+        var archivo = await _context.ArchivosCotizacion
+            .FirstOrDefaultAsync(a => a.CotizacionId == request.CotizacionId);
+
+        if (archivo != null && archivo.TipoArchivo == (char)TipoArchivo.Concretada)
+        {
+          return new CopiarVersionResult(false, "No se puede copiar una cotización que fue concretada en el ERP", null, null);
+        }
       }
 
       var versionBase = await _context.CotizacionesVersiones
@@ -1665,61 +1695,79 @@ public class CotizacionService : ICotizacionService
   {
     try
     {
+      _logger.LogInformation("Iniciando proceso de envío al ERP (asíncrono) para cotización {CotizacionId}", cotizacionId);
+
+      // 1. VALIDAR ESTADO: Debe estar en Aceptada
+      var cotizacion = await _context.Cotizaciones
+          .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
+
+      if (cotizacion == null)
+      {
+        return new CambiarEstadoResult(false, "Cotización no encontrada");
+      }
+
+      if (cotizacion.EstadoActual != (Char)EstadoCotizacion.Aceptada) // Solo Aceptada
+      {
+        return new CambiarEstadoResult(false, "Solo se pueden enviar al ERP cotizaciones en estado Aceptada");
+      }
+
+      // Verificar que no haya sido enviada ya
+      if (cotizacion.EnviadoERP == 'S')
+      {
+        return new CambiarEstadoResult(false, "La cotización ya fue enviada al ERP");
+      }
+
+      // Obtener la versión vigente
+      var versionVigente = await _context.CotizacionesVersiones
+          .FirstOrDefaultAsync(v => v.CotizacionId == cotizacionId && v.VersionActual == cotizacion.VersionActual);
+
+      if (versionVigente == null)
+      {
+        return new CambiarEstadoResult(false, "No se encontró la versión vigente de la cotización");
+      }
+
+      _logger.LogInformation("Validaciones completadas. Creando registro de integración para versión {VersionId}", versionVigente.VersionId);
+
       using var transaction = await _context.Database.BeginTransactionAsync();
 
       try
       {
-        var cotizacion = await _context.Cotizaciones
-            .FirstOrDefaultAsync(c => c.CotizacionId == cotizacionId);
-
-        if (cotizacion == null)
+        // 2. CREAR REGISTRO EN IntegracionPedidoErp (NO enviar inline)
+        var integracion = new IntegracionPedidoErp
         {
-          return new CambiarEstadoResult(false, "Cotización no encontrada");
-        }
+          CotizacionId = cotizacionId,
+          VersionId = versionVigente.VersionId,
+          LoteId = Guid.NewGuid(), // Generar LoteId único
+          Estado = "Pendiente",
+          Intentos = 0,
+          MensajeError = null,
+          FechaCreacion = DateTime.Now,
+          FechaProcesado = null,
+          PedidoErp = null
+        };
 
-        // Validar usando StateTransitionValidator
-        if (!StateTransitionValidator.CanSendToERP(cotizacion.EstadoActual))
-        {
-          return new CambiarEstadoResult(false, "Solo se pueden enviar al ERP cotizaciones aceptadas");
-        }
+        _context.IntegracionesPedidoErp.Add(integracion);
 
-        // Verificar que no haya sido enviada ya
-        if (cotizacion.EnviadoERP == 'S')
-        {
-          return new CambiarEstadoResult(false, "La cotización ya fue enviada al ERP");
-        }
+        // 3. ACTUALIZAR COTIZACIÓN (marcar como enviada sin fecha)
+        cotizacion.EnviadoERP = 'S';
+        cotizacion.FechaEnvioERP = null; // Se llenará cuando se procese exitosamente
 
-        // Marcar como enviada al ERP usando CotizacionStateHelper
-        CotizacionStateHelper.MarkAsSentToERP(cotizacion);
+        // Registrar en historial que se solicitó el envío
+        await RegistrarHistorialAsync(versionVigente.VersionId, "EnviadaERP",
+            "Cotización enviada al ERP - En cola de procesamiento", userId);
 
         await _context.SaveChangesAsync();
-
-        // CORRECCIÓN: Obtener el VersionId correcto de la versión vigente
-        var versionVigente = await _context.CotizacionesVersiones
-            .FirstOrDefaultAsync(v => v.CotizacionId == cotizacionId && v.VersionActual == cotizacion.VersionActual);
-
-        if (versionVigente != null)
-        {
-          // Registrar en historial usando el VersionId correcto
-          await RegistrarHistorialAsync(versionVigente.VersionId, TipoEvento.EnviadaERP,
-              "Cotización enviada al ERP", userId);
-        }
-        else
-        {
-          _logger.LogWarning("No se encontró la versión vigente para registrar historial de envío ERP. CotizacionId: {CotizacionId}, VersionActual: {VersionActual}",
-              cotizacionId, cotizacion.VersionActual);
-        }
-
         await transaction.CommitAsync();
 
-        _logger.LogInformation("Cotización {CotizacionId} marcada como enviada al ERP", cotizacionId);
+        _logger.LogInformation("Registro de integración ERP creado exitosamente. IntegracionId: {IntegracionId}, LoteId: {LoteId}", 
+            integracion.IntegracionId, integracion.LoteId);
 
-        return new CambiarEstadoResult(true, null);
+        return new CambiarEstadoResult(true, "Cotización enviada al ERP. Se procesará en segundo plano.");
       }
       catch (Exception ex)
       {
         await transaction.RollbackAsync();
-        _logger.LogError(ex, "Error en transacción al marcar envío ERP de cotización {CotizacionId}", cotizacionId);
+        _logger.LogError(ex, "Error en transacción al crear registro de integración ERP para cotización {CotizacionId}", cotizacionId);
         throw;
       }
     }
@@ -2145,10 +2193,18 @@ public class CotizacionService : ICotizacionService
         return new ReactivarCotizacionResult(false, "No se encontró el registro de archivo", null, null);
       }
 
+      // 3. VALIDAR REGLA DE NEGOCIO: No se puede reactivar una cotización concretada
+      if (archivo.TipoArchivo == (char)TipoArchivo.Concretada)
+      {
+        _logger.LogWarning("Intento de reactivar cotización {CotizacionId} que fue concretada en el ERP (TipoArchivo: {TipoArchivo})",
+            request.CotizacionId, archivo.TipoArchivo);
+        return new ReactivarCotizacionResult(false, "No se puede reactivar una cotización que fue concretada en el ERP", null, null);
+      }
+
       _logger.LogInformation("Archivo encontrado: VersionArchivada={VersionArchivada}, Fecha={FechaArchivado}",
           archivo.VersionArchivada, archivo.FechaArchivado);
 
-      // 3. ✅ CORRECCIÓN: Obtener la versión específica que fue archivada usando el campo VersionArchivada
+      // 4. ✅ CORRECCIÓN: Obtener la versión específica que fue archivada usando el campo VersionArchivada
       var versionParaCopiar = await _context.CotizacionesVersiones
           .FirstOrDefaultAsync(v => v.VersionId == archivo.VersionArchivada);
 
@@ -2162,19 +2218,19 @@ public class CotizacionService : ICotizacionService
       _logger.LogInformation("Versión para copiar encontrada: VersionId={VersionId}, NumeroVersion={NumeroVersion}",
           versionParaCopiar.VersionId, versionParaCopiar.NumeroVersion);
 
-      // 4. 🆕 NUEVO ENFOQUE: Generar nuevo ID de cotización (como duplicación)
+      // 5. 🆕 NUEVO ENFOQUE: Generar nuevo ID de cotización (como duplicación)
       var nuevoCotizacionId = await GenerarNuevoCotizacionIdAsync();
       _logger.LogInformation("Nuevo ID de cotización generado: {NuevoCotizacionId}", nuevoCotizacionId);
 
       // Generar nuevo identificador único para la primera versión de la nueva cotización
       var nuevoVersionActual = await GenerarNuevoVersionActualAsync(nuevoCotizacionId);
 
-      // 5. 🆕 HÍBRIDO: Calcular nuevo número de versión basado en la versión archivada (como copia)
+      // 6. 🆕 HÍBRIDO: Calcular nuevo número de versión basado en la versión archivada (como copia)
       var nuevaVersion = CalcularNuevaVersion(versionParaCopiar.NumeroVersion);
       _logger.LogInformation("Número de versión calculado: {VersionOriginal} -> {NuevaVersion}",
           versionParaCopiar.NumeroVersion, nuevaVersion);
 
-      // 6. 🆕 Crear NUEVA cotización con ID diferente (como duplicación)
+      // 7. 🆕 Crear NUEVA cotización con ID diferente (como duplicación)
       var nuevaCotizacion = new Cotizacion
       {
         CotizacionId = nuevoCotizacionId, // ✨ ID DIFERENTE
@@ -2195,7 +2251,7 @@ public class CotizacionService : ICotizacionService
       await _context.SaveChangesAsync();
       _logger.LogInformation("Nueva cotización {NuevoCotizacionId} creada desde reactivación", nuevoCotizacionId);
 
-      // 7. 🔄 Crear nueva versión con TODOS los datos originales (como copia)
+      // 8. 🔄 Crear nueva versión con TODOS los datos originales (como copia)
       var nuevaVersionEntity = new CotizacionVersion
       {
         CotizacionId = nuevoCotizacionId, // ✨ Nueva cotización
@@ -2218,7 +2274,7 @@ public class CotizacionService : ICotizacionService
       _context.CotizacionesVersiones.Add(nuevaVersionEntity);
       await _context.SaveChangesAsync();
 
-      // 8. 🔄 Copiar TODOS los detalles exactos (como copia)
+      // 9. 🔄 Copiar TODOS los detalles exactos (como copia)
       var detallesOriginales = await _context.DetallesCotizacionVersion
           .Where(d => d.VersionId == versionParaCopiar.VersionId)
           .ToListAsync();
@@ -2244,15 +2300,15 @@ public class CotizacionService : ICotizacionService
       _logger.LogInformation("Copiados {CantidadDetalles} detalles desde la versión archivada a nueva cotización {NuevaCotizacionId}", 
           detallesOriginales.Count, nuevoCotizacionId);
 
-      // 9. 📝 Actualizar el registro de archivo con información de reactivación
+      // 10. 📝 Actualizar el registro de archivo con información de reactivación
       archivo.FechaReactivacion = DateTime.Now;
       archivo.UsuarioReactiva = userId;
 
-      // 10. 📝 Registrar evento en historial de la NUEVA cotización
+      // 11. 📝 Registrar evento en historial de la NUEVA cotización
       await RegistrarHistorialAsync(nuevaVersionEntity.VersionId, "Reactivada",
           $"Cotización {nuevoCotizacionId} creada por reactivación de {request.CotizacionId} (archivada). Motivo: {request.MotivoReactivacion}", userId);
 
-      // 11. 💾 Guardar todos los cambios
+      // 12. 💾 Guardar todos los cambios
       await _context.SaveChangesAsync();
 
       _logger.LogInformation("✅ Reactivación completada exitosamente:");

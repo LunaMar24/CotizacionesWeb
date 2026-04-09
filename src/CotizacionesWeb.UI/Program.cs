@@ -101,6 +101,9 @@ try
 
   // Background Services - Notificaciones
   builder.Services.AddHostedService<NotificacionCotizacionBackgroundService>();
+  
+  // Background Services - Integración ERP
+  builder.Services.AddHostedService<IntegracionErpBackgroundService>();
 
   // Authentication
   builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

@@ -82,6 +82,8 @@ VALUES
 -- PARÁMETROS DE INTEGRACIÓN ERP
 -- ============================================
 ('ERP_ENABLED', 'Activa integración con ERP', 'N', 'B', 'Integracion_ERP', 1, 'N', 'Activar solo después de configurar conexion al ERP', 0),
+('ERP_INTEGRACION_FRECUENCIA_MINUTOS', 'Frecuencia de ejecución integración ERP', '5', 'N', 'Integracion_ERP', 1, '5', 'Cantidad de minutos entre ejecuciones del BackgroundService de integración ERP.', 0),
+('ERP_INTEGRACION_MAX_INTENTOS', 'Máximo de intentos integración ERP', '3', 'N', 'Integracion_ERP', 1, '3', 'Cantidad máxima de intentos permitidos para procesar un lote de integración ERP antes de marcarlo como NoSincronizado.', 0),
 ('ERP_NIVELPRECIO_LOCAL', 'Nivel Precio para moneda local', 'ND-LOCAL', 'S', 'Integracion_ERP', 1, 'ND-LOCAL', NULL, 0),
 ('ERP_NIVELPRECIO_DOLAR', 'Nivel Precio para moneda dólar', 'ND-DOLAR', 'S', 'Integracion_ERP', 1, 'ND-DOLAR', NULL, 0),
 ('ERP_CIA', 'Compañía a utilizar en el ERP', '', 'S', 'Integracion_ERP', 1, '', NULL, 0),
