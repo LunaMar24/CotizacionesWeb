@@ -4,6 +4,7 @@ using CotizacionesWeb.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CotizacionesWeb.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(DbContextCotizaciones))]
-    partial class DbContextCotizacionesModelSnapshot : ModelSnapshot
+    [Migration("20260410034225_RemoveBaseEntityFromNotificacionCotizacion")]
+    partial class RemoveBaseEntityFromNotificacionCotizacion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -457,6 +460,12 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                         .HasMaxLength(30)
                         .HasColumnType("nvarchar(30)");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int>("CreatedBy")
+                        .HasColumnType("int");
+
                     b.Property<string>("Cuerpo")
                         .HasColumnType("nvarchar(max)");
 
@@ -485,6 +494,12 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<DateTime?>("ModifiedAt")
+                        .HasColumnType("datetime");
+
+                    b.Property<int?>("ModifiedBy")
+                        .HasColumnType("int");
+
                     b.Property<string>("TipoNotificacion")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -494,6 +509,10 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("NotificacionId");
+
+                    b.HasIndex("CreatedBy");
+
+                    b.HasIndex("ModifiedBy");
 
                     b.HasIndex("VersionId");
 
@@ -898,6 +917,19 @@ namespace CotizacionesWeb.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("FK_NotificacionCotizacion_Cotizacion");
+
+                    b.HasOne("CotizacionesWeb.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("FK_NotificacionCotizacion_Usuarios_CreatedBy");
+
+                    b.HasOne("CotizacionesWeb.Domain.Entities.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("ModifiedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_NotificacionCotizacion_Usuarios_ModifiedBy");
 
                     b.HasOne("CotizacionesWeb.Domain.Entities.CotizacionVersion", "Version")
                         .WithMany()

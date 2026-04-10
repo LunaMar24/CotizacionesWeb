@@ -202,7 +202,7 @@ BEGIN
                 @PEDIDO_COBRADOR            VARCHAR(4)    = 'ND',
                 @PEDIDO_BACKORDER           VARCHAR(1)    = 'N',
                 @PEDIDO_DESCUENTO_CASCADA   VARCHAR(1)    = 'N',
-                @PEDIDO_FIJAR_TIPO_CAMBIO   VARCHAR(1)    = 'N',
+                @PEDIDO_FIJAR_TIPO_CAMBIO   VARCHAR(1)    = 'S',
                 @PEDIDO_ORIGEN_PEDIDO       VARCHAR(1)    = 'F',
                 @PEDIDO_PORC_INTCTE         DECIMAL(28,8) = 0,
                 @PEDIDO_CONTRATO_REVENTA    VARCHAR(1)    = 'N',
@@ -214,9 +214,10 @@ BEGIN
                 @TIPO_DESCUENTO             VARCHAR(1)    = 'M',
 
                 @LINEA_ESTADO               VARCHAR(1)    = 'N',
-                @LINEA_TIPO_DESC            VARCHAR(10)   = '0',
+                @LINEA_TIPO_DESC            VARCHAR(10)   = '02',
                 @LINEA_ES_OTRO_CARGO        VARCHAR(1)    = 'N',
-                @LINEA_ES_CANASTA_BASICA    VARCHAR(1)    = 'N';
+                @LINEA_ES_CANASTA_BASICA    VARCHAR(1)    = 'N',
+                @LINEA_TIPO_DESCUENTO_LINEA VARCHAR(2)    = '07';
 
         /* Ajustar el consecutivo según corresponda */
         SET @CONSEC_PEDIDO = 'PEDIDO';
@@ -297,7 +298,7 @@ BEGIN
                 ISNULL(CAMPO_9,'') + ISNULL(CAMPO_10,''),
                 1, 4000)
         FROM {{ESQUEMA_ERP}}.DETALLE_DIRECCION
-        WHERE DETALLE_DIRECCION = @DETALLE_DIRECCION;
+        WHERE DETALLE_DIRECCION = ISNULL(@DETALLE_DIRECCION, 0);
 
         SET @DESC_DIREC_EMBARQUE =
             CASE
@@ -328,8 +329,12 @@ BEGIN
         (
             SELECT 1
             FROM {{ESQUEMA_ERP}}.COTWEB_PEDIDO_LINEA_STG L
-            LEFT JOIN {{ESQUEMA_ERP}}.vCotWebInformacionProductosERP V
-                ON V.Producto = L.PRODUCTO
+                INNER JOIN {{ESQUEMA_ERP}}.COTWEB_PEDIDO_STG E
+                    ON E.LOTE_ID = L.LOTE_ID
+                LEFT JOIN {{ESQUEMA_ERP}}.vCotWebInformacionProductosERP V
+                    ON V.Producto = L.PRODUCTO
+                   AND V.NivelPrecio = E.NIVEL_PRECIO
+                   AND V.Moneda = (CASE E.MONEDA WHEN 'L' THEN 'CRC' WHEN 'D' THEN 'USD' ELSE '' END)
             WHERE L.LOTE_ID = @LOTE_ID
               AND V.Producto IS NULL
         )
@@ -345,10 +350,10 @@ BEGIN
         (
             SELECT 1
             FROM {{ESQUEMA_ERP}}.COTWEB_PEDIDO_LINEA_STG L
-            LEFT JOIN {{ESQUEMA_ERP}}.ARTICULO A
-                ON A.ARTICULO = L.PRODUCTO
-            LEFT JOIN {{ESQUEMA_ERP}}.ARTICULO_CUENTA AC
-                ON AC.ARTICULO_CUENTA = A.ARTICULO_CUENTA
+                LEFT JOIN {{ESQUEMA_ERP}}.ARTICULO A
+                    ON A.ARTICULO = L.PRODUCTO
+                LEFT JOIN {{ESQUEMA_ERP}}.ARTICULO_CUENTA AC
+                    ON AC.ARTICULO_CUENTA = A.ARTICULO_CUENTA
             WHERE L.LOTE_ID = @LOTE_ID
               AND (A.ARTICULO IS NULL OR AC.ARTICULO_CUENTA IS NULL)
         )
@@ -477,7 +482,7 @@ BEGIN
             0,                              -- MONTO_FLETE
             0,                              -- MONTO_SEGURO
             0,                              -- MONTO_DOCUMENTACIO
-            @TIPO_DESCUENTO,                -- TIPO_DESCUENTO1
+            'P',                            -- TIPO_DESCUENTO1
             'P',                            -- TIPO_DESCUENTO2
             0,                              -- MONTO_DESCUENTO1
             0,                              -- MONTO_DESCUENTO2
@@ -515,7 +520,7 @@ BEGIN
             @PAIS,                          -- PAIS
             @PEDIDO_BACKORDER,              -- BACKORDER
             @PEDIDO_DESCUENTO_CASCADA,      -- DESCUENTO_CASCADA
-            @TIPO_CAMBIO,                   -- TIPO_CAMBIO
+            CASE @PEDIDO_FIJAR_TIPO_CAMBIO WHEN 'S' THEN @TIPO_CAMBIO ELSE NULL END,                   -- TIPO_CAMBIO
             @PEDIDO_FIJAR_TIPO_CAMBIO,      -- FIJAR_TIPO_CAMBIO
             @PEDIDO_ORIGEN_PEDIDO,          -- ORIGEN_PEDIDO
             @DIVISION_GEOGRAFICA1,          -- DIVISION_GEOGRAFICA1
@@ -566,16 +571,25 @@ BEGIN
             TIPO_TARIFA1,
             PORC_IMPUESTO1,
             ES_OTRO_CARGO,
-            ES_CANASTA_BASICA
+            ES_CANASTA_BASICA,
+            TIPO_DESCUENTO_LINEA,
+            PORC_EXONERACION,
+            MONTO_EXONERACION,
+            PORC_IMPUESTO2,
+            PORC_EXONERACION2,
+            MONTO_EXONERACION2,
+            PORC_IMP1_BASE,
+            PORC_IMP2_BASE,
+            PORCENTAJE_SUGERIDO
         )
         SELECT
             @VAL_CONSEC_PED,                    -- PEDIDO
-            CONVERT(SMALLINT, L.LINEA - 1),     -- PEDIDO_LINEA
+            CONVERT(SMALLINT, L.LINEA),     -- PEDIDO_LINEA
             L.BODEGA,                           -- BODEGA
             L.PRODUCTO,                         -- ARTICULO
             @LINEA_ESTADO,                      -- ESTADO
             @FECHA,                             -- FECHA_ENTREGA
-            CONVERT(SMALLINT, L.LINEA),         -- LINEA_USUARIO
+            CONVERT(SMALLINT, L.LINEA - 1),         -- LINEA_USUARIO
             L.PRECIO_UNITARIO,                  -- PRECIO_UNITARIO
             L.CANTIDAD,                         -- CANTIDAD_PEDIDA
             L.CANTIDAD,                         -- CANTIDAD_A_FACTURA
@@ -585,7 +599,10 @@ BEGIN
             0,                                  -- CANTIDAD_CANCELADA
             @TIPO_DESCUENTO,                    -- TIPO_DESCUENTO
             L.MONTO_DESCUENTO,                  -- MONTO_DESCUENTO
-            0,                                  -- PORC_DESCUENTO
+            CASE 
+                WHEN ISNULL(L.CANTIDAD, 0) = 0 OR ISNULL(L.PRECIO_UNITARIO, 0) = 0 THEN 0
+                ELSE FLOOR((L.MONTO_DESCUENTO / (L.CANTIDAD * L.PRECIO_UNITARIO) * 10000) * 100) / 10000
+            END,                                -- PORC_DESCUENTO
             L.DESCRIPCION,                      -- DESCRIPCION
             @FECHA,                             -- FECHA_PROMETIDA
             AC.CTR_VENTAS_LOC,                  -- CENTRO_COSTO
@@ -595,14 +612,27 @@ BEGIN
             V.Tarifa,                           -- TIPO_TARIFA1
             L.PORCENTAJE_IMPUESTO,              -- PORC_IMPUESTO1
             @LINEA_ES_OTRO_CARGO,               -- ES_OTRO_CARGO
-            @LINEA_ES_CANASTA_BASICA            -- ES_CANASTA_BASICA
+            @LINEA_ES_CANASTA_BASICA,           -- ES_CANASTA_BASICA
+            @LINEA_TIPO_DESCUENTO_LINEA,        -- TIPO_DESCUENTO_LINEA
+            0,                                  -- PORC_EXONERACION
+            0,                                  -- MONTO_EXONERACION
+            0,                                  -- PORC_IMPUESTO2
+            0,                                  -- PORC_EXONERACION2
+            0,                                  -- MONTO_EXONERACION2
+            L.PORCENTAJE_IMPUESTO,              -- PORC_IMP1_BASE
+            0,                                  -- PORC_IMP2_BASE
+            0                                   -- PORCENTAJE_SUGERIDO
         FROM {{ESQUEMA_ERP}}.COTWEB_PEDIDO_LINEA_STG L
-        INNER JOIN {{ESQUEMA_ERP}}.vCotWebInformacionProductosERP V
-            ON V.Producto = L.PRODUCTO
-        INNER JOIN {{ESQUEMA_ERP}}.ARTICULO A
-            ON A.ARTICULO = L.PRODUCTO
-        INNER JOIN {{ESQUEMA_ERP}}.ARTICULO_CUENTA AC
-            ON AC.ARTICULO_CUENTA = A.ARTICULO_CUENTA
+            INNER JOIN {{ESQUEMA_ERP}}.COTWEB_PEDIDO_STG E
+                ON E.LOTE_ID = L.LOTE_ID
+            INNER JOIN {{ESQUEMA_ERP}}.vCotWebInformacionProductosERP V
+                ON V.Producto = L.PRODUCTO 
+                   and V.NivelPrecio = E.NIVEL_PRECIO 
+                   and V.Moneda = (CASE E.MONEDA WHEN 'L' THEN 'CRC' WHEN 'D' THEN 'USD' ELSE '' END)
+            INNER JOIN {{ESQUEMA_ERP}}.ARTICULO A
+                ON A.ARTICULO = L.PRODUCTO
+            INNER JOIN {{ESQUEMA_ERP}}.ARTICULO_CUENTA AC
+                ON AC.ARTICULO_CUENTA = A.ARTICULO_CUENTA
         WHERE L.LOTE_ID = @LOTE_ID
         ORDER BY L.LINEA;
 
@@ -612,7 +642,6 @@ BEGIN
         SELECT
             @SUB_TOTAL = ISNULL(SUM(L.SUBTOTAL), 0),
             @TOTAL_UNID = ISNULL(SUM(L.CANTIDAD), 0),
-            @TOTAL_DESCUENTO = ISNULL(SUM(L.MONTO_DESCUENTO), 0),
             @TOTAL_IMPUESTO = ISNULL(SUM(L.SUBTOTAL * (L.PORCENTAJE_IMPUESTO / 100.0)), 0)
         FROM {{ESQUEMA_ERP}}.COTWEB_PEDIDO_LINEA_STG L
         WHERE L.LOTE_ID = @LOTE_ID;
@@ -623,9 +652,9 @@ BEGIN
         SET TOTAL_MERCADERIA = @SUB_TOTAL,
             TOTAL_UNIDADES = @TOTAL_UNID,
             TOTAL_IMPUESTO1 = @TOTAL_IMPUESTO,
-            MONTO_DESCUENTO1 = @TOTAL_DESCUENTO,
             TOTAL_A_FACTURAR = @TOTAL_A_FACTURAR,
-            BASE_IMPUESTO1 = @SUB_TOTAL
+            BASE_IMPUESTO1 = @SUB_TOTAL,
+            BASE_IMPUESTO2 = @SUB_TOTAL
         WHERE PEDIDO = @VAL_CONSEC_PED;
 
         COMMIT TRANSACTION;

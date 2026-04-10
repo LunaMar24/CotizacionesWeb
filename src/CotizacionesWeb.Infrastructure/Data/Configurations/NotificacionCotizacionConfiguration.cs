@@ -13,9 +13,6 @@ public class NotificacionCotizacionConfiguration : IEntityTypeConfiguration<Noti
         // NotificacionId como llave primaria específica
         builder.HasKey(n => n.NotificacionId);
         
-        // Ignorar Id de BaseEntity ya que usamos NotificacionId
-        builder.Ignore(n => n.Id);
-        
         // Configuración de campos
         builder.Property(n => n.NotificacionId)
             .ValueGeneratedOnAdd()
@@ -59,34 +56,6 @@ public class NotificacionCotizacionConfiguration : IEntityTypeConfiguration<Noti
         
         builder.Property(n => n.MensajeError)
             .HasMaxLength(1000);
-        
-        // Campos de auditoría siguiendo el patrón existente
-        builder.Property(n => n.CreatedAt)
-            .HasColumnType("datetime")
-            .IsRequired();
-        
-        builder.Property(n => n.ModifiedAt)
-            .HasColumnType("datetime");
-        
-        builder.Property(n => n.CreatedBy)
-            .IsRequired();
-        
-        builder.Property(n => n.ModifiedBy);
-        
-        // Foreign Keys para auditoría
-        builder.HasOne<Usuario>()
-               .WithMany()
-               .HasForeignKey(n => n.CreatedBy)
-               .HasPrincipalKey(u => u.UsuarioId)
-               .OnDelete(DeleteBehavior.Restrict)
-               .HasConstraintName("FK_NotificacionCotizacion_Usuarios_CreatedBy");
-               
-        builder.HasOne<Usuario>()
-               .WithMany()
-               .HasForeignKey(n => n.ModifiedBy)
-               .HasPrincipalKey(u => u.UsuarioId)
-               .OnDelete(DeleteBehavior.Restrict)
-               .HasConstraintName("FK_NotificacionCotizacion_Usuarios_ModifiedBy");
         
         // Relaciones con Cotizacion y CotizacionVersion
         builder.HasOne(n => n.Cotizacion)

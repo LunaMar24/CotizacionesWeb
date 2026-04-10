@@ -1,11 +1,9 @@
-using CotizacionesWeb.Domain.Common;
-
 namespace CotizacionesWeb.Domain.Entities;
 
 /// <summary>
 /// Entidad para gestión de notificaciones de cotizaciones por email
 /// </summary>
-public class NotificacionCotizacion : BaseEntity
+public class NotificacionCotizacion
 {
     public int NotificacionId { get; set; }  // PK específica siguiendo el patrón del proyecto
     public string CotizacionId { get; set; } = string.Empty;

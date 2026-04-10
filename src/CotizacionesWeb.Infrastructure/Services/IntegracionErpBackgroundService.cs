@@ -231,7 +231,7 @@ public class IntegracionErpBackgroundService : BackgroundService
     {
       // Actualizar cotización
       cotizacion.FechaEnvioERP = lote.FechaProcesado;
-      cotizacion.EstadoActual = 'X'; // Archivada
+      cotizacion.EstadoActual = (char)EstadoCotizacion.Archivada; // Archivada
 
       // Obtener usuario del historial para el archivo
       var usuarioArchivador = await context.HistorialesCotizacion

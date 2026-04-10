@@ -297,8 +297,6 @@ public class ErpPedidoService : IErpPedidoService
       _logger.LogInformation("Reutilizando integración existente {IntegracionId} para reproceso con LoteId {LoteId}",
           integracionExistente.IntegracionId, integracionExistente.LoteId);
 
-      // Incrementar intentos para reproceso
-      integracionExistente.Intentos++;
       integracionExistente.Estado = ESTADO_PENDIENTE; // Resetear a pendiente
       await _contextCotizaciones.SaveChangesAsync();
 
@@ -537,14 +535,10 @@ public class ErpPedidoService : IErpPedidoService
   {
     try
     {
-      _logger.LogDebug("Ejecutando stored procedure {Schema}.SP_COTWEB_GENERAR_PEDIDO con LoteId {LoteId}", esquemaErp, loteId);
+      _logger.LogDebug("Ejecutando stored procedure {Schema}.COTWEB_PROCESAR_PEDIDO_STAGE con LoteId {LoteId}", esquemaErp, loteId);
 
       var parametroLoteId = new SqlParameter("@LoteId", loteId);
       var parametroPedidoOutput = new SqlParameter("@PedidoGenerado", System.Data.SqlDbType.VarChar, 50)
-      {
-        Direction = System.Data.ParameterDirection.Output
-      };
-      var parametroMensajeOutput = new SqlParameter("@Mensaje", System.Data.SqlDbType.VarChar, 500)
       {
         Direction = System.Data.ParameterDirection.Output
       };
@@ -552,20 +546,22 @@ public class ErpPedidoService : IErpPedidoService
       // El esquema ya fue validado previamente con EsEsquemaSeguro()
       // Usar FormattableString para construcción segura de SQL con esquemas dinámicos
       var sqlSP = FormattableStringFactory.Create(
-          $"EXEC [{esquemaErp}].[SP_COTWEB_GENERAR_PEDIDO] {{0}}, {{1}} OUTPUT, {{2}} OUTPUT",
-          parametroLoteId, parametroPedidoOutput, parametroMensajeOutput);
+          $"EXEC [{esquemaErp}].[COTWEB_PROCESAR_PEDIDO_STAGE] {{0}}, {{1}} OUTPUT",
+          parametroLoteId, parametroPedidoOutput);
 
       await _contextErp.Database.ExecuteSqlAsync(sqlSP);
 
       var pedidoGenerado = parametroPedidoOutput.Value?.ToString();
-      var mensaje = parametroMensajeOutput.Value?.ToString();
 
       var success = !string.IsNullOrEmpty(pedidoGenerado);
 
-      _logger.LogDebug("SP ejecutado: Success={Success}, Pedido={Pedido}, Mensaje={Mensaje}",
-          success, pedidoGenerado, mensaje);
+      // Limpiar staging para evitar dejar basura, ya que no se va a requeririr ningún intento o validación datos por error
+      await LimpiarStagingAsync(loteId, esquemaErp);
 
-      return (success, pedidoGenerado, mensaje ?? (success ? "Pedido generado exitosamente" : "Error desconocido"));
+      _logger.LogDebug("SP ejecutado: Success={Success}, Pedido={Pedido}",
+          success, pedidoGenerado);
+
+      return (success, pedidoGenerado, success ? "Pedido generado exitosamente" : "Error desconocido");
     }
     catch (Exception ex)
     {
