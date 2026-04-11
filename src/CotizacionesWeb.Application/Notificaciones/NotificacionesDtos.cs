@@ -11,7 +11,9 @@ public record NotificacionCotizacionDto(
     string EmailDestino,
     DateTime FechaProgramada,
     int Intentos,
-    
+    string Asunto,
+    string CuerpoMensaje,
+
     // Datos de la cotización
     string EstadoCotizacion,
     decimal MontoCotizacion,

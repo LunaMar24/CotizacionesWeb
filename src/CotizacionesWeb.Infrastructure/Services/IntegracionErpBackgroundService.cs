@@ -1,4 +1,4 @@
-using CotizacionesWeb.Application.Configuracion;
+Ôªøusing CotizacionesWeb.Application.Configuracion;
 using CotizacionesWeb.Application.Integrations.Erp;
 using CotizacionesWeb.Application.Notificaciones;
 using CotizacionesWeb.Domain.Entities;
@@ -8,19 +8,20 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace CotizacionesWeb.Infrastructure.Services;
 
 /// <summary>
 /// Servicio en segundo plano para procesar integraciones pendientes con ERP
-/// Procesa lotes en estados Pendiente y Error hasta un m·ximo de intentos
+/// Procesa lotes en estados Pendiente y Error hasta un m√°ximo de intentos
 /// </summary>
 public class IntegracionErpBackgroundService : BackgroundService
 {
   private readonly IServiceProvider _serviceProvider;
   private readonly ILogger<IntegracionErpBackgroundService> _logger;
 
-  // ConfiguraciÛn por defecto en caso de que falten par·metros
+  // Configuraci√≥n por defecto en caso de que falten par√°metros
   private const int FRECUENCIA_DEFECTO_MINUTOS = 10;
   private const int MAX_INTENTOS_DEFECTO = 3;
 
@@ -47,11 +48,11 @@ public class IntegracionErpBackgroundService : BackgroundService
         _logger.LogError(ex, "Error general en IntegracionErpBackgroundService");
       }
 
-      // Obtener frecuencia desde par·metros del sistema
+      // Obtener frecuencia desde par√°metros del sistema
       var frecuenciaMinutos = await ObtenerFrecuenciaAsync();
       var delay = TimeSpan.FromMinutes(frecuenciaMinutos);
       
-      _logger.LogDebug("Esperando {Minutos} minutos antes del prÛximo ciclo", frecuenciaMinutos);
+      _logger.LogDebug("Esperando {Minutos} minutos antes del pr√≥ximo ciclo", frecuenciaMinutos);
       await Task.Delay(delay, stoppingToken);
     }
 
@@ -70,7 +71,7 @@ public class IntegracionErpBackgroundService : BackgroundService
     }
     catch (Exception ex)
     {
-      _logger.LogWarning(ex, "Error al obtener frecuencia de integraciÛn, usando valor por defecto: {FrecuenciaDefecto}", 
+      _logger.LogWarning(ex, "Error al obtener frecuencia de integraci√≥n, usando valor por defecto: {FrecuenciaDefecto}", 
           FRECUENCIA_DEFECTO_MINUTOS);
       return FRECUENCIA_DEFECTO_MINUTOS;
     }
@@ -88,7 +89,7 @@ public class IntegracionErpBackgroundService : BackgroundService
     }
     catch (Exception ex)
     {
-      _logger.LogWarning(ex, "Error al obtener m·ximo de intentos, usando valor por defecto: {MaxIntentosDefecto}", 
+      _logger.LogWarning(ex, "Error al obtener m√°ximo de intentos, usando valor por defecto: {MaxIntentosDefecto}", 
           MAX_INTENTOS_DEFECTO);
       return MAX_INTENTOS_DEFECTO;
     }
@@ -102,12 +103,12 @@ public class IntegracionErpBackgroundService : BackgroundService
 
     var maxIntentos = await ObtenerMaxIntentosAsync();
 
-    // Buscar registros pendientes o con error que no hayan superado el m·ximo de intentos
+    // Buscar registros pendientes o con error que no hayan superado el m√°ximo de intentos
     var lotesPendientes = await context.IntegracionesPedidoErp
         .Where(i => (i.Estado == "Pendiente" || i.Estado == "Error") && 
                    i.Intentos < maxIntentos)
         .OrderBy(i => i.FechaCreacion) // FIFO
-        .Take(10) // Procesar m·ximo 10 lotes por ciclo
+        .Take(10) // Procesar m√°ximo 10 lotes por ciclo
         .ToListAsync();
 
     if (!lotesPendientes.Any())
@@ -116,7 +117,7 @@ public class IntegracionErpBackgroundService : BackgroundService
       return;
     }
 
-    _logger.LogInformation("Procesando {CantidadLotes} lotes de integraciÛn ERP", lotesPendientes.Count);
+    _logger.LogInformation("Procesando {CantidadLotes} lotes de integraci√≥n ERP", lotesPendientes.Count);
 
     foreach (var lote in lotesPendientes)
     {
@@ -130,10 +131,10 @@ public class IntegracionErpBackgroundService : BackgroundService
       DbContextCotizaciones context,
       int maxIntentos)
   {
-    _logger.LogInformation("Procesando lote {LoteId} para cotizaciÛn {CotizacionId} (Intento {Intento})", 
+    _logger.LogInformation("Procesando lote {LoteId} para cotizaci√≥n {CotizacionId} (Intento {Intento})", 
         lote.LoteId, lote.CotizacionId, lote.Intentos + 1);
 
-    // PASO 1: Llamar al servicio ERP FUERA de la transacciÛn (maneja su propia transaccionalidad)
+    // PASO 1: Llamar al servicio ERP FUERA de la transacci√≥n (maneja su propia transaccionalidad)
     GenerarPedidoResult resultado;
     try
     {
@@ -145,21 +146,21 @@ public class IntegracionErpBackgroundService : BackgroundService
       resultado = new GenerarPedidoResult(false, Message: $"Error del sistema: {ex.Message}");
     }
 
-    // PASO 2: Usar transacciÛn SOLO para actualizar estados y registro en CotizacionesWeb
+    // PASO 2: Usar transacci√≥n SOLO para actualizar estados y registro en CotizacionesWeb
     using var transaction = await context.Database.BeginTransactionAsync();
 
     try
     {
       if (resultado.Success)
       {
-        // ? …XITO: Actualizar registro como procesado
+        // ? √âXITO: Actualizar registro como procesado
         lote.Estado = "Procesado";
         lote.PedidoErp = resultado.PedidoErp;
         lote.FechaProcesado = DateTime.Now;
         lote.MensajeError = null;
         lote.Intentos++; // Incrementar intentos
 
-        // Actualizar cotizaciÛn con resultado exitoso
+        // Actualizar cotizaci√≥n con resultado exitoso
         await ActualizarCotizacionExitosaAsync(lote, context);
 
         _logger.LogInformation("? Lote {LoteId} procesado exitosamente. Pedido: {PedidoErp}", 
@@ -167,22 +168,22 @@ public class IntegracionErpBackgroundService : BackgroundService
       }
       else
       {
-        // ? ERROR: Incrementar intentos y evaluar si supera el m·ximo
+        // ? ERROR: Incrementar intentos y evaluar si supera el m√°ximo
         lote.Intentos++;
         lote.MensajeError = resultado.Message;
 
         if (lote.Intentos >= maxIntentos)
         {
-          // M·ximo de intentos alcanzado: marcar como NoSincronizado y generar notificaciÛn
+          // M√°ximo de intentos alcanzado: marcar como NoSincronizado y generar notificaci√≥n
           await MarcarComoNoSincronizadoAsync(lote, context);
-          _logger.LogWarning("? Lote {LoteId} alcanzÛ m·ximo de intentos ({MaxIntentos}). Marcado como NoSincronizado", 
+          _logger.LogWarning("? Lote {LoteId} alcanz√≥ m√°ximo de intentos ({MaxIntentos}). Marcado como NoSincronizado", 
               lote.LoteId, maxIntentos);
         }
         else
         {
-          // A˙n puede reintentarse: mantener estado Error
+          // A√∫n puede reintentarse: mantener estado Error
           lote.Estado = "Error";
-          _logger.LogWarning("?? Lote {LoteId} fallÛ (intento {Intento}/{MaxIntentos}). Error: {Error}", 
+          _logger.LogWarning("?? Lote {LoteId} fall√≥ (intento {Intento}/{MaxIntentos}). Error: {Error}", 
               lote.LoteId, lote.Intentos, maxIntentos, resultado.Message);
         }
       }
@@ -193,15 +194,15 @@ public class IntegracionErpBackgroundService : BackgroundService
     catch (Exception ex)
     {
       await transaction.RollbackAsync();
-      _logger.LogError(ex, "Error en transacciÛn de actualizaciÛn para lote {LoteId}", lote.LoteId);
+      _logger.LogError(ex, "Error en transacci√≥n de actualizaci√≥n para lote {LoteId}", lote.LoteId);
       
-      // Incrementar intentos por error de sistema en transacciÛn separada
+      // Incrementar intentos por error de sistema en transacci√≥n separada
       try
       {
         using var fallbackTransaction = await context.Database.BeginTransactionAsync();
         
         lote.Intentos++;
-        lote.MensajeError = $"Error del sistema en actualizaciÛn: {ex.Message}";
+        lote.MensajeError = $"Error del sistema en actualizaci√≥n: {ex.Message}";
         
         if (lote.Intentos >= maxIntentos)
         {
@@ -217,7 +218,7 @@ public class IntegracionErpBackgroundService : BackgroundService
       }
       catch (Exception saveEx)
       {
-        _logger.LogError(saveEx, "Error crÌtico al guardar estado de error para lote {LoteId}", lote.LoteId);
+        _logger.LogError(saveEx, "Error cr√≠tico al guardar estado de error para lote {LoteId}", lote.LoteId);
       }
     }
   }
@@ -229,7 +230,7 @@ public class IntegracionErpBackgroundService : BackgroundService
 
     if (cotizacion != null)
     {
-      // Actualizar cotizaciÛn
+      // Actualizar cotizaci√≥n
       cotizacion.FechaEnvioERP = lote.FechaProcesado;
       cotizacion.EstadoActual = (char)EstadoCotizacion.Archivada; // Archivada
 
@@ -240,7 +241,7 @@ public class IntegracionErpBackgroundService : BackgroundService
           .Select(h => h.UsuarioEvento)
           .FirstOrDefaultAsync();
 
-      // Crear archivo de cotizaciÛn como Concretada
+      // Crear archivo de cotizaci√≥n como Concretada
       var archivo = new ArchivoCotizacion
       {
         CotizacionId = lote.CotizacionId,
@@ -248,8 +249,8 @@ public class IntegracionErpBackgroundService : BackgroundService
         FechaArchivado = lote.FechaProcesado ?? DateTime.Now,
         UsuarioArchiva = usuarioArchivador,
         TipoArchivo = (char)TipoArchivo.Concretada, // 'T'
-        MotivoArchivado = "CotizaciÛn aceptada por el cliente",
-        Comentario = $"CotizaciÛn aceptada por el cliente. Pedido generado {lote.PedidoErp} en el ERP"
+        MotivoArchivado = "Cotizaci√≥n aceptada por el cliente",
+        Comentario = $"Cotizaci√≥n aceptada por el cliente. Pedido generado {lote.PedidoErp} en el ERP"
       };
 
       context.ArchivosCotizacion.Add(archivo);
@@ -261,7 +262,7 @@ public class IntegracionErpBackgroundService : BackgroundService
         TipoEvento = "EnviadaERP",
         FechaEvento = DateTime.Now,
         UsuarioEvento = usuarioArchivador ?? 0,
-        Comentario = $"CotizaciÛn procesada exitosamente en ERP. Pedido generado: {lote.PedidoErp}"
+        Comentario = $"Cotizaci√≥n procesada exitosamente en ERP. Pedido generado: {lote.PedidoErp}"
       };
 
       context.HistorialesCotizacion.Add(historial);
@@ -270,10 +271,10 @@ public class IntegracionErpBackgroundService : BackgroundService
 
   private async Task MarcarComoNoSincronizadoAsync(IntegracionPedidoErp lote, DbContextCotizaciones context)
   {
-    // Marcar integraciÛn como NoSincronizado
+    // Marcar integraci√≥n como NoSincronizado
     lote.Estado = "NoSincronizado";
 
-    // Actualizar cotizaciÛn: revertir EnviadoERP
+    // Actualizar cotizaci√≥n: revertir EnviadoERP
     var cotizacion = await context.Cotizaciones
         .FirstOrDefaultAsync(c => c.CotizacionId == lote.CotizacionId);
 
@@ -283,14 +284,14 @@ public class IntegracionErpBackgroundService : BackgroundService
       cotizacion.FechaEnvioERP = null;
     }
 
-    // Obtener usuario del historial de envÌo
+    // Obtener usuario del historial de env√≠o
     var usuarioEnvio = await context.HistorialesCotizacion
         .Where(h => h.VersionId == lote.VersionId && h.TipoEvento == "EnviadaERP")
         .OrderByDescending(h => h.FechaEvento)
         .Select(h => h.UsuarioEvento)
         .FirstOrDefaultAsync();
 
-    // Obtener email del usuario para notificaciÛn
+    // Obtener email del usuario para notificaci√≥n
     string? emailDestino = null;
     if (usuarioEnvio.HasValue)
     {
@@ -300,27 +301,91 @@ public class IntegracionErpBackgroundService : BackgroundService
           .FirstOrDefaultAsync();
     }
 
-    // Generar notificaciÛn de error
+    // Generar notificaci√≥n de error
     if (!string.IsNullOrWhiteSpace(emailDestino))
     {
-      var cuerpoMensaje = $@"Se ha producido un error en la integraciÛn de la cotizaciÛn con el ERP.
+      var cuerpoMensaje = $@"
+              <!DOCTYPE html>
+              <html lang=""es"">
+              <head>
+                  <meta charset=""UTF-8"">
+                  <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+                  <title>Error de Integraci√≥n ERP</title>
+              </head>
+              <body style=""margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, Helvetica, sans-serif; color:#2c3e50;"">
+                  <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" style=""background-color:#f4f6f9; margin:0; padding:30px 0;"">
+                      <tr>
+                          <td align=""center"">
+                              <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" style=""max-width:680px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 4px 14px rgba(0,0,0,0.08);"">
+                    
+                                  <tr>
+                                      <td style=""background-color:#dc3545; padding:22px 30px; color:#ffffff;"">
+                                          <div style=""font-size:24px; font-weight:bold; margin-bottom:6px;"">‚ö† Error de Integraci√≥n con ERP</div>
+                                          <div style=""font-size:14px; line-height:1.5;"">
+                                              Se detect√≥ un problema al intentar generar el pedido en el ERP.
+                                          </div>
+                                      </td>
+                                  </tr>
 
-Detalles del error:
-- CotizaciÛn ID: {lote.CotizacionId}
-- VersiÛn ID: {lote.VersionId} (versiÛn interna del sistema)
-- Error: {lote.MensajeError}
-- Intentos realizados: {lote.Intentos}
+                                  <tr>
+                                      <td style=""padding:30px;"">
+                                          <p style=""margin:0 0 18px 0; font-size:15px; line-height:1.6;"">
+                                              Se ha producido un error en la integraci√≥n de una cotizaci√≥n con el ERP.  
+                                              La cotizaci√≥n fue marcada como <strong>no enviada al ERP</strong> y requiere revisi√≥n manual.
+                                          </p>
 
-La cotizaciÛn ha sido marcada como no enviada al ERP y requiere revisiÛn manual.";
+                                          <table role=""presentation"" width=""100%"" cellspacing=""0"" cellpadding=""0"" style=""border-collapse:collapse; margin:20px 0; background-color:#fff5f5; border:1px solid #f5c2c7; border-radius:8px; overflow:hidden;"">
+                                              <tr>
+                                                  <td colspan=""2"" style=""background-color:#f8d7da; padding:14px 18px; font-size:16px; font-weight:bold; color:#842029;"">
+                                                      Detalles del incidente
+                                                  </td>
+                                              </tr>
+                                              <tr>
+                                                  <td style=""padding:12px 18px; width:180px; font-weight:bold; border-top:1px solid #f1b0b7;"">Cotizaci√≥n ID</td>
+                                                  <td style=""padding:12px 18px; border-top:1px solid #f1b0b7;"">{lote.CotizacionId}</td>
+                                              </tr>
+                                              <tr>
+                                                  <td style=""padding:12px 18px; font-weight:bold; border-top:1px solid #f1b0b7;"">Versi√≥n ID</td>
+                                                  <td style=""padding:12px 18px; border-top:1px solid #f1b0b7;"">{lote.VersionId} <span style=""color:#6c757d;"">(versi√≥n interna del sistema)</span></td>
+                                              </tr>
+                                              <tr>
+                                                  <td style=""padding:12px 18px; font-weight:bold; border-top:1px solid #f1b0b7;"">Intentos realizados</td>
+                                                  <td style=""padding:12px 18px; border-top:1px solid #f1b0b7;"">{lote.Intentos}</td>
+                                              </tr>
+                                              <tr>
+                                                  <td style=""padding:12px 18px; font-weight:bold; border-top:1px solid #f1b0b7; vertical-align:top;"">Mensaje de error</td>
+                                                  <td style=""padding:12px 18px; border-top:1px solid #f1b0b7;"">
+                                                      <div style=""background-color:#fff; border:1px solid #f1b0b7; border-radius:6px; padding:12px; color:#842029; white-space:pre-wrap; word-break:break-word;"">{WebUtility.HtmlEncode(lote.MensajeError)}</div>
+                                                  </td>
+                                              </tr>
+                                          </table>
 
-      // Crear notificaciÛn directamente en la base de datos
+                                          <div style=""margin-top:24px; padding:16px 18px; background-color:#fff3cd; border:1px solid #ffecb5; border-radius:8px; color:#664d03; font-size:14px; line-height:1.6;"">
+                                              <strong>Acci√≥n requerida:</strong><br>
+                                              Revisar la causa del error y determinar si la cotizaci√≥n puede volver a enviarse al ERP.
+                                          </div>
+
+                                          <p style=""margin:28px 0 0 0; font-size:13px; color:#6c757d; line-height:1.6;"">
+                                              Este correo fue generado autom√°ticamente por el sistema de cotizaciones.
+                                          </p>
+                                      </td>
+                                  </tr>
+
+                              </table>
+                          </td>
+                      </tr>
+                  </table>
+              </body>
+              </html>";
+
+      // Crear notificaci√≥n directamente en la base de datos
       var notificacion = new NotificacionCotizacion
       {
         CotizacionId = lote.CotizacionId,
         VersionId = lote.VersionId,
         TipoNotificacion = "ErrorIntegracionERP",
         EmailDestino = emailDestino,
-        Asunto = "Error en IntegraciÛn de la CotizaciÛn con el ERP",
+        Asunto = "Error en Integraci√≥n de la Cotizaci√≥n con el ERP",
         Cuerpo = cuerpoMensaje,
         FechaProgramada = DateTime.Now, // Enviar inmediatamente
         Estado = "Pendiente",
@@ -329,7 +394,7 @@ La cotizaciÛn ha sido marcada como no enviada al ERP y requiere revisiÛn manual.
 
       context.NotificacionesCotizacion.Add(notificacion);
       
-      _logger.LogInformation("?? NotificaciÛn de error de integraciÛn creada para {Email} (cotizaciÛn {CotizacionId})", 
+      _logger.LogInformation("Notificaci√≥n de error de integraci√≥n creada para {Email} (cotizaci√≥n {CotizacionId})", 
           emailDestino, lote.CotizacionId);
     }
 
@@ -340,7 +405,7 @@ La cotizaciÛn ha sido marcada como no enviada al ERP y requiere revisiÛn manual.
       TipoEvento = "NoEnviadaERP",
       FechaEvento = DateTime.Now,
       UsuarioEvento = usuarioEnvio ?? 0,
-      Comentario = "CotizaciÛn no enviada al ERP por error de integraciÛn"
+      Comentario = "Cotizaci√≥n no enviada al ERP por error de integraci√≥n"
     };
 
     context.HistorialesCotizacion.Add(historialError);

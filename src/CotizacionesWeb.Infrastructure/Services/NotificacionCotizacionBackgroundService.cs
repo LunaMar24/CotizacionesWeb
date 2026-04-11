@@ -108,9 +108,7 @@ public class NotificacionCotizacionBackgroundService : BackgroundService
         {
             // Leer si las notificaciones están habilitadas
             var habilitadasTexto = await parametroService.ObtenerValorParametroAsync(NOTIFICACIONES_ENABLED);
-            var notificacionesHabilitadas = string.Equals(habilitadasTexto, "S", StringComparison.OrdinalIgnoreCase) ||
-                                           string.Equals(habilitadasTexto, "true", StringComparison.OrdinalIgnoreCase) ||
-                                           habilitadasTexto == "1";
+            var notificacionesHabilitadas = string.Equals(habilitadasTexto, "S", StringComparison.OrdinalIgnoreCase);
 
             // Leer frecuencia de procesamiento
             var frecuencia = await parametroService.ObtenerValorParametroAsync<int?>(FRECUENCIA_MINUTOS);

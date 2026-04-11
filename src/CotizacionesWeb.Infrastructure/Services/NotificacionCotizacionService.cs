@@ -1,4 +1,4 @@
-using CotizacionesWeb.Application.Common.Email;
+Ôªøusing CotizacionesWeb.Application.Common.Email;
 using CotizacionesWeb.Application.Notificaciones;
 using CotizacionesWeb.Domain.Entities;
 using CotizacionesWeb.Infrastructure.Data;
@@ -8,294 +8,298 @@ using Microsoft.Extensions.Logging;
 namespace CotizacionesWeb.Infrastructure.Services;
 
 /// <summary>
-/// ImplementaciÛn del servicio de notificaciones de cotizaciones
+/// Implementaci√≥n del servicio de notificaciones de cotizaciones
 /// </summary>
 public class NotificacionCotizacionService : INotificacionCotizacionService
 {
-    private readonly DbContextCotizaciones _context;
-    private readonly IEmailService _emailService;
-    private readonly ILogger<NotificacionCotizacionService> _logger;
+  private readonly DbContextCotizaciones _context;
+  private readonly IEmailService _emailService;
+  private readonly ILogger<NotificacionCotizacionService> _logger;
 
-    // Constantes para tipos de notificaciÛn
-    private const string TIPO_PENDIENTE_APROBACION = "PendienteAprobacion";
-    private const string TIPO_SEGUIMIENTO_ENVIADA = "SeguimientoEnviada";
-    
-    // Estados de notificaciÛn
-    private const string ESTADO_PENDIENTE = "Pendiente";
-    private const string ESTADO_ENVIADA = "Enviada";
-    private const string ESTADO_ERROR = "Error";
-    
-    // LÌmite m·ximo de intentos
-    private const int MAX_INTENTOS = 3;
+  // Constantes para tipos de notificaci√≥n
+  private const string TIPO_PENDIENTE_APROBACION = "PendienteAprobacion";
+  private const string TIPO_SEGUIMIENTO_ENVIADA = "SeguimientoEnviada";
+  private const string TIPO_ERROR_INTEGRACIONERP = "ErrorIntegracionERP";
 
-    public NotificacionCotizacionService(
-        DbContextCotizaciones context,
-        IEmailService emailService,
-        ILogger<NotificacionCotizacionService> logger)
+  // Estados de notificaci√≥n
+  private const string ESTADO_PENDIENTE = "Pendiente";
+  private const string ESTADO_ENVIADA = "Enviada";
+  private const string ESTADO_ERROR = "Error";
+
+  // L√≠mite m√°ximo de intentos
+  private const int MAX_INTENTOS = 3; //TODO: Pasar par√°metro a la base de datos
+
+  public NotificacionCotizacionService(
+      DbContextCotizaciones context,
+      IEmailService emailService,
+      ILogger<NotificacionCotizacionService> logger)
+  {
+    _context = context;
+    _emailService = emailService;
+    _logger = logger;
+  }
+
+  /// <summary>
+  /// Procesa todas las notificaciones pendientes de env√≠o
+  /// </summary>
+  public async Task<int> ProcesarNotificacionesPendientesAsync(CancellationToken cancellationToken = default)
+  {
+    try
     {
-        _context = context;
-        _emailService = emailService;
-        _logger = logger;
-    }
+      _logger.LogInformation("Iniciando procesamiento de notificaciones pendientes");
 
-    /// <summary>
-    /// Procesa todas las notificaciones pendientes de envÌo
-    /// </summary>
-    public async Task<int> ProcesarNotificacionesPendientesAsync(CancellationToken cancellationToken = default)
-    {
-        try
+      // Verificar que el servicio de email est√© disponible
+      if (!await _emailService.EstaDisponibleAsync())
+      {
+        _logger.LogWarning("Servicio de email no disponible, saltando procesamiento de notificaciones");
+        return 0;
+      }
+
+      // Buscar notificaciones pendientes
+      var notificacionesPendientes = await ObtenerNotificacionesPendientesAsync(cancellationToken);
+
+      if (!notificacionesPendientes.Any())
+      {
+        _logger.LogDebug("No se encontraron notificaciones pendientes para procesar");
+        return 0;
+      }
+
+      _logger.LogInformation("Encontradas {Cantidad} notificaciones pendientes para procesar",
+          notificacionesPendientes.Count);
+
+      var resumen = new ResumenProcesamiento(notificacionesPendientes.Count, 0, 0);
+
+      // Procesar cada notificaci√≥n
+      foreach (var notificacion in notificacionesPendientes)
+      {
+        if (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogInformation("Iniciando procesamiento de notificaciones pendientes");
-
-            // Verificar que el servicio de email estÈ disponible
-            if (!await _emailService.EstaDisponibleAsync())
-            {
-                _logger.LogWarning("Servicio de email no disponible, saltando procesamiento de notificaciones");
-                return 0;
-            }
-
-            // Buscar notificaciones pendientes
-            var notificacionesPendientes = await ObtenerNotificacionesPendientesAsync(cancellationToken);
-            
-            if (!notificacionesPendientes.Any())
-            {
-                _logger.LogDebug("No se encontraron notificaciones pendientes para procesar");
-                return 0;
-            }
-
-            _logger.LogInformation("Encontradas {Cantidad} notificaciones pendientes para procesar", 
-                notificacionesPendientes.Count);
-
-            var resumen = new ResumenProcesamiento(notificacionesPendientes.Count, 0, 0);
-            
-            // Procesar cada notificaciÛn
-            foreach (var notificacion in notificacionesPendientes)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    _logger.LogInformation("Procesamiento cancelado por token de cancelaciÛn");
-                    break;
-                }
-
-                var resultado = await ProcesarNotificacionIndividualAsync(notificacion, cancellationToken);
-                
-                if (resultado.Exitoso)
-                {
-                    resumen = resumen with { NotificacionesExitosas = resumen.NotificacionesExitosas + 1 };
-                }
-                else
-                {
-                    resumen = resumen with { NotificacionesConError = resumen.NotificacionesConError + 1 };
-                }
-                
-                // PequeÒa pausa entre notificaciones para evitar saturar el servidor de email
-                await Task.Delay(1000, cancellationToken);
-            }
-
-            _logger.LogInformation("Procesamiento completado. Enviadas: {Exitosas}, Errores: {Errores}, Total: {Total}",
-                resumen.NotificacionesExitosas, resumen.NotificacionesConError, resumen.NotificacionesEncontradas);
-
-            return resumen.NotificacionesExitosas;
+          _logger.LogInformation("Procesamiento cancelado por token de cancelaci√≥n");
+          break;
         }
-        catch (OperationCanceledException)
+
+        var resultado = await ProcesarNotificacionIndividualAsync(notificacion, cancellationToken);
+
+        if (resultado.Exitoso)
         {
-            _logger.LogInformation("Procesamiento de notificaciones cancelado");
-            return 0;
+          resumen = resumen with { NotificacionesExitosas = resumen.NotificacionesExitosas + 1 };
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error inesperado durante el procesamiento de notificaciones");
-            throw;
+          resumen = resumen with { NotificacionesConError = resumen.NotificacionesConError + 1 };
         }
+
+        // Peque√±a pausa entre notificaciones para evitar saturar el servidor de email
+        await Task.Delay(1000, cancellationToken);
+      }
+
+      _logger.LogInformation("Procesamiento completado. Enviadas: {Exitosas}, Errores: {Errores}, Total: {Total}",
+          resumen.NotificacionesExitosas, resumen.NotificacionesConError, resumen.NotificacionesEncontradas);
+
+      return resumen.NotificacionesExitosas;
     }
-
-    /// <summary>
-    /// Obtiene las notificaciones pendientes de envÌo
-    /// </summary>
-    private async Task<List<NotificacionCotizacionDto>> ObtenerNotificacionesPendientesAsync(CancellationToken cancellationToken)
+    catch (OperationCanceledException)
     {
-        var fechaActual = DateTime.Now;
-        
-        var query = from notif in _context.NotificacionesCotizacion
-                    join cotizacion in _context.Cotizaciones
-                        on notif.CotizacionId equals cotizacion.CotizacionId
-                    join version in _context.CotizacionesVersiones
-                        on notif.VersionId equals version.VersionId
-                    where notif.Estado == ESTADO_PENDIENTE
-                          && notif.FechaProgramada <= fechaActual
-                          && notif.Intentos < MAX_INTENTOS
-                    orderby notif.FechaProgramada
-                    select new NotificacionCotizacionDto(
-                        notif.NotificacionId,
-                        notif.CotizacionId,
-                        notif.VersionId,
-                        notif.TipoNotificacion,
-                        notif.EmailDestino,
-                        notif.FechaProgramada,
-                        notif.Intentos,
-                        cotizacion.EstadoActual.ToString(),
-                        cotizacion.MontoCotizacion,
-                        cotizacion.Moneda,
-                        version.NumeroVersion,
-                        version.NombreInteresado,
-                        version.EmailInteresado,
-                        version.EmpresaInteresado
-                    );
-
-        return await query.ToListAsync(cancellationToken);
+      _logger.LogInformation("Procesamiento de notificaciones cancelado");
+      return 0;
     }
-
-    /// <summary>
-    /// Procesa una notificaciÛn individual
-    /// </summary>
-    private async Task<ResultadoProcesamiento> ProcesarNotificacionIndividualAsync(
-        NotificacionCotizacionDto notificacion, 
-        CancellationToken cancellationToken)
+    catch (Exception ex)
     {
-        try
-        {
-            _logger.LogDebug("Procesando notificaciÛn {NotificacionId} tipo {Tipo} para cotizaciÛn {CotizacionId}",
-                notificacion.NotificacionId, notificacion.TipoNotificacion, notificacion.CotizacionId);
-
-            // Generar contenido del email
-            var (asunto, cuerpo) = GenerarContenidoEmail(notificacion);
-            
-            // Intentar enviar el email
-            var emailEnviado = await _emailService.EnviarEmailAsync(
-                notificacion.EmailDestino, 
-                asunto, 
-                cuerpo, 
-                esHtml: true);
-
-            var fechaEnviada = DateTime.Now;
-
-            if (emailEnviado)
-            {
-                // Marcar como enviada
-                await ActualizarEstadoNotificacionAsync(
-                    notificacion.NotificacionId, 
-                    ESTADO_ENVIADA, 
-                    fechaEnviada, 
-                    null, 
-                    notificacion.Intentos);
-
-                _logger.LogInformation("NotificaciÛn {NotificacionId} enviada exitosamente a {Email}",
-                    notificacion.NotificacionId, notificacion.EmailDestino);
-
-                return new ResultadoProcesamiento(true, null, fechaEnviada);
-            }
-            else
-            {
-                // Incrementar intentos y marcar error o mantener pendiente
-                var nuevosIntentos = notificacion.Intentos + 1;
-                var nuevoEstado = nuevosIntentos >= MAX_INTENTOS ? ESTADO_ERROR : ESTADO_PENDIENTE;
-                var mensajeError = $"Error al enviar email (intento {nuevosIntentos}/{MAX_INTENTOS})";
-
-                await ActualizarEstadoNotificacionAsync(
-                    notificacion.NotificacionId, 
-                    nuevoEstado, 
-                    null, 
-                    mensajeError, 
-                    nuevosIntentos);
-
-                _logger.LogWarning("Error al enviar notificaciÛn {NotificacionId} a {Email}. Intento {Intento}/{MaxIntentos}",
-                    notificacion.NotificacionId, notificacion.EmailDestino, nuevosIntentos, MAX_INTENTOS);
-
-                return new ResultadoProcesamiento(false, mensajeError);
-            }
-        }
-        catch (Exception ex)
-        {
-            var mensajeError = $"ExcepciÛn durante envÌo: {ex.Message}";
-            var nuevosIntentos = notificacion.Intentos + 1;
-            var nuevoEstado = nuevosIntentos >= MAX_INTENTOS ? ESTADO_ERROR : ESTADO_PENDIENTE;
-
-            await ActualizarEstadoNotificacionAsync(
-                notificacion.NotificacionId, 
-                nuevoEstado, 
-                null, 
-                mensajeError, 
-                nuevosIntentos);
-
-            _logger.LogError(ex, "ExcepciÛn al procesar notificaciÛn {NotificacionId}",
-                notificacion.NotificacionId);
-
-            return new ResultadoProcesamiento(false, mensajeError);
-        }
+      _logger.LogError(ex, "Error inesperado durante el procesamiento de notificaciones");
+      throw;
     }
+  }
 
-    /// <summary>
-    /// Genera el contenido (asunto y cuerpo) del email seg˙n el tipo de notificaciÛn
-    /// </summary>
-    private (string asunto, string cuerpo) GenerarContenidoEmail(NotificacionCotizacionDto notificacion)
+  /// <summary>
+  /// Obtiene las notificaciones pendientes de env√≠o
+  /// </summary>
+  private async Task<List<NotificacionCotizacionDto>> ObtenerNotificacionesPendientesAsync(CancellationToken cancellationToken)
+  {
+    var fechaActual = DateTime.Now;
+
+    var query = from notif in _context.NotificacionesCotizacion
+                join cotizacion in _context.Cotizaciones
+                    on notif.CotizacionId equals cotizacion.CotizacionId
+                join version in _context.CotizacionesVersiones
+                    on notif.VersionId equals version.VersionId
+                where notif.Estado == ESTADO_PENDIENTE
+                      && notif.FechaProgramada <= fechaActual
+                      && notif.Intentos < MAX_INTENTOS
+                orderby notif.FechaProgramada
+                select new NotificacionCotizacionDto(
+                    notif.NotificacionId,
+                    notif.CotizacionId,
+                    notif.VersionId,
+                    notif.TipoNotificacion,
+                    notif.EmailDestino,
+                    notif.FechaProgramada,
+                    notif.Intentos,
+                    notif.Asunto ?? "",
+                    notif.Cuerpo ?? "",
+                    cotizacion.EstadoActual.ToString(),
+                    cotizacion.MontoCotizacion,
+                    cotizacion.Moneda,
+                    version.NumeroVersion,
+                    version.NombreInteresado,
+                    version.EmailInteresado,
+                    version.EmpresaInteresado
+                );
+
+    return await query.ToListAsync(cancellationToken);
+  }
+
+  /// <summary>
+  /// Procesa una notificaci√≥n individual
+  /// </summary>
+  private async Task<ResultadoProcesamiento> ProcesarNotificacionIndividualAsync(
+      NotificacionCotizacionDto notificacion,
+      CancellationToken cancellationToken)
+  {
+    try
     {
-        return notificacion.TipoNotificacion switch
-        {
-            TIPO_PENDIENTE_APROBACION => GenerarContenidoPendienteAprobacion(notificacion),
-            TIPO_SEGUIMIENTO_ENVIADA => GenerarContenidoSeguimientoEnviada(notificacion),
-            _ => GenerarContenidoGenerico(notificacion)
-        };
+      _logger.LogDebug("Procesando notificaci√≥n {NotificacionId} tipo {Tipo} para cotizaci√≥n {CotizacionId}",
+          notificacion.NotificacionId, notificacion.TipoNotificacion, notificacion.CotizacionId);
+
+      // Generar contenido del email
+      var (asunto, cuerpo) = GenerarContenidoEmail(notificacion);
+
+      // Intentar enviar el email
+      var emailEnviado = await _emailService.EnviarEmailAsync(
+          notificacion.EmailDestino,
+          asunto,
+          cuerpo,
+          esHtml: true);
+
+      var fechaEnviada = DateTime.Now;
+
+      if (emailEnviado)
+      {
+        // Marcar como enviada
+        await ActualizarEstadoNotificacionAsync(
+            notificacion.NotificacionId,
+            ESTADO_ENVIADA,
+            fechaEnviada,
+            null,
+            notificacion.Intentos);
+
+        _logger.LogInformation("Notificaci√≥n {NotificacionId} enviada exitosamente a {Email}",
+            notificacion.NotificacionId, notificacion.EmailDestino);
+
+        return new ResultadoProcesamiento(true, null, fechaEnviada);
+      }
+      else
+      {
+        // Incrementar intentos y marcar error o mantener pendiente
+        var nuevosIntentos = notificacion.Intentos + 1;
+        var nuevoEstado = nuevosIntentos >= MAX_INTENTOS ? ESTADO_ERROR : ESTADO_PENDIENTE;
+        var mensajeError = $"Error al enviar email (intento {nuevosIntentos}/{MAX_INTENTOS})";
+
+        await ActualizarEstadoNotificacionAsync(
+            notificacion.NotificacionId,
+            nuevoEstado,
+            null,
+            mensajeError,
+            nuevosIntentos);
+
+        _logger.LogWarning("Error al enviar notificaci√≥n {NotificacionId} a {Email}. Intento {Intento}/{MaxIntentos}",
+            notificacion.NotificacionId, notificacion.EmailDestino, nuevosIntentos, MAX_INTENTOS);
+
+        return new ResultadoProcesamiento(false, mensajeError);
+      }
     }
-
-    /// <summary>
-    /// Genera contenido para notificaciÛn de pendiente aprobaciÛn
-    /// </summary>
-    private (string asunto, string cuerpo) GenerarContenidoPendienteAprobacion(NotificacionCotizacionDto notificacion)
+    catch (Exception ex)
     {
-        var simboloMoneda = ObtenerSimboloMoneda(notificacion.Moneda);
-        var montoFormateado = $"{simboloMoneda}{notificacion.MontoCotizacion:N2}";
-        
-        var asunto = $"CotizaciÛn {notificacion.CotizacionId} v{notificacion.NumeroVersion:0.0} - Pendiente de AprobaciÛn";
-        
-        var cuerpo = $@"
+      var mensajeError = $"Excepci√≥n durante env√≠o: {ex.Message}";
+      var nuevosIntentos = notificacion.Intentos + 1;
+      var nuevoEstado = nuevosIntentos >= MAX_INTENTOS ? ESTADO_ERROR : ESTADO_PENDIENTE;
+
+      await ActualizarEstadoNotificacionAsync(
+          notificacion.NotificacionId,
+          nuevoEstado,
+          null,
+          mensajeError,
+          nuevosIntentos);
+
+      _logger.LogError(ex, "Excepci√≥n al procesar notificaci√≥n {NotificacionId}",
+          notificacion.NotificacionId);
+
+      return new ResultadoProcesamiento(false, mensajeError);
+    }
+  }
+
+  /// <summary>
+  /// Genera el contenido (asunto y cuerpo) del email seg√∫n el tipo de notificaci√≥n
+  /// </summary>
+  private (string asunto, string cuerpo) GenerarContenidoEmail(NotificacionCotizacionDto notificacion)
+  {
+    return notificacion.TipoNotificacion switch
+    {
+      TIPO_PENDIENTE_APROBACION => GenerarContenidoPendienteAprobacion(notificacion),
+      TIPO_SEGUIMIENTO_ENVIADA => GenerarContenidoSeguimientoEnviada(notificacion),
+      TIPO_ERROR_INTEGRACIONERP => string.IsNullOrEmpty(notificacion.Asunto) ? GenerarContenidoGenerico(notificacion) : (notificacion.Asunto, notificacion.CuerpoMensaje),
+      _ => GenerarContenidoGenerico(notificacion)
+    };
+  }
+
+  /// <summary>
+  /// Genera contenido para notificaci√≥n de pendiente aprobaci√≥n
+  /// </summary>
+  private (string asunto, string cuerpo) GenerarContenidoPendienteAprobacion(NotificacionCotizacionDto notificacion)
+  {
+    var simboloMoneda = ObtenerSimboloMoneda(notificacion.Moneda);
+    var montoFormateado = $"{simboloMoneda}{notificacion.MontoCotizacion:N2}";
+
+    var asunto = $"Cotizaci√≥n {notificacion.CotizacionId} v{notificacion.NumeroVersion:0.0} - Pendiente de Aprobaci√≥n";
+
+    var cuerpo = $@"
             <html>
             <body style='font-family: Arial, sans-serif; line-height: 1.6;'>
                 <h2 style='color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px;'>
-                    CotizaciÛn Pendiente de AprobaciÛn
+                    Cotizaci√≥n Pendiente de Aprobaci√≥n
                 </h2>
                 
                 <div style='background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;'>
-                    <h3 style='color: #007bff; margin-top: 0;'>InformaciÛn de la CotizaciÛn</h3>
+                    <h3 style='color: #007bff; margin-top: 0;'>Informaci√≥n de la Cotizaci√≥n</h3>
                     <p><strong>ID:</strong> {notificacion.CotizacionId}</p>
-                    <p><strong>VersiÛn:</strong> {notificacion.NumeroVersion:0.0}</p>
+                    <p><strong>Versi√≥n:</strong> {notificacion.NumeroVersion:0.0}</p>
                     <p><strong>Cliente:</strong> {notificacion.NombreInteresado}</p>
                     <p><strong>Empresa:</strong> {notificacion.EmpresaInteresado}</p>
                     <p><strong>Monto:</strong> {montoFormateado}</p>
-                    <p><strong>Estado:</strong> <span style='color: #ffc107; font-weight: bold;'>Pendiente de AprobaciÛn</span></p>
+                    <p><strong>Estado:</strong> <span style='color: #ffc107; font-weight: bold;'>Pendiente de Aprobaci√≥n</span></p>
                 </div>
                 
-                <p>Esta cotizaciÛn ha sido enviada para aprobaciÛn y requiere su revisiÛn.</p>
+                <p>Esta cotizaci√≥n ha sido enviada para aprobaci√≥n y requiere su revisi√≥n.</p>
                 
                 <p style='margin-top: 30px; color: #666; font-size: 0.9em;'>
-                    Este es un mensaje autom·tico del sistema de cotizaciones.
+                    Este es un mensaje autom√°tico del sistema de cotizaciones.
                 </p>
             </body>
             </html>";
-        
-        return (asunto, cuerpo);
-    }
 
-    /// <summary>
-    /// Genera contenido para notificaciÛn de seguimiento de envÌo
-    /// </summary>
-    private (string asunto, string cuerpo) GenerarContenidoSeguimientoEnviada(NotificacionCotizacionDto notificacion)
-    {
-        var simboloMoneda = ObtenerSimboloMoneda(notificacion.Moneda);
-        var montoFormateado = $"{simboloMoneda}{notificacion.MontoCotizacion:N2}";
-        
-        var asunto = $"Seguimiento: CotizaciÛn {notificacion.CotizacionId} v{notificacion.NumeroVersion:0.0} - Enviada al Cliente";
-        
-        var cuerpo = $@"
+    return (asunto, cuerpo);
+  }
+
+  /// <summary>
+  /// Genera contenido para notificaci√≥n de seguimiento de env√≠o
+  /// </summary>
+  private (string asunto, string cuerpo) GenerarContenidoSeguimientoEnviada(NotificacionCotizacionDto notificacion)
+  {
+    var simboloMoneda = ObtenerSimboloMoneda(notificacion.Moneda);
+    var montoFormateado = $"{simboloMoneda}{notificacion.MontoCotizacion:N2}";
+
+    var asunto = $"Seguimiento: Cotizaci√≥n {notificacion.CotizacionId} v{notificacion.NumeroVersion:0.0} - Enviada al Cliente";
+
+    var cuerpo = $@"
             <html>
             <body style='font-family: Arial, sans-serif; line-height: 1.6;'>
                 <h2 style='color: #333; border-bottom: 2px solid #28a745; padding-bottom: 10px;'>
-                    Seguimiento de CotizaciÛn Enviada
+                    Seguimiento de Cotizaci√≥n Enviada
                 </h2>
                 
                 <div style='background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0;'>
-                    <h3 style='color: #28a745; margin-top: 0;'>InformaciÛn de la CotizaciÛn</h3>
+                    <h3 style='color: #28a745; margin-top: 0;'>Informaci√≥n de la Cotizaci√≥n</h3>
                     <p><strong>ID:</strong> {notificacion.CotizacionId}</p>
-                    <p><strong>VersiÛn:</strong> {notificacion.NumeroVersion:0.0}</p>
+                    <p><strong>Versi√≥n:</strong> {notificacion.NumeroVersion:0.0}</p>
                     <p><strong>Cliente:</strong> {notificacion.NombreInteresado}</p>
                     <p><strong>Empresa:</strong> {notificacion.EmpresaInteresado}</p>
                     <p><strong>Email Cliente:</strong> {notificacion.EmailInteresado}</p>
@@ -303,146 +307,146 @@ public class NotificacionCotizacionService : INotificacionCotizacionService
                     <p><strong>Estado:</strong> <span style='color: #17a2b8; font-weight: bold;'>Enviada al Cliente</span></p>
                 </div>
                 
-                <p>Esta cotizaciÛn ha sido enviada al cliente y est· pendiente de su respuesta.</p>
-                <p>Se recomienda hacer seguimiento directo con el cliente para conocer su decisiÛn.</p>
+                <p>Esta cotizaci√≥n ha sido enviada al cliente y est√° pendiente de su respuesta.</p>
+                <p>Se recomienda hacer seguimiento directo con el cliente para conocer su decisi√≥n.</p>
                 
                 <p style='margin-top: 30px; color: #666; font-size: 0.9em;'>
-                    Este es un mensaje autom·tico del sistema de cotizaciones.
+                    Este es un mensaje autom√°tico del sistema de cotizaciones.
                 </p>
             </body>
             </html>";
-        
-        return (asunto, cuerpo);
-    }
 
-    /// <summary>
-    /// Genera contenido genÈrico para tipos no reconocidos
-    /// </summary>
-    private (string asunto, string cuerpo) GenerarContenidoGenerico(NotificacionCotizacionDto notificacion)
-    {
-        var asunto = $"NotificaciÛn: CotizaciÛn {notificacion.CotizacionId} v{notificacion.NumeroVersion:0.0}";
-        
-        var cuerpo = $@"
+    return (asunto, cuerpo);
+  }
+
+  /// <summary>
+  /// Genera contenido gen√©rico para tipos no reconocidos
+  /// </summary>
+  private (string asunto, string cuerpo) GenerarContenidoGenerico(NotificacionCotizacionDto notificacion)
+  {
+    var asunto = $"Notificaci√≥n: Cotizaci√≥n {notificacion.CotizacionId} v{notificacion.NumeroVersion:0.0}";
+
+    var cuerpo = $@"
             <html>
             <body style='font-family: Arial, sans-serif; line-height: 1.6;'>
-                <h2>NotificaciÛn de CotizaciÛn</h2>
+                <h2>Notificaci√≥n de Cotizaci√≥n</h2>
                 <p><strong>ID:</strong> {notificacion.CotizacionId}</p>
-                <p><strong>VersiÛn:</strong> {notificacion.NumeroVersion:0.0}</p>
+                <p><strong>Versi√≥n:</strong> {notificacion.NumeroVersion:0.0}</p>
                 <p><strong>Cliente:</strong> {notificacion.NombreInteresado}</p>
-                <p><strong>Tipo de NotificaciÛn:</strong> {notificacion.TipoNotificacion}</p>
+                <p><strong>Tipo de Notificaci√≥n:</strong> {notificacion.TipoNotificacion}</p>
             </body>
             </html>";
-        
-        return (asunto, cuerpo);
-    }
 
-    /// <summary>
-    /// Actualiza el estado de una notificaciÛn
-    /// </summary>
-    private async Task ActualizarEstadoNotificacionAsync(
-        int notificacionId, 
-        string nuevoEstado, 
-        DateTime? fechaEnviada, 
-        string? mensajeError, 
-        int intentos)
+    return (asunto, cuerpo);
+  }
+
+  /// <summary>
+  /// Actualiza el estado de una notificaci√≥n
+  /// </summary>
+  private async Task ActualizarEstadoNotificacionAsync(
+      int notificacionId,
+      string nuevoEstado,
+      DateTime? fechaEnviada,
+      string? mensajeError,
+      int intentos)
+  {
+    var notificacion = await _context.NotificacionesCotizacion
+        .FirstOrDefaultAsync(n => n.NotificacionId == notificacionId);
+
+    if (notificacion != null)
     {
-        var notificacion = await _context.NotificacionesCotizacion
-            .FirstOrDefaultAsync(n => n.NotificacionId == notificacionId);
+      notificacion.Estado = nuevoEstado;
+      notificacion.FechaEnviada = fechaEnviada;
+      notificacion.MensajeError = mensajeError;
+      notificacion.Intentos = intentos;
 
-        if (notificacion != null)
-        {
-            notificacion.Estado = nuevoEstado;
-            notificacion.FechaEnviada = fechaEnviada;
-            notificacion.MensajeError = mensajeError;
-            notificacion.Intentos = intentos;
-            
-            await _context.SaveChangesAsync();
-        }
+      await _context.SaveChangesAsync();
     }
+  }
 
-    /// <summary>
-    /// Obtiene el sÌmbolo de moneda
-    /// </summary>
-    private string ObtenerSimboloMoneda(string moneda) => moneda?.ToUpper() switch
-    {
-        "CRC" => "?",
-        "USD" => "$",
-        "EUR" => "Ä",
-        "GBP" => "£",
-        "JPY" => "•",
-        _ => "$"
-    };
+  /// <summary>
+  /// Obtiene el s√≠mbolo de moneda
+  /// </summary>
+  private string ObtenerSimboloMoneda(string moneda) => moneda?.ToUpper() switch
+  {
+    "CRC" => "¬¢",
+    "USD" => "$",
+    "EUR" => "‚Ç¨",
+    "GBP" => "¬£",
+    "JPY" => "¬•",
+    _ => "$"
+  };
 
-    /// <summary>
-    /// Crea una notificaciÛn para pendiente aprobaciÛn
-    /// </summary>
-    public async Task<bool> CrearNotificacionPendienteAprobacionAsync(
-        string cotizacionId, 
-        int versionId, 
-        string emailDestino, 
-        DateTime? fechaProgramada = null)
+  /// <summary>
+  /// Crea una notificaci√≥n para pendiente aprobaci√≥n
+  /// </summary>
+  public async Task<bool> CrearNotificacionPendienteAprobacionAsync(
+      string cotizacionId,
+      int versionId,
+      string emailDestino,
+      DateTime? fechaProgramada = null)
+  {
+    return await CrearNotificacionAsync(
+        TIPO_PENDIENTE_APROBACION,
+        cotizacionId,
+        versionId,
+        emailDestino,
+        fechaProgramada ?? DateTime.Now);
+  }
+
+  /// <summary>
+  /// Crea una notificaci√≥n de seguimiento enviada
+  /// </summary>
+  public async Task<bool> CrearNotificacionSeguimientoEnviadaAsync(
+      string cotizacionId,
+      int versionId,
+      string emailDestino,
+      DateTime? fechaProgramada = null)
+  {
+    return await CrearNotificacionAsync(
+        TIPO_SEGUIMIENTO_ENVIADA,
+        cotizacionId,
+        versionId,
+        emailDestino,
+        fechaProgramada ?? DateTime.Now.AddHours(24)); // Por defecto 24 horas despu√©s
+  }
+
+  /// <summary>
+  /// M√©todo gen√©rico para crear notificaciones
+  /// </summary>
+  private async Task<bool> CrearNotificacionAsync(
+      string tipoNotificacion,
+      string cotizacionId,
+      int versionId,
+      string emailDestino,
+      DateTime fechaProgramada)
+  {
+    try
     {
-        return await CrearNotificacionAsync(
-            TIPO_PENDIENTE_APROBACION, 
-            cotizacionId, 
-            versionId, 
-            emailDestino, 
-            fechaProgramada ?? DateTime.Now);
+      var notificacion = new NotificacionCotizacion
+      {
+        CotizacionId = cotizacionId,
+        VersionId = versionId,
+        TipoNotificacion = tipoNotificacion,
+        EmailDestino = emailDestino,
+        FechaProgramada = fechaProgramada,
+        Estado = ESTADO_PENDIENTE,
+        Intentos = 0
+      };
+
+      _context.NotificacionesCotizacion.Add(notificacion);
+      await _context.SaveChangesAsync();
+
+      _logger.LogInformation("Notificaci√≥n {Tipo} creada para cotizaci√≥n {CotizacionId} v{VersionId}, destino: {Email}",
+          tipoNotificacion, cotizacionId, versionId, emailDestino);
+
+      return true;
     }
-
-    /// <summary>
-    /// Crea una notificaciÛn de seguimiento enviada
-    /// </summary>
-    public async Task<bool> CrearNotificacionSeguimientoEnviadaAsync(
-        string cotizacionId, 
-        int versionId, 
-        string emailDestino, 
-        DateTime? fechaProgramada = null)
+    catch (Exception ex)
     {
-        return await CrearNotificacionAsync(
-            TIPO_SEGUIMIENTO_ENVIADA, 
-            cotizacionId, 
-            versionId, 
-            emailDestino, 
-            fechaProgramada ?? DateTime.Now.AddHours(24)); // Por defecto 24 horas despuÈs
+      _logger.LogError(ex, "Error al crear notificaci√≥n {Tipo} para cotizaci√≥n {CotizacionId}",
+          tipoNotificacion, cotizacionId);
+      return false;
     }
-
-    /// <summary>
-    /// MÈtodo genÈrico para crear notificaciones
-    /// </summary>
-    private async Task<bool> CrearNotificacionAsync(
-        string tipoNotificacion, 
-        string cotizacionId, 
-        int versionId, 
-        string emailDestino, 
-        DateTime fechaProgramada)
-    {
-        try
-        {
-            var notificacion = new NotificacionCotizacion
-            {
-                CotizacionId = cotizacionId,
-                VersionId = versionId,
-                TipoNotificacion = tipoNotificacion,
-                EmailDestino = emailDestino,
-                FechaProgramada = fechaProgramada,
-                Estado = ESTADO_PENDIENTE,
-                Intentos = 0
-            };
-
-            _context.NotificacionesCotizacion.Add(notificacion);
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation("NotificaciÛn {Tipo} creada para cotizaciÛn {CotizacionId} v{VersionId}, destino: {Email}",
-                tipoNotificacion, cotizacionId, versionId, emailDestino);
-
-            return true;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error al crear notificaciÛn {Tipo} para cotizaciÛn {CotizacionId}",
-                tipoNotificacion, cotizacionId);
-            return false;
-        }
-    }
+  }
 }
