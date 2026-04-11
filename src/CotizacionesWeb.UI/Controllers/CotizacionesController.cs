@@ -22,6 +22,7 @@ public class CotizacionesController : Controller
   private readonly IErpService _erpService;
   private readonly IParametroSistemaService _parametroSistemaService;
   private readonly PermisoHelper _permisoHelper;
+  private readonly CotizacionesWeb.UI.Services.IInteresadoTemporalService _interesadoTemporalService;
 
   public CotizacionesController(
       ICotizacionService cotizacionService,
@@ -30,7 +31,8 @@ public class CotizacionesController : Controller
       IHubSpotService hubSpotService,
       IErpService erpService,
       IParametroSistemaService parametroSistemaService,
-      PermisoHelper permisoHelper)
+      PermisoHelper permisoHelper,
+      CotizacionesWeb.UI.Services.IInteresadoTemporalService interesadoTemporalService)
   {
     _cotizacionService = cotizacionService;
     _logger = logger;
@@ -39,6 +41,7 @@ public class CotizacionesController : Controller
     _erpService = erpService;
     _parametroSistemaService = parametroSistemaService;
     _permisoHelper = permisoHelper;
+    _interesadoTemporalService = interesadoTemporalService;
   }
 
   [RequierePermiso("COT_VIEW")]
@@ -551,19 +554,6 @@ public class CotizacionesController : Controller
         VersionId = 0, // Temporal
         NumeroVersion = 1.0m, // Primera versión
 
-        // Interesado vacío (debe asignarse durante la creación)
-        InteresadoId = null,
-        NombreInteresado = "",
-        EmailInteresado = "",
-        EmpresaInteresado = "",
-        TipoInteresado = 'P', // Persona por defecto
-
-        // Totales en cero para nueva cotización
-        SubTotal = 0,
-        Impuesto = 0,
-        Descuento = 0,
-        Total = 0,
-        
         // Configuración inicial desde parámetros
         Moneda = monedaDefecto,
         TipoCambio = tipoCambioBase,
@@ -588,6 +578,35 @@ public class CotizacionesController : Controller
         // Marca especial para identificar que es creación
         EsNuevaCotizacion = true
       };
+
+      // Recuperar interesado temporal si existe
+      var interesadoTemporal = _interesadoTemporalService.ObtenerInteresadoTemporal();
+      if (interesadoTemporal != null)
+      {
+        _logger.LogInformation("Recuperando interesado temporal {InteresadoId} para nueva cotización", 
+            interesadoTemporal.InteresadoId);
+            
+        viewModel.InteresadoId = interesadoTemporal.InteresadoId;
+        viewModel.NombreInteresado = interesadoTemporal.NombreInteresado;
+        viewModel.EmailInteresado = interesadoTemporal.EmailInteresado ?? "";
+        viewModel.EmpresaInteresado = interesadoTemporal.EmpresaInteresado ?? "";
+        viewModel.TipoInteresado = interesadoTemporal.TipoInteresado;
+      }
+      else
+      {
+        // Valores por defecto si no hay interesado temporal
+        viewModel.InteresadoId = null;
+        viewModel.NombreInteresado = "";
+        viewModel.EmailInteresado = "";
+        viewModel.EmpresaInteresado = "";
+        viewModel.TipoInteresado = 'P'; // Persona por defecto
+      }
+
+      // Totales en cero para nueva cotización
+      viewModel.SubTotal = 0;
+      viewModel.Impuesto = 0;
+      viewModel.Descuento = 0;
+      viewModel.Total = 0;
 
       ViewBag.MonedasDisponibles = FormatHelper.GetMonedasDisponiblesParaJson();
       ViewBag.EsCreacion = true; // Para diferenciar comportamiento en la vista
@@ -641,9 +660,25 @@ public class CotizacionesController : Controller
       // Crear request de creación (reutilizando la estructura de duplicación)
       var currentUserId = GetCurrentUserId();
       
+      // Recuperar InteresadoId desde cache temporal si existe
+      var interesadoTemporal = _interesadoTemporalService.ObtenerInteresadoTemporal();
+      int? interesadoIdTemporal = interesadoTemporal?.InteresadoId;
+      
+      if (interesadoIdTemporal.HasValue)
+      {
+        _logger.LogInformation("Usando InteresadoId temporal {InteresadoId} para nueva cotización", interesadoIdTemporal);
+        
+        // Actualizar datos del interesado en el viewModel con los datos del cache
+        viewModel.NombreInteresado = interesadoTemporal!.NombreInteresado;
+        viewModel.EmailInteresado = interesadoTemporal.EmailInteresado ?? "";
+        viewModel.EmpresaInteresado = interesadoTemporal.EmpresaInteresado ?? "";
+        viewModel.TipoInteresado = interesadoTemporal.TipoInteresado;
+      }
+      
       // Usar el servicio para crear la nueva cotización (necesitaremos agregarlo al servicio)
       var crearRequest = new CrearCotizacionRequest
       {
+        InteresadoId = interesadoIdTemporal, // Asignar InteresadoId desde cache temporal
         NombreInteresado = viewModel.NombreInteresado.Trim(),
         EmailInteresado = viewModel.EmailInteresado?.Trim() ?? "",
         EmpresaInteresado = viewModel.EmpresaInteresado?.Trim() ?? "",
@@ -671,7 +706,11 @@ public class CotizacionesController : Controller
 
       if (resultado.Success)
       {
-        _logger.LogInformation("Cotización {CotizacionId} creada exitosamente", resultado.CotizacionId);
+        // Limpiar cache temporal después del éxito
+        _interesadoTemporalService.LimpiarInteresadoTemporal();
+        
+        _logger.LogInformation("Cotización {CotizacionId} creada exitosamente. InteresadoId: {InteresadoId}", 
+            resultado.CotizacionId, interesadoIdTemporal);
         return Json(new { 
           success = true, 
           message = $"Cotización {resultado.CotizacionId} creada exitosamente",
@@ -714,7 +753,7 @@ public class CotizacionesController : Controller
         return NotFound($"Cotización {cotizacionId} no encontrada");
       }
 
-      if (cotizacion.EstadoActual != 'B')
+      if (cotizacion.EstadoActual != (char)EstadoCotizacion.Borrador)
       {
         _logger.LogWarning("Intento de editar cotización {CotizacionId} en estado {Estado}",
             cotizacion.CotizacionId, cotizacion.EstadoActual);
@@ -845,78 +884,152 @@ public class CotizacionesController : Controller
     string? emailInteresado,
     string? empresaInteresado)
   {
-    if (string.IsNullOrWhiteSpace(cotizacionId))
+    try
     {
-      return Json(new
+      if (string.IsNullOrWhiteSpace(cotizacionId))
       {
-        success = false,
-        message = "La cotización es requerida."
-      });
-    }
-
-    if (string.IsNullOrWhiteSpace(hubSpotObjectId))
-    {
-      return Json(new
-      {
-        success = false,
-        message = "El identificador del interesado es requerido."
-      });
-    }
-
-    if (string.IsNullOrWhiteSpace(hubSpotObjectType))
-    {
-      return Json(new
-      {
-        success = false,
-        message = "El tipo de objeto de HubSpot es requerido."
-      });
-    }
-
-    if (tipoInteresado != (char)TipoInteresado.Persona &&
-        tipoInteresado != (char)TipoInteresado.Empresa)
-    {
-      return Json(new
-      {
-        success = false,
-        message = "Tipo de interesado inválido."
-      });
-    }
-
-    var request = new AssignInteresadoHubSpotRequest(
-        CotizacionId: cotizacionId.Trim(),
-        HubSpotObjectId: hubSpotObjectId.Trim(),
-        HubSpotObjectType: hubSpotObjectType.Trim(),
-        TipoInteresado: (TipoInteresado)tipoInteresado,
-        NombreInteresado: nombreInteresado?.Trim() ?? string.Empty,
-        EmailInteresado: string.IsNullOrWhiteSpace(emailInteresado) ? null : emailInteresado.Trim(),
-        EmpresaInteresado: string.IsNullOrWhiteSpace(empresaInteresado) ? null : empresaInteresado.Trim()
-    );
-
-    var result = await _assignInteresadoHubSpotService.AssignAsync(
-        request,
-        GetCurrentUserId());
-
-    if (!result.Success)
-    {
-      return Json(new
-      {
-        success = false,
-        message = result.ErrorMessage ?? "No fue posible asignar el interesado."
-      });
-    }
-
-    return Json(new
-    {
-      success = true,
-      data = new
-      {
-        interesadoId = result.InteresadoId,
-        tipoInteresado = result.TipoInteresado,
-        nombreInteresado = result.NombreInteresado,
-        emailInteresado = result.EmailInteresado,
-        empresaInteresado = result.EmpresaInteresado
+        return Json(new
+        {
+          success = false,
+          message = "La cotización es requerida."
+        });
       }
-    });
+
+      if (string.IsNullOrWhiteSpace(hubSpotObjectId))
+      {
+        return Json(new
+        {
+          success = false,
+          message = "El identificador del interesado es requerido."
+        });
+      }
+
+      if (string.IsNullOrWhiteSpace(hubSpotObjectType))
+      {
+        return Json(new
+        {
+          success = false,
+          message = "El tipo de objeto de HubSpot es requerido."
+        });
+      }
+
+      if (tipoInteresado != (char)TipoInteresado.Persona &&
+          tipoInteresado != (char)TipoInteresado.Empresa)
+      {
+        return Json(new
+        {
+          success = false,
+          message = "Tipo de interesado inválido."
+        });
+      }
+
+      // Detectar si es una nueva cotización (cotizacionId = "<Nueva>")
+      bool esNuevaCotizacion = cotizacionId.Trim() == "<Nueva>";
+
+      if (esNuevaCotizacion)
+      {
+        // FLUJO PARA NUEVA COTIZACIÓN: Usar cache temporal
+        _logger.LogInformation("Asignando interesado HubSpot para nueva cotización. Usuario: {UserId}", GetCurrentUserId());
+
+        // Usar el servicio para resolver/crear el interesado
+        var resolverRequest = new ResolverInteresadoHubSpotRequest(
+            hubSpotObjectId.Trim(),
+            hubSpotObjectType.Trim(),
+            (TipoInteresado)tipoInteresado,
+            nombreInteresado?.Trim() ?? string.Empty,
+            string.IsNullOrWhiteSpace(emailInteresado) ? null : emailInteresado.Trim(),
+            string.IsNullOrWhiteSpace(empresaInteresado) ? null : empresaInteresado.Trim()
+        );
+
+        var resolverResult = await _assignInteresadoHubSpotService.ResolverInteresadoAsync(
+            resolverRequest, 
+            GetCurrentUserId());
+
+        if (!resolverResult.Success)
+        {
+          return Json(new
+          {
+            success = false,
+            message = resolverResult.ErrorMessage ?? "No fue posible resolver el interesado."
+          });
+        }
+
+        // Guardar en cache temporal
+        _interesadoTemporalService.GuardarInteresadoTemporal(
+            resolverResult.InteresadoId!.Value,
+            resolverResult.NombreInteresado!,
+            resolverResult.EmailInteresado,
+            resolverResult.EmpresaInteresado,
+            resolverResult.TipoInteresado!.Value
+        );
+
+        _logger.LogInformation("Interesado {InteresadoId} guardado temporalmente para nueva cotización", 
+            resolverResult.InteresadoId);
+
+        return Json(new
+        {
+          success = true,
+          data = new
+          {
+            interesadoId = resolverResult.InteresadoId,
+            tipoInteresado = resolverResult.TipoInteresado,
+            nombreInteresado = resolverResult.NombreInteresado,
+            emailInteresado = resolverResult.EmailInteresado,
+            empresaInteresado = resolverResult.EmpresaInteresado
+          }
+        });
+      }
+      else
+      {
+        // FLUJO PARA EDICIÓN: Mantener lógica actual
+        _logger.LogInformation("Asignando interesado HubSpot para cotización existente: {CotizacionId}", cotizacionId);
+
+        var request = new AssignInteresadoHubSpotRequest(
+            CotizacionId: cotizacionId.Trim(),
+            HubSpotObjectId: hubSpotObjectId.Trim(),
+            HubSpotObjectType: hubSpotObjectType.Trim(),
+            TipoInteresado: (TipoInteresado)tipoInteresado,
+            NombreInteresado: nombreInteresado?.Trim() ?? string.Empty,
+            EmailInteresado: string.IsNullOrWhiteSpace(emailInteresado) ? null : emailInteresado.Trim(),
+            EmpresaInteresado: string.IsNullOrWhiteSpace(empresaInteresado) ? null : empresaInteresado.Trim()
+        );
+
+        var result = await _assignInteresadoHubSpotService.AssignAsync(
+            request,
+            GetCurrentUserId());
+
+        if (!result.Success)
+        {
+          return Json(new
+          {
+            success = false,
+            message = result.ErrorMessage ?? "No fue posible asignar el interesado."
+          });
+        }
+
+        return Json(new
+        {
+          success = true,
+          data = new
+          {
+            interesadoId = result.InteresadoId,
+            tipoInteresado = result.TipoInteresado,
+            nombreInteresado = result.NombreInteresado,
+            emailInteresado = result.EmailInteresado,
+            empresaInteresado = result.EmpresaInteresado
+          }
+        });
+      }
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Error al asignar interesado HubSpot para cotización {CotizacionId}", cotizacionId);
+      return Json(new
+      {
+        success = false,
+        message = "Error interno al asignar el interesado."
+      });
+    }
   }
 
   [HttpGet]

@@ -19,6 +19,77 @@ public class AssignInteresadoHubSpotService : IAssignInteresadoHubSpotService
     _logger = logger;
   }
 
+  public async Task<AssignInteresadoHubSpotResult> ResolverInteresadoAsync(
+      ResolverInteresadoHubSpotRequest request,
+      int? userId = null)
+  {
+    if (request is null)
+      throw new ArgumentNullException(nameof(request));
+
+    if (string.IsNullOrWhiteSpace(request.HubSpotObjectId))
+      return new AssignInteresadoHubSpotResult(false, "El identificador de HubSpot es requerido.", null, null, null, null, null);
+
+    if (string.IsNullOrWhiteSpace(request.HubSpotObjectType))
+      return new AssignInteresadoHubSpotResult(false, "El tipo de objeto de HubSpot es requerido.", null, null, null, null, null);
+
+    try
+    {
+      var interesado = await ObtenerInteresadoExistenteAsync(request.HubSpotObjectId, request.HubSpotObjectType);
+
+      if (interesado is null)
+      {
+        // Crear nuevo interesado
+        interesado = new Interesado
+        {
+          HubspotObjectId = request.HubSpotObjectId,
+          HubspotObjectType = request.HubSpotObjectType,
+          TipoInteresado = (char)request.TipoInteresado,
+          Activo = true,
+          FechaUltSync = DateTime.Now
+        };
+        
+        _context.Interesados.Add(interesado);
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation(
+            "Nuevo interesado creado desde HubSpot. InteresadoId: {InteresadoId}, HubSpotObjectId: {HubSpotObjectId}",
+            interesado.InteresadoId,
+            request.HubSpotObjectId);
+      }
+      else
+      {
+        // Actualizar interesado existente
+        interesado.TipoInteresado = (char)request.TipoInteresado;
+        interesado.Activo = true;
+        interesado.FechaUltSync = DateTime.Now;
+        await _context.SaveChangesAsync();
+        
+        _logger.LogInformation(
+            "Interesado existente actualizado desde HubSpot. InteresadoId: {InteresadoId}, HubSpotObjectId: {HubSpotObjectId}",
+            interesado.InteresadoId,
+            request.HubSpotObjectId);
+      }
+
+      return new AssignInteresadoHubSpotResult(
+          true,
+          null,
+          interesado.InteresadoId,
+          interesado.TipoInteresado,
+          request.NombreInteresado,
+          request.EmailInteresado,
+          request.EmpresaInteresado);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(
+          ex,
+          "Error al resolver interesado desde HubSpot. HubSpotObjectId: {HubSpotObjectId}",
+          request.HubSpotObjectId);
+
+      return new AssignInteresadoHubSpotResult(false, "Error interno al resolver el interesado.", null, null, null, null, null);
+    }
+  }
+
   public async Task<AssignInteresadoHubSpotResult> AssignAsync(
       AssignInteresadoHubSpotRequest request,
       int? userId = null)

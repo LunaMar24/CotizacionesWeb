@@ -73,6 +73,7 @@ try
   // UI Services
   builder.Services.AddScoped<CotizacionesWeb.UI.Services.IPermisoChecker, CotizacionesWeb.UI.Services.PermisoChecker>();
   builder.Services.AddScoped<CotizacionesWeb.UI.Helpers.PermisoHelper>();
+  builder.Services.AddScoped<CotizacionesWeb.UI.Services.IInteresadoTemporalService, CotizacionesWeb.UI.Services.InteresadoTemporalService>();
 
   // Application services - Cotizaciones
   builder.Services.AddScoped<ICotizacionService, CotizacionesWeb.Infrastructure.Services.CotizacionService>();
@@ -125,6 +126,15 @@ try
 
   builder.Services.AddControllersWithViews();
 
+  // Configurar sesiones para cache temporal
+  builder.Services.AddDistributedMemoryCache();
+  builder.Services.AddSession(options =>
+  {
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+  });
+
   var app = builder.Build();
 
   if (!app.Environment.IsDevelopment())
@@ -140,6 +150,9 @@ try
 
   app.UseAuthentication();
   app.UseAuthorization();
+
+  // Habilitar sesiones
+  app.UseSession();
 
   app.MapControllerRoute(
       name: "default",

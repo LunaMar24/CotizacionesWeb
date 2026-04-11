@@ -4,6 +4,12 @@ namespace CotizacionesWeb.Application.Cotizaciones;
 
 public class CrearCotizacionRequest
 {
+    /// <summary>
+    /// ID del interesado si ya existe (para flujo con HubSpot)
+    /// Si es null, se creará un nuevo interesado con los datos proporcionados
+    /// </summary>
+    public int? InteresadoId { get; set; }
+    
     public string NombreInteresado { get; set; } = string.Empty;
     public string EmailInteresado { get; set; } = string.Empty;
     public string EmpresaInteresado { get; set; } = string.Empty;

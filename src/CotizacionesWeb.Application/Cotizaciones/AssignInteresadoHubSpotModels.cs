@@ -26,6 +26,18 @@ public record AssignInteresadoHubSpotRequest(
     string? EmpresaInteresado
 );
 
+/// <summary>
+/// Request para resolver un interesado sin asociarlo a una cotización específica
+/// </summary>
+public record ResolverInteresadoHubSpotRequest(
+    string HubSpotObjectId,
+    string HubSpotObjectType,
+    TipoInteresado TipoInteresado,
+    string NombreInteresado,
+    string? EmailInteresado,
+    string? EmpresaInteresado
+);
+
 public record AssignInteresadoHubSpotResult(
     bool Success,
     string? ErrorMessage,
