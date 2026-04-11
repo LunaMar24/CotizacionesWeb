@@ -121,6 +121,13 @@ initTooltips();
             confirmarDuplicacion(cotizacionId);
         });
         
+        // Copiar Versión (nueva funcionalidad para archivadas)
+        $('.btn-copiar').on('click', function(e) {
+            e.preventDefault();
+            const cotizacionId = $(this).attr('data-id');
+            confirmarCopiarVersion(cotizacionId);
+        });
+        
         // Limpiar filtros con confirmación
         $('a[href*="Archivadas"]:contains("Limpiar")').on('click', function(e) {
             const filtrosActivos = contarFiltrosActivos();
@@ -222,6 +229,39 @@ initTooltips();
         
         // Mostrar el modal
         $('#modalReactivacion').modal('show');
+    }
+
+    function confirmarCopiarVersion(cotizacionId) {
+        // Configurar el modal de confirmación para copiar versión
+        $('#modalConfirmacionTitulo').html('<i class="fas fa-copy text-info"></i> Copiar Versión Archivada');
+        $('#modalConfirmacionMensaje').html(`
+            <div class="alert alert-info mb-3">
+                <i class="fas fa-info-circle"></i>
+                <strong>¿Copiar versión actual de ${cotizacionId}?</strong>
+            </div>
+            <p class="mb-3">
+                Se creará una <strong>nueva versión</strong> de la cotización basada en la versión archivada actual.
+            </p>
+            <div class="alert alert-warning mb-0">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Importante:</strong> La nueva versión:
+                <ul class="mb-0 mt-2">
+                    <li>Se incrementará automáticamente (ej: 2.0 → 3.0)</li>
+                    <li>Estará en estado <strong>Borrador</strong></li>
+                    <li>Podrá ser editada normalmente</li>
+                    <li>La cotización archivada permanecerá sin cambios</li>
+                </ul>
+            </div>
+        `);
+        
+        // Configurar botón de confirmación
+        $('#btnConfirmarAccion').off('click').on('click', function() {
+            $('#modalConfirmacion').modal('hide');
+            ejecutarCopiarVersion(cotizacionId);
+        });
+        
+        // Mostrar modal
+        $('#modalConfirmacion').modal('show');
     }
 
     function confirmarDuplicacion(cotizacionId) {
@@ -661,6 +701,76 @@ initTooltips();
     // ===============================
     // FUNCIONES ESPECÍFICAS PARA VERSIONES ARCHIVADAS
     // ===============================
+
+    function ejecutarCopiarVersion(cotizacionId) {
+        // Mostrar notificación de progreso
+        showNotification('info', 'Copiando versión...');
+        
+        // Enviar solicitud de copia de versión
+        $.ajax({
+            url: '/Cotizaciones/CopiarVersionActual',
+            type: 'POST',
+            data: {
+                cotizacionId: cotizacionId,
+                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+            },
+            success: function(response) {
+                if (response && response.success) {
+                    // ✅ Éxito: Mostrar mensaje de éxito
+                    const mensaje = response.numeroVersion 
+                        ? `Nueva versión ${response.numeroVersion} creada exitosamente`
+                        : (response.message || 'Versión copiada exitosamente');
+                    
+                    showNotification('success', mensaje);
+                    
+                    // ✅ MEJORA: Scroll al inicio de la página para ver el mensaje
+                    scrollToTop();
+                    
+                    // Opcional: Redirigir a la gestión normal donde aparecerá la nueva versión
+                    setTimeout(function() {
+                        window.location.href = '/Cotizaciones';
+                    }, 2000);
+                } else {
+                    // ❌ Error del servidor
+                    const errorMessage = response?.message || 'Error al copiar la versión';
+                    showNotification('error', errorMessage);
+                    
+                    // ✅ MEJORA: Scroll al inicio para ver el error
+                    scrollToTop();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Error en copia de versión:', error);
+                console.error('❌ Status:', status);
+                console.error('❌ Response:', xhr.responseText);
+                
+                // ✅ Mensaje de error específico según el código de estado
+                let errorMessage = 'Error al procesar la copia de versión';
+                
+                if (xhr.status === 403) {
+                    errorMessage = 'No tiene permisos para copiar esta cotización';
+                } else if (xhr.status === 404) {
+                    errorMessage = 'La cotización no fue encontrada';
+                } else if (xhr.status === 500) {
+                    errorMessage = 'Error interno del servidor. Contacte al administrador';
+                } else if (xhr.status === 0) {
+                    errorMessage = 'Error de conexión. Verifique su conexión a internet';
+                } else if (xhr.responseText) {
+                    try {
+                        const errorResponse = JSON.parse(xhr.responseText);
+                        errorMessage = errorResponse.message || errorMessage;
+                    } catch (e) {
+                        // Si no es JSON válido, usar el mensaje por defecto
+                    }
+                }
+                
+                showNotification('error', errorMessage);
+                
+                // ✅ MEJORA: Scroll al inicio para ver el error
+                scrollToTop();
+            }
+        });
+    }
 
     function ejecutarDuplicacion(cotizacionId) {
         // Mostrar notificación de progreso

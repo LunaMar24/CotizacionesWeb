@@ -42,6 +42,9 @@ public class CotizacionViewModel
     // ?? Nuevos campos para controlar reactivación
     public DateTime? FechaReactivacion { get; set; }
     public string? UsuarioQueReactivo { get; set; }
+    
+    // TipoArchivo para controlar acciones según reglas de negocio
+    public char? TipoArchivo { get; set; }
 }
 
 public class CotizacionFiltrosViewModel

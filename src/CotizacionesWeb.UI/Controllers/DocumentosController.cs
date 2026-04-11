@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CotizacionesWeb.UI.Controllers;
 
-[Authorize(Roles = "Admin,Administrador")]
+[Authorize]
 public class DocumentosController : Controller
 {
     private readonly IDocumentoCotizacionService _documentoService;

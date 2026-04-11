@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CotizacionesWeb.UI.Controllers;
 
-[Authorize(Roles = "Admin,Administrador")]
+[Authorize] // Solo verificar autenticación, los permisos específicos se manejan por método
 public class UsuariosController : Controller
 {
     private readonly IUsuarioService _usuarioService;
@@ -25,6 +25,7 @@ public class UsuariosController : Controller
     }
 
     // GET: Usuarios
+    [RequierePermiso("USR_VIEW")]
     public async Task<IActionResult> Index()
     {
         var usuarios = await _usuarioService.GetAllAsync();

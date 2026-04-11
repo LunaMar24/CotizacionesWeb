@@ -234,6 +234,7 @@
                             <th>EMPRESA</th>
                             <th>MONEDA</th>
                             <th>USUARIO QUE ARCHIVÓ</th>
+                            <th>TIPO ARCHIVO</th>
                             <th>VERSIÓN</th>
                             <th>MONTO</th>
                             <th>FECHA CREACIÓN</th>
@@ -247,7 +248,8 @@
                             <tr data-cotizacion-id="@cotizacion.CotizacionId" 
                                 data-nombre="@cotizacion.NombreInteresado.ToLower()" 
                                 data-empresa="@cotizacion.EmpresaInteresado.ToLower()"
-                                data-estado="@cotizacion.EstadoActual">
+                                data-estado="@cotizacion.EstadoActual"
+                                data-tipo-archivo="@cotizacion.TipoArchivo">
                                 <td>
                                     <strong class="text-primary">@cotizacion.CotizacionId</strong>
                                 </td>
@@ -280,6 +282,41 @@
                                             <i class="fas fa-question-circle"></i> No disponible
                                         </span>
                                     }
+                                </td>
+                                <td>
+                                    @{
+                                        var tipoArchivo = cotizacion.TipoArchivo;
+                                        var badgeClass = "";
+                                        var iconClass = "";
+                                        var tipoTexto = "";
+                                        
+                                        switch (tipoArchivo)
+                                        {
+                                            case 'M':
+                                                badgeClass = "badge-secondary";
+                                                iconClass = "fas fa-user";
+                                                tipoTexto = "Manual";
+                                                break;
+                                            case 'R':
+                                                badgeClass = "badge-warning";
+                                                iconClass = "fas fa-times-circle";
+                                                tipoTexto = "Rechazada";
+                                                break;
+                                            case 'T':
+                                                badgeClass = "badge-success";
+                                                iconClass = "fas fa-check-circle";
+                                                tipoTexto = "Concretada";
+                                                break;
+                                            default:
+                                                badgeClass = "badge-light";
+                                                iconClass = "fas fa-question-circle";
+                                                tipoTexto = "Desconocido";
+                                                break;
+                                        }
+                                    }
+                                    <span class="badge @badgeClass">
+                                        <i class="@iconClass"></i> @tipoTexto
+                                    </span>
                                 </td>
                                 <td>
                                     <span class="badge badge-version">@FormatHelper.FormatVersion(cotizacion.NumeroVersion)</span>
@@ -337,25 +374,49 @@
                                             <i class="fas fa-code-branch"></i>
                                         </button>
 
-                                        <!-- Reactivar (si tiene permisos) -->
-                                        <button type="button" 
-                                                class="btn-reactivar" 
-                                                data-id="@cotizacion.CotizacionId"
-                                                title="Reactivar Cotización"
-                                                requiere-permiso="COT_ARCHIVE_REACTIVATE"
-                                                tipo-restriccion="ocultar">
-                                            <i class="fas fa-undo"></i>
-                                        </button>
+                                        <!-- Copiar Versión (solo para TipoArchivo 'M' y 'R') -->
+                                        @if (cotizacion.TipoArchivo == 'M' || cotizacion.TipoArchivo == 'R')
+                                        {
+                                            <button type="button" 
+                                                    class="btn-action-archivadas btn-copiar" 
+                                                    data-id="@cotizacion.CotizacionId"
+                                                    title="Copiar Versión"
+                                                    requiere-permiso="COT_COPY_VERSION"
+                                                    tipo-restriccion="ocultar">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        }
 
-                                        <!-- Duplicar (si tiene permisos) -->
+                                        <!-- Reactivar (solo para TipoArchivo 'M' y 'R') -->
+                                        @if (cotizacion.TipoArchivo == 'M' || cotizacion.TipoArchivo == 'R')
+                                        {
+                                            <button type="button" 
+                                                    class="btn-reactivar" 
+                                                    data-id="@cotizacion.CotizacionId"
+                                                    title="Reactivar Cotización"
+                                                    requiere-permiso="COT_ARCHIVE_REACTIVATE"
+                                                    tipo-restriccion="ocultar">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                        }
+
+                                        <!-- Duplicar (siempre disponible) -->
                                         <button type="button" 
                                                 class="btn-action-archivadas btn-duplicar" 
                                                 data-id="@cotizacion.CotizacionId"
                                                 title="Duplicar Cotización"
                                                 requiere-permiso="COT_DUPLICATE"
                                                 tipo-restriccion="ocultar">
-                                            <i class="fas fa-copy"></i>
+                                            <i class="fas fa-clone"></i>
                                         </button>
+                                        
+                                        <!-- Indicador visual para cotizaciones concretadas -->
+                                        @if (cotizacion.TipoArchivo == 'T')
+                                        {
+                                            <span class="badge badge-success ml-2" title="Cotización concretada en ERP - Solo lectura y duplicación disponible">
+                                                <i class="fas fa-check-circle"></i> ERP
+                                            </span>
+                                        }
                                     </div>
                                 </td>
                             </tr>

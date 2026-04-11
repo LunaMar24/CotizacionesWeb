@@ -555,16 +555,17 @@ public class CotizacionService : ICotizacionService
       var versionVigente = cotizacionConVersion.Version;
 
       // Validar reglas de negocio para cotizaciones archivadas
-      if (cotizacion.EstadoActual == 'X') // Si está archivada
+      if (cotizacion.EstadoActual == (char)EstadoCotizacion.Archivada) // Si está archivada
       {
-        // Verificar el tipo de archivo
+        // Verificar el tipo de archivo para determinar si se puede copiar
         var archivo = await _context.ArchivosCotizacion
             .FirstOrDefaultAsync(a => a.CotizacionId == cotizacionId);
 
         if (archivo != null && archivo.TipoArchivo == (char)TipoArchivo.Concretada)
         {
-          return new CopiarVersionResult(false, "No se puede copiar una cotización que fue concretada en el ERP", null, null);
+          return new CopiarVersionResult(false, "No se puede copiar una cotización concretada en el ERP", null, null);
         }
+        // Nota: TipoArchivo 'M' (Manual) y 'R' (Rechazada) sí permiten copia
       }
 
       // Obtener los detalles de la versión vigente
@@ -659,14 +660,15 @@ public class CotizacionService : ICotizacionService
       // Validar reglas de negocio para cotizaciones archivadas
       if (cotizacion.EstadoActual == 'X') // Si está archivada
       {
-        // Verificar el tipo de archivo
+        // Verificar el tipo de archivo para determinar si se puede copiar
         var archivo = await _context.ArchivosCotizacion
             .FirstOrDefaultAsync(a => a.CotizacionId == request.CotizacionId);
 
         if (archivo != null && archivo.TipoArchivo == (char)TipoArchivo.Concretada)
         {
-          return new CopiarVersionResult(false, "No se puede copiar una cotización que fue concretada en el ERP", null, null);
+          return new CopiarVersionResult(false, "No se puede copiar una cotización concretada en el ERP", null, null);
         }
+        // Nota: TipoArchivo 'M' (Manual) y 'R' (Rechazada) sí permiten copia
       }
 
       var versionBase = await _context.CotizacionesVersiones
@@ -1644,24 +1646,35 @@ public class CotizacionService : ICotizacionService
         var estadoAnterior = cotizacion.EstadoActual;
         CotizacionStateHelper.UpdateStateFields(cotizacion, nuevoEstado);
 
-        // ✨ NUEVO: Registrar archivado en tabla ArchivoCotizacion con campos separados
-        if (nuevoEstado == 'X') // Archivada
+        // ✨ NUEVO: Registrar archivado en tabla ArchivoCotizacion con TipoArchivo según reglas de negocio
+        if (nuevoEstado == (char)EstadoCotizacion.Archivada) // Archivada
         {
+          // REGLA 1: Determinar TipoArchivo según el estado anterior
+          char tipoArchivo;
+          if (estadoAnterior == (char)EstadoCotizacion.Rechazada) // Rechazada
+          {
+            tipoArchivo = (char)TipoArchivo.Rechazada; // 'R'
+          }
+          else
+          {
+            tipoArchivo = (char)TipoArchivo.Manual; // 'M' para todos los demás casos (B, T, etc.)
+          }
+
           var archivo = new ArchivoCotizacion
           {
             CotizacionId = cotizacionId,
             VersionArchivada = versionVigente.VersionId, // Usar VersionId en el campo VersionArchivada
             FechaArchivado = DateTime.Now,
             UsuarioArchiva = userId,
-            TipoArchivo = 'M', // M=Manual, A=Automático
+            TipoArchivo = tipoArchivo, // Asignar según reglas de negocio
             MotivoArchivado = comentario, // Motivo obligatorio del modal
             Comentario = comentarioAdicional // Comentario adicional opcional del modal
           };
 
           _context.ArchivosCotizacion.Add(archivo);
 
-          _logger.LogInformation("Registrado archivo de cotización {CotizacionId} con VersionArchivada {VersionId}. Motivo: '{Motivo}', ComentarioAdicional: '{ComentarioAdicional}'",
-              cotizacionId, versionVigente.VersionId, comentario, comentarioAdicional ?? "(ninguno)");
+          _logger.LogInformation("Registrado archivo de cotización {CotizacionId} con TipoArchivo '{TipoArchivo}' (estado anterior: '{EstadoAnterior}'). Motivo: '{Motivo}', ComentarioAdicional: '{ComentarioAdicional}'",
+              cotizacionId, tipoArchivo, estadoAnterior, comentario, comentarioAdicional ?? "(ninguno)");
         }
 
         await _context.SaveChangesAsync();
@@ -2029,7 +2042,9 @@ public class CotizacionService : ICotizacionService
                   result.Archivo?.FechaArchivado,
                   // 🆕 Información de reactivación para control de botón
                   result.Archivo?.FechaReactivacion,
-                  result.UsuarioReactivo?.Nombre
+                  result.UsuarioReactivo?.Nombre,
+                  // 🆕 TipoArchivo para controlar acciones en UI
+                  result.Archivo?.TipoArchivo
               );
       }).ToList();
     }
@@ -2198,8 +2213,9 @@ public class CotizacionService : ICotizacionService
       {
         _logger.LogWarning("Intento de reactivar cotización {CotizacionId} que fue concretada en el ERP (TipoArchivo: {TipoArchivo})",
             request.CotizacionId, archivo.TipoArchivo);
-        return new ReactivarCotizacionResult(false, "No se puede reactivar una cotización que fue concretada en el ERP", null, null);
+        return new ReactivarCotizacionResult(false, "No se puede reactivar una cotización concretada en el ERP", null, null);
       }
+      // Nota: TipoArchivo 'M' (Manual) y 'R' (Rechazada) sí permiten reactivación
 
       _logger.LogInformation("Archivo encontrado: VersionArchivada={VersionArchivada}, Fecha={FechaArchivado}",
           archivo.VersionArchivada, archivo.FechaArchivado);

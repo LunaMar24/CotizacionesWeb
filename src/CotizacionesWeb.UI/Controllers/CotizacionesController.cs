@@ -12,7 +12,7 @@ using CotizacionesWeb.Application.Integrations.HubSpot;
 
 namespace CotizacionesWeb.UI.Controllers;
 
-[Authorize(Roles = "Admin,Administrador")]
+[Authorize] // Solo verificar autenticación, los permisos específicos se manejan por método
 public class CotizacionesController : Controller
 {
   private readonly ICotizacionService _cotizacionService;
@@ -198,7 +198,9 @@ public class CotizacionesController : Controller
           FechaArchivado = c.FechaArchivado,
           // ?? Nuevos campos para controlar reactivación
           FechaReactivacion = c.FechaReactivacion,
-          UsuarioQueReactivo = c.UsuarioQueReactivo
+          UsuarioQueReactivo = c.UsuarioQueReactivo,
+          // TipoArchivo para controlar acciones en UI
+          TipoArchivo = c.TipoArchivo
         }).ToList(),
         Filtros = filtros
       };

@@ -4060,6 +4060,103 @@ Esto aplica especialmente para tokens de integración.
 
 ---
 
+# Sistema de Generación de Cotizaciones Web → ERP
+
+## Descripción General
+
+Este documento describe la lógica funcional y técnica para la generación de cotizaciones desde la plataforma web hacia el ERP.
+
+El proceso contempla validaciones, transformaciones y cálculos necesarios para asegurar la integridad de la información enviada.
+
+---
+
+## Reglas Funcionales del Stored Procedure de Cotización
+
+### 1. Validación de Productos (vCotWebInformacionProductosERP)
+
+Se valida la existencia del producto en la vista **vCotWebInformacionProductosERP** utilizando:
+
+- Producto  
+- NivelPrecio  
+- Moneda (derivada de `E.MONEDA`)  
+
+> ⚠️ La validación debe coincidir exactamente con la lógica utilizada en el `INSERT`.
+
+---
+
+### 2. Validación de Cuentas Contables
+
+Se valida la relación entre **ARTICULO** y **ARTICULO_CUENTA** utilizando `LEFT JOIN`.
+
+Esto permite:
+- Identificar productos sin configuración contable  
+- No detener el proceso completo por errores parciales  
+
+---
+
+### 3. Cálculo de Descuento
+
+El porcentaje de descuento (`PORC_DESCUENTO`) debe protegerse contra división por cero.
+
+Regla:
+- Validar que el precio base sea mayor a cero antes de aplicar la fórmula  
+
+---
+
+### 4. Numeración de Líneas
+
+La numeración de líneas debe alinearse con el comportamiento del ERP.
+
+Recomendación:
+- Utilizar `ROW_NUMBER()` para mantener consistencia  
+
+---
+
+### 5. Cálculo de Totales
+
+- El **SUBTOTAL** se calcula por línea  
+- El **IMPUESTO** se calcula sobre el SUBTOTAL  
+- El **TOTAL** es:  
+
+```
+TOTAL = SUBTOTAL + IMPUESTO
+```
+
+---
+
+### 6. Tipo de Cambio
+
+El `TIPO_CAMBIO` se asigna únicamente cuando:
+
+```
+FIJAR_TIPO_CAMBIO = 'S'
+```
+
+En caso contrario:
+- Se utiliza el tipo de cambio dinámico del sistema  
+
+---
+
+### 7. Limpieza de Variables
+
+Se deben eliminar variables declaradas que no estén en uso.
+
+Ejemplo:
+- `@TOTAL_DESCUENTO`
+
+Objetivo:
+- Mantener el procedimiento limpio  
+- Mejorar mantenibilidad  
+
+---
+
+## Nota Importante
+
+Estas reglas representan la lógica validada del Stored Procedure y deben mantenerse sincronizadas con cualquier cambio en el código SQL.
+
+Cualquier modificación en el SP debe reflejarse en este documento.
+
+
 # === REGLAS GENERALES PARA COPILOT ===
 
 1. No introducir frameworks nuevos

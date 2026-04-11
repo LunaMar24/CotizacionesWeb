@@ -26,7 +26,9 @@ public record CotizacionListDto(
     DateTime? FechaArchivado = null,
     // ?? Nuevos campos para controlar reactivación
     DateTime? FechaReactivacion = null,
-    string? UsuarioQueReactivo = null
+    string? UsuarioQueReactivo = null,
+    // TipoArchivo para controlar acciones según reglas de negocio
+    char? TipoArchivo = null
 );
 
 public record CotizacionVersionDto(

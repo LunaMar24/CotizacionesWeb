@@ -6,7 +6,7 @@ using CotizacionesWeb.UI.Filters;
 
 namespace CotizacionesWeb.UI.Controllers;
 
-[Authorize(Roles = "Admin,Administrador")]
+[Authorize] // Solo verificar autenticación, los permisos específicos se manejan por método
 public class RolesController : Controller
 {
     private readonly IRolService _rolService;
@@ -18,6 +18,7 @@ public class RolesController : Controller
         _logger = logger;
     }
 
+    [RequierePermiso("ROL_VIEW")]
     public async Task<IActionResult> Index()
     {
         var roles = await _rolService.GetAllAsync();
