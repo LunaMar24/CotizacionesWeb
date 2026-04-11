@@ -82,6 +82,10 @@ try
 
   // Application services - Notificaciones
   builder.Services.AddScoped<CotizacionesWeb.Application.Notificaciones.INotificacionCotizacionService, CotizacionesWeb.Infrastructure.Services.NotificacionCotizacionService>();
+  
+  // Email Service con configuración
+  builder.Services.Configure<CotizacionesWeb.Infrastructure.Options.EmailOptions>(
+      builder.Configuration.GetSection(CotizacionesWeb.Infrastructure.Options.EmailOptions.SectionName));
   builder.Services.AddScoped<CotizacionesWeb.Application.Common.Email.IEmailService, CotizacionesWeb.Infrastructure.Services.EmailService>();
 
   // Sistema de parámetros y consecutivos
