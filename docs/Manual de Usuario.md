@@ -1552,13 +1552,15 @@ La pantalla principal muestra todas las cotizaciones activas (no archivadas) del
      - Formato decimal con dos decimales
 
    - **Filtrar por Estado** (Dropdown con checkboxes):
-     - 🟦 **Borrador**: Cotizaciones en creación
-     - 🟨 **Pendiente Aprobación**: Esperando aprobación
-     - 🟩 **Aprobada**: Cotizaciones aprobadas
-     - 🟦 **Enviada**: Enviadas al cliente
-     - 🟪 **Aceptada**: Aceptadas por el cliente
-     - 🟥 **Rechazada**: Rechazadas por el cliente
-     - Puede seleccionar múltiples estados simultáneamente
+      - ✅ **Seleccionar Todos**: Marca/desmarca todos los estados simultáneamente
+      - 🟦 **Borrador**: Cotizaciones en creación
+      - 🟨 **Pendiente Aprobación**: Esperando aprobación
+      - 🟩 **Aprobada**: Cotizaciones aprobadas
+      - 🟦 **Enviada**: Enviadas al cliente
+      - 🟪 **Aceptada**: Aceptadas por el cliente
+      - 🟥 **Rechazada**: Rechazadas por el cliente
+      - Puede seleccionar múltiples estados simultáneamente
+      - 💾 **Preferencias Guardadas**: El sistema guarda automáticamente sus filtros (estados, fechas, montos, moneda) en el navegador. Al regresar a esta pantalla, sus últimas preferencias se cargarán automáticamente. Si ve el indicador "📌 Filtros guardados", significa que tiene preferencias activas. Use el botón **Limpiar** para restablecer filtros y borrar preferencias guardadas.
 
    - **Filtrar por Moneda**:
      - Dropdown con monedas disponibles
@@ -1823,7 +1825,7 @@ Puede modificar los siguientes elementos:
 - Cambiar descripciones
 
 **Configuración Financiera:**
-- Cambiar moneda (⚠️ **solo si no hay líneas de detalle agregadas**)
+- Cambiar moneda (⚠️ **Ver restricciones de cambio de moneda más abajo**)
 - Actualizar tipo de cambio
 - Modificar descuentos globales
 
@@ -1844,11 +1846,47 @@ Puede modificar los siguientes elementos:
    - Será redirigido al detalle o lista de cotizaciones
    - Los cambios se registrarán en el historial
 
+---
+
+##### Cambio de Moneda en Cotizaciones
+
+El sistema maneja el cambio de moneda de forma diferente según si la cotización es nueva o ya existe.
+
+**Comparativa: Cotización Nueva vs Existente**
+
+| Aspecto | Cotización Nueva | Cotización Existente |
+|---------|------------------|----------------------|
+| **Cambio de moneda** | Libre, sin restricción | Requiere guardar antes de agregar líneas |
+| **Requisito previo** | Ninguno | **Debe guardar** la cotización después del cambio |
+| **Botón "Agregar Línea"** | Permanece verde/normal | Se vuelve amarillo con advertencia ⚠️ |
+| **Mensaje al cambiar** | "Moneda cambiada a [Moneda]. Ahora puede agregar líneas de productos." | "Moneda cambiada a [Moneda]. Debe Guardar la cotización para aplicar el cambio." |
+| **Puede agregar líneas inmediatamente** | ✅ Sí | ❌ No, debe guardar primero |
+
+⚠️ **Restricción en Ambos Casos**: Solo puede cambiar la moneda si **NO hay líneas de productos guardadas**.
+
+**Flujo en Cotización Existente:**
+
+1. Abra la cotización en estado **Borrador** (sin líneas guardadas)
+2. Cambie la moneda usando el selector de moneda
+3. Verá el mensaje: `"Debe Guardar la cotización para aplicar el cambio"`
+4. El botón **"Agregar Línea"** mostrará icono de advertencia ⚠️ (amarillo)
+5. Si intenta agregar línea sin guardar, verá: `"Debe guardar la cotización antes de agregar líneas cuando se ha cambiado la moneda"`
+6. **Guarde la cotización** haciendo clic en "Guardar"
+7. Ahora puede agregar líneas normalmente (botón vuelve a verde)
+
+💡 **Sugerencia**: En cotizaciones nuevas puede cambiar la moneda libremente antes de agregar productos. En cotizaciones existentes, guarde inmediatamente después del cambio de moneda.
+
+---
+
 **Errores Comunes al Editar:**
 
 ❌ **"No se puede cambiar la moneda con líneas de detalle"**
-- **Causa**: Intentó cambiar moneda con productos ya agregados
+- **Causa**: Intentó cambiar moneda con productos ya agregados y guardados
 - **Solución**: Elimine todas las líneas primero o cree nueva cotización
+
+❌ **"Debe guardar la cotización antes de agregar líneas cuando se ha cambiado la moneda"**
+- **Causa**: Cambió la moneda en cotización existente e intentó agregar líneas sin guardar
+- **Solución**: Haga clic en "Guardar" para aplicar el cambio de moneda primero
 
 ❌ **"La cotización no está en estado editable"**
 - **Causa**: El estado actual no permite edición
@@ -2376,15 +2414,118 @@ Para más detalles, vea la sección [5.3.3 Cotizaciones Archivadas](#533-cotizac
 ---
 
 #### 5.3.2 Nueva Cotización
-*[Sección en construcción - Requiere análisis del formulario de creación]*
 
-Esta sección documentará el proceso completo de crear una nueva cotización:
-- Selección de cliente/interesado
-- Configuración de moneda y tipo de cambio
-- Agregado de productos/servicios
-- Aplicación de descuentos e impuestos
-- Notas y condiciones
-- Guardado de cotización
+La creación de nuevas cotizaciones es el proceso principal del sistema. Esta sección documenta cómo crear una cotización desde cero.
+
+⚠️ **Requisito**: Permiso `COT_CREATE`
+
+---
+
+##### Acceso a Crear Cotización
+
+1. En el **menú lateral izquierdo**, haga clic en **"Cotizaciones"**
+2. Seleccione **"Gestión de Cotizaciones"**
+3. Haga clic en el botón azul **"CREAR COTIZACIÓN"** (esquina superior derecha)
+4. Se abrirá el formulario de creación de cotización
+
+---
+
+##### Configuración Inicial
+
+**1. Información del Interesado**
+
+- **Cliente/Interesado**: Seleccione el cliente de la lista o búsquelo desde HubSpot (si la integración está activa)
+- **Empresa**: Se completa automáticamente según el interesado seleccionado
+- **Email y Teléfono**: Campos informativos del contacto
+
+**2. Configuración de Moneda y Tipo de Cambio**
+
+- **Moneda Predeterminada**: El sistema asigna automáticamente **CRC (₡ Colón Costarricense)**
+- **Cambio de Moneda en Cotización Nueva**: Puede cambiar la moneda libremente (USD, EUR, etc.) sin restricciones. El sistema mostrará el mensaje: `"Moneda cambiada a [Moneda]. Ahora puede agregar líneas de productos."`
+- **Tipo de Cambio**: Se carga automáticamente desde los parámetros del sistema. Puede modificarlo manualmente si es necesario.
+
+⚠️ **Importante**: En cotizaciones nuevas **NO** requiere guardar antes de agregar líneas, incluso si cambió la moneda. El botón "Agregar Línea" permanece disponible (verde).
+
+**3. Observaciones**
+
+- Campo de texto libre para notas, condiciones comerciales o información adicional para el cliente
+
+---
+
+##### Agregar Productos/Servicios
+
+Haga clic en el botón **"Agregar Línea"** para agregar productos a la cotización.
+
+**Modo de Ingreso de Productos**
+
+El sistema soporta dos modos según la configuración:
+
+**A) Con Integración ERP (Modo Automático)**
+- **Producto**: Campo de búsqueda con Select2 que consulta productos del ERP
+- Escriba código o descripción del producto para buscar
+- Al seleccionar un producto:
+  - **Descripción**: Se completa automáticamente
+  - **Precio Unitario**: Se carga desde el ERP
+  - **% Impuesto**: Se asigna automáticamente desde el producto (campo de solo lectura)
+
+**B) Sin Integración ERP (Modo Manual)**
+- **Producto**: Campo de texto libre para ingresar el código manualmente
+- **Descripción**: Debe ingresarla manualmente
+- **Precio Unitario**: Debe ingresarlo manualmente
+- **% Impuesto**: Campo editable - ingrese el porcentaje manualmente (ej: 13.00 para 13%)
+  - El sistema usa por defecto la tasa configurada en parámetros (`TASA_IMPUESTO`)
+
+**Campos Comunes (ambos modos)**
+- **Cantidad**: Cantidad del producto (decimal)
+- **Descuento**: Porcentaje de descuento (opcional, ej: 10 para 10%)
+- **Total Línea**: Se calcula automáticamente: `(Cantidad × Precio) - Descuento + Impuesto`
+
+💡 **Sugerencia**: Verifique los cálculos automáticos antes de guardar la línea.
+
+---
+
+##### Totales de la Cotización
+
+El sistema calcula automáticamente:
+- **Subtotal**: Suma de todas las líneas sin impuesto
+- **Impuesto Total**: Suma de impuestos de todas las líneas
+- **Descuento Total**: Suma de descuentos aplicados
+- **Monto Total**: Monto final de la cotización
+
+Todos los montos se muestran con el símbolo de la moneda seleccionada.
+
+---
+
+##### Guardar la Cotización
+
+1. Revise todos los datos ingresados (interesado, moneda, líneas, totales)
+2. Haga clic en el botón verde **"Guardar"**
+3. El sistema validará los datos:
+   - Debe tener al menos una línea de producto
+   - Todos los campos obligatorios deben estar completos
+   - Los cálculos deben ser correctos
+
+4. Si todo es correcto:
+   - La cotización se guarda en estado **Borrador**
+   - Se asigna un ID único (ej: COT-2025-001)
+   - Se crea la versión inicial (1.0)
+   - Se registra en el historial
+   - Se redirige a la vista de detalle de la cotización
+
+⚠️ **Advertencia**: Guarde la cotización antes de salir de la pantalla. Si sale sin guardar, perderá todos los cambios.
+
+---
+
+##### Siguientes Pasos
+
+Después de crear la cotización:
+1. Puede editarla (si está en Borrador)
+2. Enviarla a aprobación cuando esté lista
+3. Copiar versiones si requiere modificaciones posteriores
+4. Generar el documento de cotización para el cliente
+
+Para más información sobre el flujo completo, consulte la sección [5.3.1 Gestión de Cotizaciones](#531-gestión-de-cotizaciones).
+
 
 ---
 

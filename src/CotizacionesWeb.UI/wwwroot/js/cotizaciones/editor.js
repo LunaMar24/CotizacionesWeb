@@ -1725,20 +1725,30 @@ function confirmarSalidaConCambios(urlDestino) {
 
 /**
  * Verifica si hay cambio de moneda sin guardar específicamente
+ * ✅ En cotizaciones NUEVAS siempre retorna false (no hay restricción)
+ * ⚠️ En cotizaciones EXISTENTES valida si hay cambio sin guardar
  */
 function verificarCambioMonedaSinGuardar() {
+    // ✅ En cotizaciones NUEVAS no hay restricción por cambio de moneda
+    // El usuario puede cambiar la moneda y agregar líneas libremente
+    if (esNuevaCotizacion) {
+        console.log('🆕 Cotización nueva: No hay restricción por cambio de moneda');
+        return false;
+    }
+
+    // ⚠️ Para cotizaciones EXISTENTES: verificar cambio sin guardar
     const monedaComboActual = $('#MonedaSelect').val();
     const monedaOriginalGuardada = window._monedaOriginal || monedaActual;
-    
+
     const cambioMoneda = (monedaComboActual && monedaComboActual !== monedaOriginalGuardada);
-    
-    console.log('🔍 Verificar cambio moneda sin guardar:', {
+
+    console.log('🔍 Verificar cambio moneda sin guardar (cotización existente):', {
         actual: monedaComboActual,
         original: monedaOriginalGuardada,
         cambioMoneda: cambioMoneda,
         cotizacionGuardada: window.cotizacionGuardada
     });
-    
+
     return cambioMoneda && window.cotizacionGuardada === false;
 }
 
@@ -1897,22 +1907,31 @@ function obtenerNombreMoneda(codigo) {
 
 /**
  * ✅ FUNCIÓN AUXILIAR: Procesar cambio de moneda
+ * Muestra mensajes diferenciados según tipo de cotización
  */
 function procesarCambioMoneda(nuevaMoneda) {
     monedaActual = nuevaMoneda;
-    
+
     if (window.FormatConfig) {
         window.FormatConfig.moneda = nuevaMoneda;
         window.FormatConfig.simboloMoneda = getCurrencySymbol(nuevaMoneda);
     }
-    
+
     actualizarDisplaysMoneda();
     window.cotizacionGuardada = false;
-    
-    showNotification('success', 
-        `Moneda cambiada a ${obtenerNombreMoneda(nuevaMoneda)}. ` +
-        `Debe Guardar la cotización para aplicar el cambio.`);
-    
+
+    // ✅ Mensajes diferentes según si es nueva o existente
+    let mensaje;
+    if (esNuevaCotizacion) {
+        // 🆕 Cotización NUEVA: no requiere guardado, puede agregar líneas inmediatamente
+        mensaje = `Moneda cambiada a ${obtenerNombreMoneda(nuevaMoneda)}. Ahora puede agregar líneas de productos.`;
+    } else {
+        // ⚠️ Cotización EXISTENTE: requiere guardado antes de agregar líneas
+        mensaje = `Moneda cambiada a ${obtenerNombreMoneda(nuevaMoneda)}. Debe Guardar la cotización para aplicar el cambio.`;
+    }
+
+    showNotification('success', mensaje);
+
     // ✅ Reconfigurar eventos y estado del botón después del cambio
     setTimeout(() => {
         configurarEventoMoneda();
@@ -1963,7 +1982,7 @@ function actualizarDisplaysMoneda() {
 function actualizarEstadoBotonAgregarLinea() {
     const $btnAgregar = $('#btnAgregarLinea');
     const estadoActual = obtenerEstadoActual();
-    
+
     if (estadoActual !== 'B') {
         // Estado no editable
         $btnAgregar.prop('disabled', true)
@@ -1972,21 +1991,23 @@ function actualizarEstadoBotonAgregarLinea() {
                    .attr('title', 'Solo se pueden agregar líneas en estado Borrador');
         return;
     }
-    
-    if (verificarCambioMonedaSinGuardar()) {
-        // Cambio de moneda sin guardar
+
+    // ✅ NUEVA LÓGICA: Solo bloquear por cambio de moneda en cotizaciones EXISTENTES
+    // En cotizaciones NUEVAS el botón permanece normal (verde) después de cambio de moneda
+    if (!esNuevaCotizacion && verificarCambioMonedaSinGuardar()) {
+        // ⚠️ Cambio de moneda sin guardar en cotización EXISTENTE
         $btnAgregar.prop('disabled', false)
                    .removeClass('btn-success btn-secondary')
                    .addClass('btn-warning')
                    .attr('title', 'Debe guardar la cotización antes de agregar líneas (moneda cambiada)');
-        
+
         // ✅ AGREGAR ICONO DE ADVERTENCIA
         const textoBtn = $btnAgregar.html();
         if (!textoBtn.includes('fa-exclamation-triangle')) {
             $btnAgregar.html('<i class="fas fa-exclamation-triangle"></i> Agregar Línea');
         }
     } else {
-        // Estado normal
+        // ✅ Estado normal (incluye cotizaciones NUEVAS con cambio de moneda)
         $btnAgregar.prop('disabled', false)
                    .removeClass('btn-warning btn-secondary btn-blocked')
                    .addClass('btn-success')
