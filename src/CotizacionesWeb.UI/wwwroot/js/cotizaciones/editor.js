@@ -262,19 +262,52 @@ function cargarDatosTemporales() {
     }
 }
 
-// Inicializa Select2 para búsqueda de productos en el ERP
+// Inicializa Select2 para búsqueda de productos en el ERP (si está habilitado)
+// Si no hay integración ERP, configura el campo como input de texto simple
 function inicializarSelect2Productos() {
     const $select = $('#modalProductoId');
-    
+
     if ($select.length === 0) {
         console.error('El elemento #modalProductoId no existe en el DOM');
         return;
     }
-    
+
+    // Verificar si se debe usar integración con ERP
+    const usarProductosErp = window.ConfigProductos && window.ConfigProductos.usarProductosErp === true;
+
+    if (!usarProductosErp) {
+        // Modo manual: el campo ya es un input de texto, solo configurar eventos
+        console.log('Modo manual: ingreso de código de producto sin integración ERP');
+
+        // Limpiar select2 si estuviera inicializado previamente
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.select2('destroy');
+        }
+
+        // Agregar evento para limpiar campos relacionados cuando se cambia el código
+        $select.on('input', function() {
+            // El usuario debe ingresar manualmente la descripción y precio
+            // No limpiamos automáticamente, solo calculamos el total si hay cambios
+            calcularTotalLinea();
+        });
+
+        // Configurar el campo de porcentaje de impuesto como editable en modo manual
+        const $impuestoField = $('#modalPorcentajeImpuestoDisplay');
+        $impuestoField.off('input change'); // Limpiar eventos previos
+        $impuestoField.on('input change', function() {
+            const valor = parseFloat($(this).val()) || 0;
+            $('#modalPorcentajeImpuesto').val(valor);
+            calcularTotalLinea();
+        });
+
+        return;
+    }
+
+    // Modo ERP: inicializar Select2 con búsqueda en el ERP
     if ($select.hasClass('select2-hidden-accessible')) {
         $select.select2('destroy');
     }
-    
+
     $select.select2({
         theme: 'bootstrap4',
         placeholder: 'Busque un producto por código o descripción...',
@@ -301,7 +334,7 @@ function inicializarSelect2Productos() {
             delay: 400,
             data: function(params) {
                 const moneda = obtenerMonedaActual();
-                
+
                 return {
                     moneda: moneda,
                     textoBusqueda: params.term
@@ -312,7 +345,7 @@ function inicializarSelect2Productos() {
                     showNotification('error', response.message || 'Error al buscar productos');
                     return { results: [] };
                 }
-                
+
                 const productos = response.data.map(function(producto) {
                     return {
                         id: producto.value,
@@ -322,7 +355,7 @@ function inicializarSelect2Productos() {
                         impuesto: producto.impuesto
                     };
                 });
-                
+
                 return { results: productos };
             },
             cache: true
@@ -333,16 +366,16 @@ function inicializarSelect2Productos() {
         templateResult: formatProductoResult,
         templateSelection: formatProductoSelection
     });
-    
+
     // Evento al seleccionar un producto
     $select.on('select2:select', function(e) {
         const data = e.params.data;
-        
+
         if (data) {
             if (data.text) {
                 const partes = data.text.split(' - ');
                 const descripcion = partes.length > 1 ? partes.slice(1).join(' - ') : data.text;
-                
+
                 const $descripcionField = $('#modalDescripcionProducto');
                 if ($descripcionField.length > 0) {
                     $descripcionField.val(descripcion.trim());
@@ -350,21 +383,21 @@ function inicializarSelect2Productos() {
                     console.error('Campo #modalDescripcionProducto no encontrado');
                 }
             }
-            
+
             if (data.precio !== null && data.precio !== undefined) {
                 $('#modalPrecioUnitario').val(data.precio);
             } else {
                 $('#modalPrecioUnitario').val('0');
             }
-            
+
             const porcentajeImpuesto = obtenerPorcentajeImpuesto(data.porcentajeImpuesto);
             $('#modalPorcentajeImpuesto').val(porcentajeImpuesto);
             $('#modalPorcentajeImpuestoDisplay').val(porcentajeImpuesto.toFixed(2) + '%');
-            
+
             calcularTotalLinea();
         }
     });
-    
+
     $select.on('select2:clear', function() {
         $('#modalDescripcionProducto').val('');
         $('#modalPrecioUnitario').val('');
@@ -510,15 +543,35 @@ function abrirModalDetalle(index) {
         $('#modalPrecioUnitario').val(precio);
         $('#modalDescuento').val(descuento);
         $('#modalPorcentajeImpuesto').val(porcentajeImpuesto);
-        $('#modalPorcentajeImpuestoDisplay').val(porcentajeImpuesto.toFixed(2) + '%');
-        
+
+        // Configurar el campo de impuesto según el modo
+        const usarProductosErp = window.ConfigProductos && window.ConfigProductos.usarProductosErp === true;
+        if (!usarProductosErp) {
+            // Modo manual: mostrar valor editable sin %
+            $('#modalPorcentajeImpuestoDisplay').val(porcentajeImpuesto.toFixed(2));
+        } else {
+            // Modo ERP: mostrar valor con % (solo lectura)
+            $('#modalPorcentajeImpuestoDisplay').val(porcentajeImpuesto.toFixed(2) + '%');
+        }
+
         calcularTotalLinea();
     } else {
         // Modo agregar
         $('#modalEditarDetalleTitle').html('<i class="fas fa-plus"></i> Agregar Detalle');
         $('#modalCantidad').val('1');
         $('#modalDescuento').val('0');
-        $('#modalPorcentajeImpuestoDisplay').val('0%');
+
+        // Configurar porcentaje de impuesto según el modo
+        const usarProductosErp = window.ConfigProductos && window.ConfigProductos.usarProductosErp === true;
+        if (!usarProductosErp) {
+            // Modo manual: usar tasa de impuesto del sistema por defecto
+            const tasaImpuesto = (window.ConfigImpuestos && window.ConfigImpuestos.tasaImpuesto) || 0;
+            $('#modalPorcentajeImpuesto').val(tasaImpuesto);
+            $('#modalPorcentajeImpuestoDisplay').val(tasaImpuesto);
+        } else {
+            // Modo ERP: dejar en 0% hasta que se seleccione un producto
+            $('#modalPorcentajeImpuestoDisplay').val('0%');
+        }
     }
     
     $('#modalEditarDetalle').modal('show');
@@ -531,8 +584,22 @@ function guardarDetalle() {
     const cantidad = parseFloat($('#modalCantidad').val());
     const precio = parseFloat($('#modalPrecioUnitario').val());
     const descuento = parseFloat($('#modalDescuento').val()) || 0;
-    const porcentajeImpuesto = parseFloat($('#modalPorcentajeImpuesto').val()) || 0;
-    
+
+    // Obtener porcentaje de impuesto según el modo
+    const usarProductosErp = window.ConfigProductos && window.ConfigProductos.usarProductosErp === true;
+    let porcentajeImpuesto;
+
+    if (!usarProductosErp) {
+        // Modo manual: leer directamente del campo display (que es editable)
+        const valorDisplay = parseFloat($('#modalPorcentajeImpuestoDisplay').val()) || 0;
+        porcentajeImpuesto = valorDisplay;
+        // Sincronizar con el campo oculto
+        $('#modalPorcentajeImpuesto').val(porcentajeImpuesto);
+    } else {
+        // Modo ERP: usar el campo oculto
+        porcentajeImpuesto = parseFloat($('#modalPorcentajeImpuesto').val()) || 0;
+    }
+
     if (!productoId || !descripcion || !cantidad || cantidad <= 0 || !precio || precio < 0) {
         showNotification('error', 'Por favor complete todos los campos obligatorios correctamente');
         return;
@@ -871,24 +938,36 @@ function calcularTotalLinea() {
 
 function limpiarModalDetalle() {
     $('#formEditarDetalle')[0].reset();
-    
+
     const $selectProducto = $('#modalProductoId');
     if ($selectProducto.hasClass('select2-hidden-accessible')) {
         $selectProducto.val(null).trigger('change');
     } else {
         $selectProducto.val('');
     }
-    
+
     $('#modalDescripcionProducto').val('');
     $('#modalCantidad').val('1');
     $('#modalPrecioUnitario').val('');
     $('#modalDescuento').val('0');
-    $('#modalPorcentajeImpuesto').val('0');
-    $('#modalPorcentajeImpuestoDisplay').val('0%');
+
+    // Configurar porcentaje de impuesto según el modo (ERP o Manual)
+    const usarProductosErp = window.ConfigProductos && window.ConfigProductos.usarProductosErp === true;
+    if (!usarProductosErp) {
+        // Modo manual: usar tasa de impuesto del sistema por defecto
+        const tasaImpuesto = (window.ConfigImpuestos && window.ConfigImpuestos.tasaImpuesto) || 0;
+        $('#modalPorcentajeImpuesto').val(tasaImpuesto);
+        $('#modalPorcentajeImpuestoDisplay').val(tasaImpuesto);
+    } else {
+        // Modo ERP: dejar en 0 hasta que se seleccione un producto
+        $('#modalPorcentajeImpuesto').val('0');
+        $('#modalPorcentajeImpuestoDisplay').val('0%');
+    }
+
     $('#modalTotalLinea').text(formatCurrency(0));
     $('#detalleIndex').val('');
     $('#detalleVersionId').val('');
-    
+
     $('#formEditarDetalle .is-invalid').removeClass('is-invalid');
     $('#formEditarDetalle .invalid-feedback').remove();
 }

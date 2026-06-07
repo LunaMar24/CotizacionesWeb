@@ -2,6 +2,154 @@
 // COTIZACIONES INDEX - JavaScript
 // ========================================
 
+// ========================================
+// GESTIÓN DE FILTROS CON LOCALSTORAGE
+// ========================================
+
+const STORAGE_KEY = 'cotizaciones_filtros_preferencias';
+
+/**
+ * Guarda los filtros actuales del formulario en LocalStorage
+ */
+function guardarFiltrosEnLocalStorage() {
+    try {
+        const filtros = {
+            busqueda: $('input[name="Filtros.Busqueda"]').val() || '',
+            version: $('input[name="Filtros.Version"]').val() || '',
+            fechaDesde: $('input[name="Filtros.FechaDesde"]').val() || '',
+            fechaHasta: $('input[name="Filtros.FechaHasta"]').val() || '',
+            montoDesde: $('input[name="Filtros.MontoDesde"]').val() || '',
+            montoHasta: $('input[name="Filtros.MontoHasta"]').val() || '',
+            moneda: $('select[name="Filtros.Moneda"]').val() || '',
+            estados: {
+                borrador: $('#chkBorrador').is(':checked'),
+                pendienteAprobacion: $('#chkPendienteAprobacion').is(':checked'),
+                aprobada: $('#chkAprobada').is(':checked'),
+                enviada: $('#chkEnviada').is(':checked'),
+                aceptada: $('#chkAceptada').is(':checked'),
+                rechazada: $('#chkRechazada').is(':checked')
+            },
+            timestamp: new Date().toISOString()
+        };
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(filtros));
+        console.log('✓ Filtros guardados en LocalStorage');
+    } catch (error) {
+        console.error('Error al guardar filtros en LocalStorage:', error);
+    }
+}
+
+/**
+ * Carga los filtros guardados desde LocalStorage y los aplica al formulario
+ * @returns {boolean} True si se cargaron filtros, false si no hay filtros guardados
+ */
+function cargarFiltrosDesdeLocalStorage() {
+    try {
+        const filtrosGuardados = localStorage.getItem(STORAGE_KEY);
+
+        if (!filtrosGuardados) {
+            return false;
+        }
+
+        const filtros = JSON.parse(filtrosGuardados);
+        console.log('✓ Cargando filtros desde LocalStorage');
+
+        // Aplicar filtros de texto y números
+        $('input[name="Filtros.Busqueda"]').val(filtros.busqueda || '');
+        $('input[name="Filtros.Version"]').val(filtros.version || '');
+        $('input[name="Filtros.FechaDesde"]').val(filtros.fechaDesde || '');
+        $('input[name="Filtros.FechaHasta"]').val(filtros.fechaHasta || '');
+        $('input[name="Filtros.MontoDesde"]').val(filtros.montoDesde || '');
+        $('input[name="Filtros.MontoHasta"]').val(filtros.montoHasta || '');
+        $('select[name="Filtros.Moneda"]').val(filtros.moneda || '');
+
+        // Aplicar filtros de estados
+        if (filtros.estados) {
+            $('#chkBorrador').prop('checked', filtros.estados.borrador || false);
+            $('#chkPendienteAprobacion').prop('checked', filtros.estados.pendienteAprobacion || false);
+            $('#chkAprobada').prop('checked', filtros.estados.aprobada || false);
+            $('#chkEnviada').prop('checked', filtros.estados.enviada || false);
+            $('#chkAceptada').prop('checked', filtros.estados.aceptada || false);
+            $('#chkRechazada').prop('checked', filtros.estados.rechazada || false);
+
+            // Actualizar el checkbox "Seleccionar Todos"
+            actualizarCheckboxSeleccionarTodos();
+        }
+
+        mostrarIndicadorFiltrosGuardados();
+        return true;
+    } catch (error) {
+        console.error('Error al cargar filtros desde LocalStorage:', error);
+        return false;
+    }
+}
+
+/**
+ * Limpia los filtros guardados del LocalStorage
+ */
+function limpiarFiltrosDeLocalStorage() {
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+        console.log('✓ Filtros eliminados de LocalStorage');
+        ocultarIndicadorFiltrosGuardados();
+    } catch (error) {
+        console.error('Error al limpiar filtros de LocalStorage:', error);
+    }
+}
+
+/**
+ * Verifica si hay filtros guardados en LocalStorage
+ * @returns {boolean}
+ */
+function hayFiltrosGuardados() {
+    return localStorage.getItem(STORAGE_KEY) !== null;
+}
+
+/**
+ * Actualiza el estado del checkbox "Seleccionar Todos"
+ */
+function actualizarCheckboxSeleccionarTodos() {
+    const totalCheckboxes = $('.chk-estado').length;
+    const checkedCheckboxes = $('.chk-estado:checked').length;
+    $('#chkSeleccionarTodos').prop('checked', totalCheckboxes === checkedCheckboxes && checkedCheckboxes > 0);
+}
+
+/**
+ * Muestra un indicador visual de que hay filtros guardados activos
+ */
+function mostrarIndicadorFiltrosGuardados() {
+    let $indicador = $('#indicadorFiltrosGuardados');
+
+    if ($indicador.length === 0) {
+        $indicador = $('<small>')
+            .attr('id', 'indicadorFiltrosGuardados')
+            .addClass('text-muted ml-2')
+            .css({
+                'font-size': '0.8rem',
+                'font-weight': 'normal'
+            })
+            .html('<i class="fas fa-bookmark"></i> Filtros guardados')
+            .attr('title', 'Sus preferencias de filtros están guardadas automáticamente');
+
+        $('.card-filtros-custom .card-title').append($indicador);
+    }
+
+    $indicador.fadeIn(300);
+}
+
+/**
+ * Oculta el indicador de filtros guardados
+ */
+function ocultarIndicadorFiltrosGuardados() {
+    $('#indicadorFiltrosGuardados').fadeOut(300, function() {
+        $(this).remove();
+    });
+}
+
+// ========================================
+// INICIALIZACIÓN Y EVENTOS
+// ========================================
+
 // Usar DOMContentLoaded para asegurar que el DOM esté listo
 document.addEventListener('DOMContentLoaded', function() {
     // Esperar a que jQuery esté disponible
@@ -17,6 +165,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Ejecutar cuando jQuery esté disponible
     waitForJQuery(function() {
+        // ========================================
+        // CARGAR FILTROS GUARDADOS AL INICIO
+        // ========================================
+
+        // Solo cargar filtros guardados si NO vienen filtros desde el servidor
+        // (es decir, si es la primera carga sin parámetros de búsqueda)
+        const urlParams = new URLSearchParams(window.location.search);
+        const tieneParametrosBusqueda = urlParams.toString().length > 0;
+
+        if (!tieneParametrosBusqueda && hayFiltrosGuardados()) {
+            console.log('ℹ Cargando filtros guardados del usuario...');
+            cargarFiltrosDesdeLocalStorage();
+        } else if (hayFiltrosGuardados()) {
+            // Si hay búsqueda activa pero también filtros guardados, mostrar el indicador
+            mostrarIndicadorFiltrosGuardados();
+        }
+
+        // ========================================
+        // GUARDAR FILTROS AL BUSCAR
+        // ========================================
+
+        $('#filtrosForm').on('submit', function(e) {
+            console.log('→ Guardando filtros en búsqueda...');
+            guardarFiltrosEnLocalStorage();
+        });
+
+        // ========================================
+        // LIMPIAR FILTROS AL PRESIONAR "LIMPIAR"
+        // ========================================
+
+        $('a[href*="Cotizaciones/Index"]').filter(function() {
+            return $(this).text().trim().includes('Limpiar');
+        }).on('click', function(e) {
+            console.log('→ Limpiando filtros guardados...');
+            limpiarFiltrosDeLocalStorage();
+        });
+
         // Evitar que el dropdown se cierre al hacer click en los checkboxes
         $('.dropdown-menu-estados').on('click', function (e) {
             if ($(e.target).is('input[type="checkbox"]') || $(e.target).closest('.dropdown-item-custom').length) {

@@ -123,38 +123,46 @@
                                             <i class="fas fa-tags"></i> Estados
                                         </button>
                                         <div class="dropdown-menu dropdown-menu-estados" aria-labelledby="dropdownEstados">
+                                            <!-- Opción: Seleccionar Todos -->
+                                            <div class="dropdown-item-custom border-bottom pb-2 mb-2">
+                                                <input class="form-check-input" type="checkbox" id="chkSeleccionarTodos">
+                                                <label class="form-check-label font-weight-bold" for="chkSeleccionarTodos">
+                                                    <i class="fas fa-check-double"></i> Seleccionar Todos
+                                                </label>
+                                            </div>
+
                                             <div class="dropdown-item-custom">
-                                                <input class="form-check-input" type="checkbox" id="chkBorrador" name="Filtros.FiltroBorrador" value="true" @(Model.Filtros.FiltroBorrador ? "checked" : "")>
+                                                <input class="form-check-input chk-estado" type="checkbox" id="chkBorrador" name="Filtros.FiltroBorrador" value="true" @(Model.Filtros.FiltroBorrador ? "checked" : "")>
                                                 <label class="form-check-label" for="chkBorrador">
                                                     <span class="badge badge-secondary-custom">Borrador</span>
                                                 </label>
                                             </div>
                                             <div class="dropdown-item-custom">
-                                                <input class="form-check-input" type="checkbox" id="chkPendienteAprobacion" name="Filtros.FiltroPendienteAprobacion" value="true" @(Model.Filtros.FiltroPendienteAprobacion ? "checked" : "")>
+                                                <input class="form-check-input chk-estado" type="checkbox" id="chkPendienteAprobacion" name="Filtros.FiltroPendienteAprobacion" value="true" @(Model.Filtros.FiltroPendienteAprobacion ? "checked" : "")>
                                                 <label class="form-check-label" for="chkPendienteAprobacion">
                                                     <span class="badge badge-warning-custom">Pendiente Aprobación</span>
                                                 </label>
                                             </div>
                                             <div class="dropdown-item-custom">
-                                                <input class="form-check-input" type="checkbox" id="chkAprobada" name="Filtros.FiltroAprobada" value="true" @(Model.Filtros.FiltroAprobada ? "checked" : "")>
+                                                <input class="form-check-input chk-estado" type="checkbox" id="chkAprobada" name="Filtros.FiltroAprobada" value="true" @(Model.Filtros.FiltroAprobada ? "checked" : "")>
                                                 <label class="form-check-label" for="chkAprobada">
                                                     <span class="badge badge-success-custom">Aprobada</span>
                                                 </label>
                                             </div>
                                             <div class="dropdown-item-custom">
-                                                <input class="form-check-input" type="checkbox" id="chkEnviada" name="Filtros.FiltroEnviada" value="true" @(Model.Filtros.FiltroEnviada ? "checked" : "")>
+                                                <input class="form-check-input chk-estado" type="checkbox" id="chkEnviada" name="Filtros.FiltroEnviada" value="true" @(Model.Filtros.FiltroEnviada ? "checked" : "")>
                                                 <label class="form-check-label" for="chkEnviada">
                                                     <span class="badge badge-info-custom">Enviada</span>
                                                 </label>
                                             </div>
                                             <div class="dropdown-item-custom">
-                                                <input class="form-check-input" type="checkbox" id="chkAceptada" name="Filtros.FiltroAceptada" value="true" @(Model.Filtros.FiltroAceptada ? "checked" : "")>
+                                                <input class="form-check-input chk-estado" type="checkbox" id="chkAceptada" name="Filtros.FiltroAceptada" value="true" @(Model.Filtros.FiltroAceptada ? "checked" : "")>
                                                 <label class="form-check-label" for="chkAceptada">
                                                     <span class="badge badge-primary-custom">Aceptada</span>
                                                 </label>
                                             </div>
                                             <div class="dropdown-item-custom">
-                                                <input class="form-check-input" type="checkbox" id="chkRechazada" name="Filtros.FiltroRechazada" value="true" @(Model.Filtros.FiltroRechazada ? "checked" : "")>
+                                                <input class="form-check-input chk-estado" type="checkbox" id="chkRechazada" name="Filtros.FiltroRechazada" value="true" @(Model.Filtros.FiltroRechazada ? "checked" : "")>
                                                 <label class="form-check-label" for="chkRechazada">
                                                     <span class="badge badge-danger-custom">Rechazada</span>
                                                 </label>
@@ -610,9 +618,35 @@
     <script>
         $(document).ready(function() {
             // ========================================
+            // FUNCIONALIDAD: SELECCIONAR TODOS LOS ESTADOS
+            // ========================================
+
+            // Manejar el checkbox "Seleccionar Todos"
+            $('#chkSeleccionarTodos').on('change', function() {
+                const isChecked = $(this).prop('checked');
+                $('.chk-estado').prop('checked', isChecked);
+            });
+
+            // Actualizar "Seleccionar Todos" cuando cambian los checkboxes individuales
+            $('.chk-estado').on('change', function() {
+                const totalCheckboxes = $('.chk-estado').length;
+                const checkedCheckboxes = $('.chk-estado:checked').length;
+                $('#chkSeleccionarTodos').prop('checked', totalCheckboxes === checkedCheckboxes);
+            });
+
+            // Verificar estado inicial al cargar la página
+            (function() {
+                const totalCheckboxes = $('.chk-estado').length;
+                const checkedCheckboxes = $('.chk-estado:checked').length;
+                if (totalCheckboxes === checkedCheckboxes && checkedCheckboxes > 0) {
+                    $('#chkSeleccionarTodos').prop('checked', true);
+                }
+            })();
+
+            // ========================================
             // MODAL DE COMENTARIO DE COPIA - JavaScript que estaba en _ComentarioCopiaModal.cshtml
             // ========================================
-            
+
             // Configurar modal de comentario de copia
             $('#modalComentarioCopia').on('shown.bs.modal', function() {
                 $('#comentarioCopia').focus();

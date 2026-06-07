@@ -242,6 +242,13 @@ public class CotizacionEditarViewModel
     /// Se usa para ajustar comportamiento específico de la pantalla de creación.
     /// </summary>
     public bool EsNuevaCotizacion { get; set; } = false;
+
+    /// <summary>
+    /// Indica si el sistema tiene integraci?n activa con el ERP para consultar productos.
+    /// Si es true: se usa un select con b?squeda de productos desde el ERP
+    /// Si es false: se usa un input de texto para ingreso manual del c?digo del producto
+    /// </summary>
+    public bool UsarProductosErp { get; set; } = true;
 }
 
 public class DetalleEditarViewModel

@@ -537,8 +537,11 @@ public class CotizacionesController : Controller
       var usarImpuestosErp = await _parametroSistemaService.ObtenerValorParametroAsync("ERP_USAR_IMPUESTOS") ?? "S";
       var tasaImpuesto = await _parametroSistemaService.ObtenerValorParametroAsync<decimal?>("TASA_IMPUESTO") ?? 13.0m;
 
-      _logger.LogInformation("Crear cotización - Configuración cargada: Moneda={Moneda}, TipoCambio={TipoCambio}, UsarImpuestosERP={UsarImpuestos}, TasaImpuesto={TasaImpuesto}", 
-        monedaDefecto, tipoCambioBase, usarImpuestosErp, tasaImpuesto);
+      // Obtener configuración de integración de productos con ERP
+      var usarProductosErp = await _parametroSistemaService.ObtenerValorParametroAsync("ERP_ENABLED") ?? "S";
+
+      _logger.LogInformation("Crear cotización - Configuración cargada: Moneda={Moneda}, TipoCambio={TipoCambio}, UsarImpuestosERP={UsarImpuestos}, TasaImpuesto={TasaImpuesto}, UsarProductosERP={UsarProductos}", 
+        monedaDefecto, tipoCambioBase, usarImpuestosErp, tasaImpuesto, usarProductosErp);
 
       // Crear ViewModel para nueva cotización con valores predeterminados
       var viewModel = new CotizacionEditarViewModel
@@ -574,7 +577,10 @@ public class CotizacionesController : Controller
         // Configuración de impuestos desde parámetros del sistema
         UsarImpuestosErp = usarImpuestosErp,
         TasaImpuesto = tasaImpuesto,
-        
+
+        // Configuración de integración de productos con ERP
+        UsarProductosErp = usarProductosErp == "S",
+
         // Marca especial para identificar que es creación
         EsNuevaCotizacion = true
       };
@@ -771,6 +777,9 @@ public class CotizacionesController : Controller
       var usarImpuestosErp = await _parametroSistemaService.ObtenerValorParametroAsync("ERP_USAR_IMPUESTOS") ?? "S";
       var tasaImpuesto = await _parametroSistemaService.ObtenerValorParametroAsync<decimal?>("TASA_IMPUESTO") ?? 13.0m;
 
+      // Obtener configuración de integración de productos con ERP
+      var usarProductosErp = await _parametroSistemaService.ObtenerValorParametroAsync("ERP_ENABLED") ?? "S";
+
       var viewModel = new CotizacionEditarViewModel
       {
         CotizacionId = detalleDto.Version.CotizacionId,
@@ -807,6 +816,9 @@ public class CotizacionesController : Controller
         // Configuración de impuestos desde parámetros del sistema
         UsarImpuestosErp = usarImpuestosErp,
         TasaImpuesto = tasaImpuesto,
+
+        // Configuración de integración de productos con ERP
+        UsarProductosErp = usarProductosErp == "S",
 
         Detalles = detalleDto.Detalles.Select(d => new DetalleEditarViewModel
         {

@@ -619,9 +619,21 @@
             <div class="col-md-6">
               <div class="form-group">
                 <label for="modalProductoId">Producto *</label>
-                <select class="form-control" id="modalProductoId" required>
-                  <option value="">Seleccione un producto...</option>
-                </select>
+                @if (Model.UsarProductosErp)
+                {
+                  <!-- Modo ERP: Select con búsqueda de productos -->
+                  <select class="form-control" id="modalProductoId" required>
+                    <option value="">Seleccione un producto...</option>
+                  </select>
+                }
+                else
+                {
+                  <!-- Modo Manual: Input de texto para código de producto -->
+                  <input type="text" class="form-control" id="modalProductoId" 
+                         placeholder="Ingrese el código del producto" 
+                         maxlength="50" required>
+                  <small class="text-muted">Ingrese el código del producto manualmente</small>
+                }
               </div>
             </div>
             <div class="col-md-6">
@@ -658,8 +670,20 @@
             <div class="col-md-3">
               <div class="form-group">
                 <label for="modalPorcentajeImpuestoDisplay">% Impuesto</label>
-                <input type="text" class="form-control" id="modalPorcentajeImpuestoDisplay" readonly
-                       placeholder="0%" title="Porcentaje de impuesto del producto">
+                @if (Model.UsarProductosErp)
+                {
+                  <!-- Modo ERP: Solo lectura, se llena desde el producto -->
+                  <input type="text" class="form-control" id="modalPorcentajeImpuestoDisplay" readonly
+                         placeholder="0%" title="Porcentaje de impuesto del producto">
+                }
+                else
+                {
+                  <!-- Modo Manual: Editable, permite modificar el porcentaje -->
+                  <input type="number" step="0.01" min="0" max="100" class="form-control" 
+                         id="modalPorcentajeImpuestoDisplay"
+                         placeholder="0.00" title="Porcentaje de impuesto (editable)">
+                  <small class="text-muted">Porcentaje aplicable (ej: 13.00)</small>
+                }
               </div>
             </div>
           </div>
@@ -851,6 +875,11 @@
         tasaImpuesto: @Model.TasaImpuesto.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)
     };
 
+    // Configuración de productos ERP
+    window.ConfigProductos = {
+        usarProductosErp: @Model.UsarProductosErp.ToString().ToLower()
+    };
+
     // Agregar monedas disponibles desde el servidor
     window.MonedasDisponibles = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewBag.MonedasDisponibles ?? FormatHelper.GetMonedasDisponiblesParaJson()));
 
@@ -865,6 +894,7 @@
     console.log('Puede cambiar moneda?:', @Model.PuedeCambiarMoneda.ToString().ToLower());
     console.log('FormatConfig después:', window.FormatConfig);
     console.log('ConfigImpuestos:', window.ConfigImpuestos);
+    console.log('ConfigProductos:', window.ConfigProductos);
     console.log('====================================');
   </script>
   <!-- Select2 JS -->
